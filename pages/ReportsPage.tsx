@@ -4,14 +4,13 @@ import { useAppContext } from '../context/AppContext';
 import { Customer } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const ReportsPage: React.FC = () => {
     const { state } = useAppContext();
     const [selectedArea, setSelectedArea] = useState<string>('');
 
-    // Fix: Explicitly cast the initial value for the reduce function to ensure
-    // correct type inference for the accumulator. This prevents cascading 'unknown'
-    // type errors in subsequent operations.
     const customerDues = state.sales
         .filter(sale => !sale.isPaid)
         .reduce((acc, sale) => {
@@ -25,9 +24,6 @@ const ReportsPage: React.FC = () => {
             return acc;
         }, {} as {[key: string]: Customer & { totalDue: number } });
 
-    // FIX: Add explicit type for `customerDuesArray`. `Object.values` on an
-    // object with a string index signature returns `unknown[]`, so we need to
-    // provide the correct type to ensure type safety downstream.
     const customerDuesArray: (Customer & { totalDue: number })[] = Object.values(customerDues);
 
     const filteredDues = selectedArea 
@@ -37,11 +33,78 @@ const ReportsPage: React.FC = () => {
     const uniqueAreas = [...new Set(state.customers.map(c => c.area))];
 
     const generatePDF = () => {
-        alert("PDF generation is a placeholder. A library like jsPDF would be used here.");
+        if (filteredDues.length === 0) {
+            alert("No data to export.");
+            return;
+        }
+        const doc = new jsPDF();
+        const date = new Date().toLocaleDateString();
+        doc.setFontSize(18);
+        doc.text('Customer Dues Report', 14, 22);
+        doc.setFontSize(11);
+        doc.setTextColor(100);
+        doc.text(`Generated on: ${date}`, 14, 28);
+        if(selectedArea) {
+            doc.text(`Filtered by Area: ${selectedArea}`, 14, 34);
+        }
+
+        autoTable(doc, {
+            startY: 40,
+            head: [['Name', 'Phone', 'Area', 'Due Amount (Rs.)']],
+            body: filteredDues.map(c => [
+                c.name,
+                c.phone,
+                c.area,
+                c.totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })
+            ]),
+            theme: 'grid',
+            headStyles: { fillColor: [106, 13, 173] },
+            columnStyles: {
+                3: { halign: 'right' }
+            }
+        });
+
+        const totalDue = filteredDues.reduce((sum, c) => sum + c.totalDue, 0);
+        const finalY = (doc as any).lastAutoTable.finalY;
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text(
+            `Total Dues: Rs. ${totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+            14,
+            finalY + 10
+        );
+
+        doc.save(`customer-dues-report-${new Date().toISOString().slice(0, 10)}.pdf`);
     };
     
-    const generateExcel = () => {
-        alert("Excel export is a placeholder. A library like SheetJS (xlsx) would be used here.");
+    const generateCSV = () => {
+        if (filteredDues.length === 0) {
+            alert("No data to export.");
+            return;
+        }
+        // Use quotes to handle potential commas in string fields
+        const escapeCsvCell = (cell: any) => `"${String(cell).replace(/"/g, '""')}"`;
+
+        const headers = ['Name', 'Phone', 'Area', 'Due Amount'];
+        const rows = filteredDues.map(c => 
+            [
+                escapeCsvCell(c.name),
+                escapeCsvCell(c.phone),
+                escapeCsvCell(c.area),
+                c.totalDue // No quotes for numbers
+            ].join(',')
+        );
+        
+        const csvContent = "data:text/csv;charset=utf-8," 
+            + [headers.join(','), ...rows].join('\n');
+        
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `customer-dues-report-${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     return (
@@ -62,7 +125,7 @@ const ReportsPage: React.FC = () => {
                         </select>
                     </div>
                     <Button onClick={generatePDF} className="w-full sm:w-auto"><Download className="w-4 h-4 mr-2" />Export PDF</Button>
-                    <Button onClick={generateExcel} variant="secondary" className="w-full sm:w-auto"><Download className="w-4 h-4 mr-2" />Export Excel</Button>
+                    <Button onClick={generateCSV} variant="secondary" className="w-full sm:w-auto"><Download className="w-4 h-4 mr-2" />Export CSV</Button>
                 </div>
                 
                 <div className="overflow-x-auto">

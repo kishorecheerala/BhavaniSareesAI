@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Plus, Upload } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
@@ -28,6 +29,7 @@ const handleExcelImport = (file: File, dispatch: React.Dispatch<any>) => {
 const PurchasesPage: React.FC = () => {
     const { state, dispatch } = useAppContext();
     const [view, setView] = useState<'list' | 'add_supplier' | 'add_purchase'>('list');
+    const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
 
     // Add Supplier State
     const [newSupplier, setNewSupplier] = useState<Omit<Supplier, 'id'>>({ name: '', phone: '', location: '' });
@@ -94,6 +96,53 @@ const PurchasesPage: React.FC = () => {
     };
     
     const fileInputRef = React.useRef<HTMLInputElement>(null);
+    
+    if (selectedSupplier) {
+        const supplierPurchases = state.purchases.filter(p => p.supplierId === selectedSupplier.id);
+        return (
+            <div className="space-y-4">
+                <Button onClick={() => setSelectedSupplier(null)}>&larr; Back to Purchases</Button>
+                <Card title={`Supplier Details: ${selectedSupplier.name}`}>
+                    <p><strong>ID:</strong> {selectedSupplier.id}</p>
+                    <p><strong>Phone:</strong> {selectedSupplier.phone}</p>
+                    <p><strong>Location:</strong> {selectedSupplier.location}</p>
+                </Card>
+                <Card title="Purchase History">
+                    {supplierPurchases.length > 0 ? (
+                        <div className="space-y-4">
+                            {supplierPurchases.slice().reverse().map(purchase => (
+                                <div key={purchase.id} className="p-3 bg-gray-50 rounded-lg border">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                            <p className="font-semibold">{new Date(purchase.date).toLocaleString()}</p>
+                                            <p className={`text-sm font-bold ${purchase.isPaid ? 'text-green-600' : 'text-red-600'}`}>
+                                                {purchase.isPaid ? 'Paid' : 'Due'}
+                                            </p>
+                                        </div>
+                                        <p className="font-bold text-lg text-primary">
+                                            ₹{purchase.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                        </p>
+                                    </div>
+                                    <div className="pl-4 mt-2 border-l-2 border-purple-200">
+                                        <h4 className="font-semibold text-sm text-gray-700 mb-1">Items Purchased:</h4>
+                                        <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                                            {purchase.items.map((item, index) => (
+                                                <li key={index}>
+                                                    {item.productName} (x{item.quantity}) @ ₹{item.price.toLocaleString('en-IN')} each
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-gray-500">No purchases recorded from this supplier.</p>
+                    )}
+                </Card>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-4">
@@ -109,8 +158,8 @@ const PurchasesPage: React.FC = () => {
             </div>
 
             <div className="flex gap-2">
-                <Button onClick={() => setView('add_purchase')}><Plus className="w-4 h-4 mr-2" />Add Purchase</Button>
-                <Button onClick={() => setView('add_supplier')} variant="secondary"><Plus className="w-4 h-4 mr-2" />Add Supplier</Button>
+                <Button onClick={() => { setView('add_purchase'); setSelectedSupplier(null); }}><Plus className="w-4 h-4 mr-2" />Add Purchase</Button>
+                <Button onClick={() => { setView('add_supplier'); setSelectedSupplier(null); }} variant="secondary"><Plus className="w-4 h-4 mr-2" />Add Supplier</Button>
             </div>
             
             {view === 'list' && (
@@ -120,7 +169,16 @@ const PurchasesPage: React.FC = () => {
                             {state.purchases.slice().reverse().map(purchase => {
                                 const supplier = state.suppliers.find(s => s.id === purchase.supplierId);
                                 return (
-                                    <div key={purchase.id} className="p-3 bg-gray-50 rounded-lg border">
+                                    <div key={purchase.id} 
+                                        className="p-3 bg-gray-50 rounded-lg border cursor-pointer hover:shadow-md transition-shadow"
+                                        onClick={() => {
+                                            if (supplier) {
+                                                setSelectedSupplier(supplier);
+                                            } else {
+                                                alert(`Could not find details for supplier ID: ${purchase.supplierId}. The supplier may have been deleted.`);
+                                            }
+                                        }}
+                                    >
                                         <div className="flex justify-between items-center">
                                             <div>
                                                 <p className="font-bold">{supplier ? supplier.name : 'Unknown Supplier'}</p>
@@ -187,7 +245,7 @@ const PurchasesPage: React.FC = () => {
                          </div>
                     </Card>
                     <Button onClick={handleAddPurchase} className="w-full" disabled={items.length === 0 || !supplierId}>Complete Purchase</Button>
-                    <Button onClick={() => setView('list')} variant="secondary" className="w-full">Cancel</Button>
+                    <Button onClick={() => { setView('list'); setSelectedSupplier(null); }} variant="secondary" className="w-full">Cancel</Button>
                 </div>
             )}
         </div>

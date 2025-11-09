@@ -33,7 +33,6 @@ const CustomersPage: React.FC = () => {
     if (selectedCustomer) {
         // Detailed View
         const customerSales = state.sales.filter(s => s.customerId === selectedCustomer.id);
-        const customerReturns = state.returns.filter(r => r.customerId === selectedCustomer.id);
         
         return (
             <div className="space-y-4">
@@ -46,26 +45,42 @@ const CustomersPage: React.FC = () => {
                     {selectedCustomer.reference && <p><strong>Reference:</strong> {selectedCustomer.reference}</p>}
                 </Card>
                 <Card title="Sales History">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-gray-100">
-                                <tr>
-                                    <th className="p-2">Date</th>
-                                    <th className="p-2">Amount</th>
-                                    <th className="p-2">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {customerSales.map(sale => (
-                                    <tr key={sale.id} className="border-b">
-                                        <td className="p-2">{new Date(sale.date).toLocaleDateString()}</td>
-                                        <td className="p-2">₹{sale.totalAmount.toLocaleString('en-IN')}</td>
-                                        <td className="p-2">{sale.isPaid ? 'Paid' : 'Due'}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                    {customerSales.length > 0 ? (
+                        <div className="space-y-4">
+                            {customerSales.slice().reverse().map(sale => (
+                                <div key={sale.id} className="p-3 bg-gray-50 rounded-lg border">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                            <p className="font-semibold">{new Date(sale.date).toLocaleString()}</p>
+                                            <p className={`text-sm font-bold ${sale.isPaid ? 'text-green-600' : 'text-red-600'}`}>
+                                                {sale.isPaid ? 'Paid' : 'Due'}
+                                            </p>
+                                        </div>
+                                        <p className="font-bold text-lg text-primary">
+                                            ₹{sale.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                        </p>
+                                    </div>
+                                    <div className="pl-4 mt-2 border-l-2 border-purple-200">
+                                        <h4 className="font-semibold text-sm text-gray-700 mb-1">Items Purchased:</h4>
+                                        <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                                            {sale.items.map((item, index) => (
+                                                <li key={index}>
+                                                    {item.productName} (x{item.quantity}) @ ₹{item.price.toLocaleString('en-IN')} each
+                                                </li>
+                                            ))}
+                                        </ul>
+                                        {sale.discount > 0 && (
+                                            <p className="text-sm text-gray-600 mt-2">
+                                                Discount: -₹{sale.discount.toLocaleString('en-IN')}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-gray-500">No sales recorded for this customer.</p>
+                    )}
                 </Card>
                  <Card title="Returns History">
                     {/* Return table to be implemented */}

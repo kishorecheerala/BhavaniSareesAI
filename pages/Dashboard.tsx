@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { IndianRupee, UserCheck, AlertTriangle, Download, Upload, ShoppingCart, Package } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { IndianRupee, UserCheck, AlertTriangle, Download, Upload, ShoppingCart, Package, XCircle, CheckCircle, Info } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -7,6 +7,7 @@ import Button from '../components/Button';
 const Dashboard: React.FC = () => {
     const { state, dispatch } = useAppContext();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [restoreStatus, setRestoreStatus] = useState<{ type: 'info' | 'success' | 'error', message: string } | null>(null);
 
     const totalCustomerDues = state.sales
         .filter(sale => !sale.isPaid)
@@ -24,7 +25,7 @@ const Dashboard: React.FC = () => {
     const handleBackup = () => {
         try {
             const data = localStorage.getItem('bhavaniSareesState');
-            if (!data) {
+            if (!data || JSON.parse(data).customers.length === 0) {
                 alert('No data to backup.');
                 return;
             }
@@ -46,37 +47,67 @@ const Dashboard: React.FC = () => {
     };
     
     const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setRestoreStatus({ type: 'info', message: 'Starting restore process...' });
         const file = event.target.files?.[0];
-        if (!file) return;
+
+        if (!file) {
+            setRestoreStatus({ type: 'error', message: 'No file selected. Restore cancelled.' });
+            return;
+        }
 
         if (!window.confirm('Are you sure you want to restore data? This will overwrite all current data in the app.')) {
-            // Reset file input value so the same file can be selected again
-            if(fileInputRef.current) fileInputRef.current.value = "";
+            if (fileInputRef.current) fileInputRef.current.value = "";
+            setRestoreStatus(null);
             return;
         }
 
         const reader = new FileReader();
+
         reader.onload = (e) => {
             try {
+                setRestoreStatus({ type: 'info', message: 'File read. Validating data structure...' });
                 const text = e.target?.result;
-                if (typeof text !== 'string') throw new Error("File content is not readable text.");
-                
-                const restoredState = JSON.parse(text);
-                // Basic validation
-                if (restoredState && 'customers' in restoredState && 'sales' in restoredState && 'products' in restoredState) {
-                    dispatch({ type: 'SET_STATE', payload: restoredState });
-                    alert('Data restored successfully!');
-                } else {
-                    throw new Error("Invalid backup file format.");
+                if (typeof text !== 'string') {
+                    throw new Error("File content is not readable as text.");
                 }
+                
+                const parsedState = JSON.parse(text);
+
+                if (!parsedState || typeof parsedState !== 'object') {
+                    throw new Error("Backup file does not contain a valid object.");
+                }
+
+                const validatedState = {
+                    customers: Array.isArray(parsedState.customers) ? parsedState.customers : [],
+                    suppliers: Array.isArray(parsedState.suppliers) ? parsedState.suppliers : [],
+                    products: Array.isArray(parsedState.products) ? parsedState.products : [],
+                    sales: Array.isArray(parsedState.sales) ? parsedState.sales : [],
+                    purchases: Array.isArray(parsedState.purchases) ? parsedState.purchases : [],
+                    returns: Array.isArray(parsedState.returns) ? parsedState.returns : [],
+                };
+
+                setRestoreStatus({ type: 'info', message: 'Data validated. Applying update...' });
+                dispatch({ type: 'SET_STATE', payload: validatedState });
+                
+                // Use a short delay to allow React state to update before showing final success
+                setTimeout(() => {
+                   setRestoreStatus({ type: 'success', message: 'Data restored successfully! The app is now using the new data.' });
+                }, 100);
+
             } catch (error) {
                 console.error('Restore failed:', error);
-                alert(`Restore failed. Please make sure you are using a valid backup file. Error: ${(error as Error).message}`);
+                setRestoreStatus({ type: 'error', message: `Restore failed: ${(error as Error).message}` });
             } finally {
-                // Reset file input value
-                if(fileInputRef.current) fileInputRef.current.value = "";
+                if (fileInputRef.current) fileInputRef.current.value = "";
             }
         };
+        
+        reader.onerror = (error) => {
+            console.error('FileReader error:', error);
+            setRestoreStatus({ type: 'error', message: 'Failed to read the backup file. It might be corrupted or inaccessible.' });
+            if (fileInputRef.current) fileInputRef.current.value = "";
+        };
+
         reader.readAsText(file);
     };
 
@@ -92,6 +123,32 @@ const Dashboard: React.FC = () => {
             </div>
         </Card>
     );
+
+    const StatusNotification = () => {
+        if (!restoreStatus) return null;
+
+        const baseClasses = "p-3 rounded-md mb-4 text-sm flex items-start justify-between";
+        const variants = {
+            info: 'bg-blue-100 text-blue-800',
+            success: 'bg-green-100 text-green-800',
+            error: 'bg-red-100 text-red-800',
+        };
+        const icons = {
+            info: <Info className="w-5 h-5 mr-3 flex-shrink-0" />,
+            success: <CheckCircle className="w-5 h-5 mr-3 flex-shrink-0" />,
+            error: <XCircle className="w-5 h-5 mr-3 flex-shrink-0" />,
+        };
+
+        return (
+            <div className={`${baseClasses} ${variants[restoreStatus.type]}`}>
+                <div className="flex items-start">
+                    {icons[restoreStatus.type]}
+                    <span>{restoreStatus.message}</span>
+                </div>
+                <button onClick={() => setRestoreStatus(null)} className="font-bold text-lg leading-none ml-4">&times;</button>
+            </div>
+        );
+    };
 
     return (
         <div className="space-y-6">
@@ -141,6 +198,7 @@ const Dashboard: React.FC = () => {
                 <p className="text-sm text-gray-600 mb-4">
                     Your data is stored only on this device. It's very important to back it up regularly.
                 </p>
+                <StatusNotification />
                  <input
                     type="file"
                     accept=".json"
