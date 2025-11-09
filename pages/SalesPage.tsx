@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, QrCode, Share2 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
-import { Sale, SaleItem } from '../types';
+import { Sale, SaleItem, Customer } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const SalesPage: React.FC = () => {
     const { state, dispatch } = useAppContext();
@@ -34,6 +36,77 @@ const SalesPage: React.FC = () => {
             alert('Product not found in stock.');
             setNewItem({ ...newItem, productName: '' });
         }
+    };
+
+    const generateInvoicePDF = (sale: Sale, customer: Customer) => {
+        const doc = new jsPDF();
+
+        // Title
+        doc.setFontSize(22);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Bhavani Sarees Invoice', 105, 20, { align: 'center' });
+
+        // Invoice Info
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Invoice ID: ${sale.id}`, 20, 40);
+        doc.text(`Date: ${new Date(sale.date).toLocaleDateString()}`, 20, 45);
+
+        // Customer Info
+        doc.setFont('helvetica', 'bold');
+        doc.text('Billed To:', 20, 60);
+        doc.setFont('helvetica', 'normal');
+        doc.text(customer.name, 20, 65);
+        doc.text(customer.phone, 20, 70);
+        doc.text(`${customer.address}, ${customer.area}`, 20, 75);
+
+        // Table
+        const tableColumn = ["#", "Item", "Qty", "Price", "Total"];
+        const tableRows: (string | number)[][] = [];
+
+        sale.items.forEach((item, index) => {
+            const rowData = [
+                index + 1,
+                item.productName,
+                item.quantity,
+                `₹${item.price.toFixed(2)}`,
+                `₹${(item.price * item.quantity).toFixed(2)}`
+            ];
+            tableRows.push(rowData);
+        });
+
+        autoTable(doc, {
+            head: [tableColumn],
+            body: tableRows,
+            startY: 85,
+            theme: 'striped',
+            headStyles: { fillColor: [106, 13, 173] }, // primary color
+        });
+
+        // Totals
+        const finalY = (doc as any).lastAutoTable.finalY || 150;
+        const subtotal = sale.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+        doc.setFontSize(12);
+        doc.text(`Subtotal:`, 150, finalY + 10, { align: 'right' });
+        doc.text(`₹${subtotal.toFixed(2)}`, 200, finalY + 10, { align: 'right' });
+
+        doc.text(`GST:`, 150, finalY + 17, { align: 'right' });
+        doc.text(`₹${sale.gstAmount.toFixed(2)}`, 200, finalY + 17, { align: 'right' });
+        
+        doc.text(`Discount:`, 150, finalY + 24, { align: 'right' });
+        doc.text(`-₹${sale.discount.toFixed(2)}`, 200, finalY + 24, { align: 'right' });
+        
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Total:`, 150, finalY + 31, { align: 'right' });
+        doc.text(`₹${sale.totalAmount.toFixed(2)}`, 200, finalY + 31, { align: 'right' });
+
+        // Footer
+        doc.setFontSize(10);
+        doc.text('Thank you for your business!', 105, finalY + 50, { align: 'center' });
+
+        // Save the PDF
+        doc.save(`invoice-${sale.id}.pdf`);
     };
 
     const handleCreateSale = () => {
@@ -69,12 +142,15 @@ const SalesPage: React.FC = () => {
             dispatch({ type: 'UPDATE_PRODUCT_STOCK', payload: { productId: item.productId, change: -item.quantity } });
         });
         
-        // --- WhatsApp Sharing Logic ---
         const customer = state.customers.find(c => c.id === customerId);
         if (customer) {
+            // Generate and download the PDF first
+            generateInvoicePDF(newSale, customer);
+            
+            // Then, prepare the WhatsApp message
             const itemsText = items.map(item => `- ${item.productName} (x${item.quantity}): ₹${(item.price * item.quantity).toFixed(2)}`).join('\n');
             
-            const invoiceText = `*Bhavani Sarees Invoice*\n\n` +
+            const invoiceText = `*Bhavani Sarees Invoice Summary*\n\n` +
                 `*Invoice ID:* ${saleId}\n` +
                 `*Date:* ${new Date(newSale.date).toLocaleDateString()}\n` +
                 `*Customer:* ${customer.name}\n\n` +
@@ -86,14 +162,13 @@ const SalesPage: React.FC = () => {
                 `*Total Amount: ₹${totalAmount.toFixed(2)}*\n\n` +
                 `Thank you for your business!`;
 
-            if (window.confirm(`Sale created successfully! Total: ₹${totalAmount.toFixed(2)}\n\nDo you want to share the invoice on WhatsApp?`)) {
+            if (window.confirm(`Sale created successfully! Invoice PDF has been downloaded.\n\nTotal: ₹${totalAmount.toFixed(2)}\n\nDo you want to share a summary on WhatsApp?`)) {
                 const encodedText = encodeURIComponent(invoiceText);
-                // Using wa.me link without phone number to let user choose the contact
                 const whatsappUrl = `https://wa.me/?text=${encodedText}`;
                 window.open(whatsappUrl, '_blank');
             }
         } else {
-            alert(`Sale created successfully! Total: ₹${totalAmount.toFixed(2)}`);
+             alert(`Sale created successfully! Total: ₹${totalAmount.toFixed(2)}. Customer details not found for sharing.`);
         }
 
         // Reset form
@@ -166,7 +241,7 @@ const SalesPage: React.FC = () => {
                 </div>
                  <Button onClick={handleCreateSale} className="w-full mt-4">
                     <Share2 className="w-4 h-4 mr-2" />
-                    Create Sale & Share Invoice
+                    Create Sale & Generate Invoice
                 </Button>
             </Card>
         </div>
