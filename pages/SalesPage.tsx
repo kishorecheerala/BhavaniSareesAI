@@ -116,101 +116,149 @@ const SalesPage: React.FC = () => {
         resetForm();
     };
 
-
-    const generateInvoicePDF = (sale: Sale, customer: Customer) => {
-        const doc = new jsPDF();
-        const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
-        const pageWidth = doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
-
-        doc.setFontSize(26);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Bhavani Sarees Invoice', pageWidth / 2, 22, { align: 'center' });
-
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Invoice ID: ${sale.id}`, 20, 40);
-        doc.text(`Date: ${new Date(sale.date).toLocaleDateString()}`, 20, 46);
-
-        doc.setFont('helvetica', 'bold');
-        doc.text('Billed To:', 20, 60);
-        doc.setFont('helvetica', 'normal');
-        doc.text(customer.name, 20, 66);
-        doc.text(customer.phone, 20, 72);
-        doc.text(`${customer.address}, ${customer.area}`, 20, 78);
-
-        const tableColumn = ["#", "Item", "Qty", "Price", "Total"];
-        const tableRows: (string | number)[][] = [];
-
-        const formatCurrency = (val: number) => val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-        sale.items.forEach((item, index) => {
-            const rowData = [
-                index + 1,
-                item.productName,
-                item.quantity,
-                formatCurrency(item.price),
-                formatCurrency(item.price * item.quantity)
-            ];
-            tableRows.push(rowData);
+    const generateInvoicePDF = (sale: Sale, customer: Customer): Blob => {
+        const doc = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: [80, 150] // Receipt-like size
         });
+        
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        let yPos = 10;
+        const margin = 5;
 
+        // Background
+        const bgSvg = `<svg width="80" height="150" viewBox="0 0 80 150" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#fff" /><g opacity="0.08" fill="#6a0dad"><path d="M10 10 C 15 0, 25 0, 30 10 S 40 20, 30 30 C 20 40, 10 40, 10 30 S 5 20, 10 10 Z" /><path d="M50 40 C 55 30, 65 30, 70 40 S 80 50, 70 60 C 60 70, 50 70, 50 60 S 45 50, 50 40 Z" /><path d="M20 70 C 25 60, 35 60, 40 70 S 50 80, 40 90 C 30 100, 20 100, 20 90 S 15 80, 20 70 Z" /><path d="M60 100 C 65 90, 75 90, 80 100 S 90 110, 80 120 C 70 130, 60 130, 60 120 S 55 110, 60 100 Z" /><path d="M5 130 C 10 120, 20 120, 25 130 S 35 140, 25 150 C 15 160, 5 160, 5 150 S 0 140, 5 130 Z" /></g></svg>`;
+        const bgDataUrl = `data:image/svg+xml;base64,${btoa(bgSvg)}`;
+        doc.addImage(bgDataUrl, 'SVG', 0, 0, pageWidth, pageHeight);
+
+        // Logo
+        const logoSvg = `<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="512" height="512" rx="96" fill="#f3e5f5"/><text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="300" font-family="Arial, sans-serif" fill="#6a0dad" font-weight="bold">B</text></svg>`;
+        const logoDataUrl = `data:image/svg+xml;base64,${btoa(logoSvg)}`;
+        doc.addImage(logoDataUrl, 'SVG', pageWidth / 2 - 10, yPos, 20, 20);
+        yPos += 25;
+
+        // Title
+        doc.setFont('Times-Roman', 'bold');
+        doc.setFontSize(16);
+        doc.setTextColor('#6a0dad');
+        doc.text('Bhavani Sarees', pageWidth / 2, yPos, { align: 'center' });
+        yPos += 6;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor('#333333');
+        doc.text('Thank you for your business', pageWidth / 2, yPos, { align: 'center' });
+        yPos += 8;
+
+        // Divider
+        doc.setDrawColor('#EAE0F5');
+        doc.line(margin, yPos, pageWidth - margin, yPos);
+        yPos += 6;
+
+        // Invoice Info
+        doc.text(`Invoice: ${sale.id}`, margin, yPos);
+        doc.text(`Date: ${new Date(sale.date).toLocaleString()}`, pageWidth - margin, yPos, { align: 'right' });
+        yPos += 8;
+
+        // Billed To
+        doc.setFont('Times-Roman', 'bold');
+        doc.text('Billed To:', margin, yPos);
+        doc.setFont('helvetica', 'normal');
+        yPos += 4;
+        doc.text(customer.name, margin, yPos);
+        yPos += 4;
+        doc.text(`${customer.address}, ${customer.area}`, margin, yPos);
+        yPos += 8;
+
+        // Items Table
+        const formatCurrency = (val: number) => val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const tableRows = sale.items.map(item => [
+            `${item.productName}\n  (x${item.quantity} @ ${formatCurrency(item.price)})`,
+            formatCurrency(item.price * item.quantity)
+        ]);
+        
         autoTable(doc, {
-            head: [tableColumn],
             body: tableRows,
-            startY: 90,
-            theme: 'grid',
-            headStyles: { fillColor: [106, 13, 173], textColor: [255, 255, 255] },
+            startY: yPos,
+            theme: 'plain',
+            styles: { fontSize: 8, cellPadding: 1 },
             columnStyles: {
-                0: { halign: 'center', cellWidth: 10 },
-                2: { halign: 'center' },
-                3: { halign: 'right' },
-                4: { halign: 'right' },
+                0: { cellWidth: 45 },
+                1: { halign: 'right' }
             }
         });
 
-        const finalY = (doc as any).lastAutoTable.finalY || 150;
+        yPos = (doc as any).lastAutoTable.finalY + 5;
+        
+        // Divider
+        doc.line(margin, yPos, pageWidth - margin, yPos);
+        yPos += 5;
+
+        // Totals
         const subtotal = sale.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
         const amountPaid = sale.payments.reduce((sum, p) => sum + p.amount, 0);
         const amountDue = sale.totalAmount - amountPaid;
-        
-        const totalsData = [
-            ['Subtotal:', `Rs. ${formatCurrency(subtotal)}`],
-            ['GST:', `Rs. ${formatCurrency(sale.gstAmount)}`],
-            ['Discount:', `- Rs. ${formatCurrency(sale.discount)}`],
-            ['Total:', `Rs. ${formatCurrency(sale.totalAmount)}`],
-            ['Amount Paid:', `Rs. ${formatCurrency(amountPaid)}`],
-            ['Amount Due:', `Rs. ${formatCurrency(amountDue)}`]
+
+        const totals = [
+            ['Subtotal', formatCurrency(subtotal)],
+            ['GST', formatCurrency(sale.gstAmount)],
+            ['Discount', `- ${formatCurrency(sale.discount)}`],
+            ['Total', formatCurrency(sale.totalAmount)],
+            ['Paid', formatCurrency(amountPaid)],
+            ['Due', formatCurrency(amountDue)]
         ];
         
-        autoTable(doc, {
-            body: totalsData,
-            startY: finalY + 10,
-            theme: 'plain',
-            tableWidth: 'wrap',
-            margin: { left: pageWidth - 90 },
-            styles: { fontSize: 12, cellPadding: 1.5, overflow: 'visible' },
-            columnStyles: {
-                0: { halign: 'right', cellWidth: 30 },
-                1: { halign: 'right', cellWidth: 'auto' },
-            },
-            didDrawCell: (data) => {
-                if (data.row.index >= 3) { // Style Total, Paid, and Due
-                    doc.setFont('helvetica', 'bold');
-                }
-            },
+        doc.setFontSize(9);
+        totals.forEach(([label, value], index) => {
+            const isBold = index >= 3;
+            doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+            doc.text(label, margin + 30, yPos);
+            doc.text(`Rs. ${value}`, pageWidth - margin, yPos, { align: 'right' });
+            yPos += 5;
         });
 
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text('Thank you for your business!', pageWidth / 2, pageHeight - 20, { align: 'center' });
-
-        const today = new Date();
-        const dateString = today.toISOString().split('T')[0];
-        const randomNumber = Math.floor(1000 + Math.random() * 9000);
-        doc.save(`BhavaniSarees-Invoice-${dateString}-${randomNumber}.pdf`);
+        return doc.output('blob');
     };
 
-    const handleCreateSale = () => {
+    const downloadPdf = (pdfBlob: Blob, saleId: string) => {
+        const url = URL.createObjectURL(pdfBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Bhavani-Sarees-Invoice-${saleId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
+    const shareOrDownloadPdf = async (pdfBlob: Blob, saleId: string, customerName: string) => {
+        const pdfFile = new File([pdfBlob], `Invoice-${saleId}.pdf`, { type: 'application/pdf' });
+        
+        const shareData = {
+            files: [pdfFile],
+            title: `Bhavani Sarees Invoice for ${customerName}`,
+            text: `Dear ${customerName},\n\nThank you for your purchase! Here is your invoice: ${saleId}.\n\n- Bhavani Sarees`,
+        };
+
+        if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+            try {
+                await navigator.share(shareData);
+            } catch (err) {
+                 if ((err as Error).name !== 'AbortError') {
+                   alert('Could not share the invoice. It will be downloaded instead.');
+                   downloadPdf(pdfBlob, saleId);
+                }
+            }
+        } else {
+            alert('Sharing is not supported on this device. The invoice will be downloaded.');
+            downloadPdf(pdfBlob, saleId);
+        }
+    };
+
+
+    const handleCreateSale = async () => {
         if (!customerId || items.length === 0) {
             alert('Please select a customer and add items.');
             return;
@@ -260,30 +308,8 @@ const SalesPage: React.FC = () => {
         
         const customer = state.customers.find(c => c.id === customerId);
         if (customer) {
-            generateInvoicePDF(newSale, customer);
-            
-            const itemsText = items.map(item => `- ${item.productName} (x${item.quantity}): ₹${(item.price * item.quantity).toFixed(2)}`).join('\n');
-            const amountDue = totalAmount - paidAmount;
-            
-            const invoiceText = `*Bhavani Sarees Invoice Summary*\n\n` +
-                `*Invoice ID:* ${saleId}\n` +
-                `*Date:* ${new Date(newSale.date).toLocaleDateString()}\n` +
-                `*Customer:* ${customer.name}\n\n` +
-                `*Items:*\n${itemsText}\n\n` +
-                `*Subtotal:* ₹${subtotal.toFixed(2)}\n` +
-                `*GST:* ₹${gstAmount.toFixed(2)}\n` +
-                `*Discount:* -₹${parseFloat(discount).toFixed(2)}\n` +
-                `--------------------\n` +
-                `*Total Amount: ₹${totalAmount.toFixed(2)}*\n` +
-                `*Amount Paid: ₹${paidAmount.toFixed(2)}*\n` +
-                `*Balance Due: ₹${amountDue.toFixed(2)}*\n\n` +
-                `Thank you for your business!`;
-
-            if (window.confirm(`Sale created successfully! Invoice PDF has been downloaded.\n\nTotal: ₹${totalAmount.toFixed(2)}\nDue: ₹${amountDue.toFixed(2)}\n\nDo you want to share a summary on WhatsApp?`)) {
-                const encodedText = encodeURIComponent(invoiceText);
-                const whatsappUrl = `https://wa.me/?text=${encodedText}`;
-                window.open(whatsappUrl, '_blank');
-            }
+            const pdfBlob = generateInvoicePDF(newSale, customer);
+            await shareOrDownloadPdf(pdfBlob, newSale.id, customer.name);
         } else {
              alert(`Sale created successfully! Total: ₹${totalAmount.toFixed(2)}. Customer details not found for sharing.`);
         }
@@ -442,7 +468,7 @@ const SalesPage: React.FC = () => {
                     {canCreateSale ? (
                         <Button onClick={handleCreateSale} className="w-full">
                             <Share2 className="w-4 h-4 mr-2" />
-                            Create Sale & Generate Invoice
+                            Generate & Share Invoice
                         </Button>
                     ) : canRecordPayment ? (
                         <Button onClick={handleRecordPayment} className="w-full">
