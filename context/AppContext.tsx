@@ -20,7 +20,9 @@ type Action =
   | { type: 'UPDATE_PRODUCT'; payload: Product }
   | { type: 'UPDATE_PRODUCT_STOCK'; payload: { productId: string; change: number } }
   | { type: 'ADD_SALE'; payload: Sale }
+  | { type: 'DELETE_SALE'; payload: string } // saleId
   | { type: 'ADD_PURCHASE'; payload: Purchase }
+  | { type: 'DELETE_PURCHASE'; payload: string } // purchaseId
   | { type: 'ADD_RETURN'; payload: Return }
   | { type: 'ADD_PAYMENT_TO_SALE'; payload: { saleId: string; payment: Payment } }
   | { type: 'ADD_PAYMENT_TO_PURCHASE'; payload: { purchaseId: string; payment: Payment } };
@@ -64,12 +66,56 @@ const appReducer = (state: AppState, action: Action): AppState => {
         }
     case 'ADD_SALE':
       return { ...state, sales: [...state.sales, action.payload] };
+    case 'DELETE_SALE': {
+      const saleToDelete = state.sales.find(s => s.id === action.payload);
+      if (!saleToDelete) return state;
+
+      const stockChanges = new Map<string, number>();
+      saleToDelete.items.forEach(item => {
+        const currentChange = stockChanges.get(item.productId) || 0;
+        stockChanges.set(item.productId, currentChange + item.quantity); // Add stock back
+      });
+
+      let updatedProducts = state.products;
+      stockChanges.forEach((change, productId) => {
+        updatedProducts = updatedProducts.map(p =>
+          p.id === productId ? { ...p, quantity: p.quantity + change } : p
+        );
+      });
+
+      return {
+        ...state,
+        sales: state.sales.filter(s => s.id !== action.payload),
+        products: updatedProducts,
+      };
+    }
     case 'ADD_PURCHASE':
       return { ...state, purchases: [...state.purchases, action.payload] };
+    case 'DELETE_PURCHASE': {
+      const purchaseToDelete = state.purchases.find(p => p.id === action.payload);
+      if (!purchaseToDelete) return state;
+
+      const stockChanges = new Map<string, number>();
+      purchaseToDelete.items.forEach(item => {
+        const currentChange = stockChanges.get(item.productId) || 0;
+        stockChanges.set(item.productId, currentChange - item.quantity); // Subtract stock
+      });
+      
+      let updatedProducts = state.products;
+      stockChanges.forEach((change, productId) => {
+        updatedProducts = updatedProducts.map(p =>
+          p.id === productId ? { ...p, quantity: Math.max(0, p.quantity + change) } : p
+        );
+      });
+      
+      return {
+        ...state,
+        purchases: state.purchases.filter(p => p.id !== action.payload),
+        products: updatedProducts,
+      };
+    }
     case 'ADD_RETURN': {
       const returnPayload = action.payload;
-
-      // 1. Adjust product stock based on return type
       const updatedProducts = state.products.map(product => {
         const itemReturned = returnPayload.items.find(item => item.productId.trim().toLowerCase() === product.id.trim().toLowerCase());
         if (itemReturned) {
@@ -78,34 +124,27 @@ const appReducer = (state: AppState, action: Action): AppState => {
         }
         return product;
       });
-
-      // 2. Create a credit payment record to adjust dues
       const creditPayment: Payment = {
         id: `PAY-RET-${returnPayload.id}`,
         amount: returnPayload.amount,
         date: returnPayload.returnDate,
         method: 'RETURN_CREDIT',
       };
-      
       let updatedSales = state.sales;
       let updatedPurchases = state.purchases;
-
-      // 3. Apply the credit to the correct sale or purchase invoice
       if (returnPayload.type === 'CUSTOMER') {
         updatedSales = state.sales.map(sale =>
           sale.id === returnPayload.referenceId
             ? { ...sale, payments: [...(sale.payments || []), creditPayment] }
             : sale
         );
-      } else { // SUPPLIER
+      } else {
         updatedPurchases = state.purchases.map(purchase =>
           purchase.id === returnPayload.referenceId
             ? { ...purchase, payments: [...(purchase.payments || []), creditPayment] }
             : purchase
         );
       }
-
-      // 4. Return the new state
       return {
         ...state,
         products: updatedProducts,

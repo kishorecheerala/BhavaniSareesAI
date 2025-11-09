@@ -1,6 +1,4 @@
-
-
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes } from 'lucide-react';
 
 import { AppProvider } from './context/AppContext';
@@ -15,24 +13,57 @@ import ProductsPage from './pages/ProductsPage';
 type Page = 'DASHBOARD' | 'CUSTOMERS' | 'SALES' | 'PURCHASES' | 'REPORTS' | 'RETURNS' | 'PRODUCTS';
 
 const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<Page>('DASHBOARD');
+  const [currentPage, _setCurrentPage] = useState<Page>('DASHBOARD');
+  const [isDirty, setIsDirty] = useState(false);
+  const currentPageRef = useRef(currentPage);
+  currentPageRef.current = currentPage;
+
+  const setCurrentPage = (page: Page) => {
+    if (page === currentPageRef.current) {
+        return;
+    }
+
+    if (isDirty) {
+      if (window.confirm('You have unsaved changes. Are you sure you want to leave this page?')) {
+        setIsDirty(false); 
+        _setCurrentPage(page);
+      }
+    } else {
+      _setCurrentPage(page);
+    }
+  };
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (isDirty) {
+        event.preventDefault();
+        event.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [isDirty]);
+
 
   const renderPage = () => {
+    const commonProps = { setIsDirty };
     switch (currentPage) {
       case 'DASHBOARD':
         return <Dashboard />;
       case 'CUSTOMERS':
-        return <CustomersPage />;
+        return <CustomersPage {...commonProps} />;
       case 'SALES':
-        return <SalesPage />;
+        return <SalesPage {...commonProps} />;
       case 'PURCHASES':
-        return <PurchasesPage />;
+        return <PurchasesPage {...commonProps} />;
       case 'REPORTS':
         return <ReportsPage />;
       case 'RETURNS':
-        return <ReturnsPage />;
+        return <ReturnsPage {...commonProps} />;
       case 'PRODUCTS':
-        return <ProductsPage />;
+        return <ProductsPage {...commonProps} />;
       default:
         return <Dashboard />;
     }

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Undo2, Users, Package, Plus, Trash2 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Return, ReturnItem, Sale, Purchase } from '../types';
@@ -7,21 +7,41 @@ import Button from '../components/Button';
 
 type ReturnType = 'CUSTOMER' | 'SUPPLIER';
 
-const ReturnsPage: React.FC = () => {
+const getLocalDateString = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+interface ReturnsPageProps {
+  setIsDirty: (isDirty: boolean) => void;
+}
+
+const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
     const { state, dispatch } = useAppContext();
     const [activeTab, setActiveTab] = useState<ReturnType>('CUSTOMER');
     const [partyId, setPartyId] = useState<string>('');
     const [referenceId, setReferenceId] = useState<string>('');
     const [itemsToReturn, setItemsToReturn] = useState<ReturnItem[]>([]);
-    const [returnDate, setReturnDate] = useState(new Date().toISOString().split('T')[0]);
+    const [returnDate, setReturnDate] = useState(getLocalDateString());
     const [amount, setAmount] = useState('');
     const [reason, setReason] = useState('');
+
+    useEffect(() => {
+        const formIsDirty = !!partyId || !!referenceId || itemsToReturn.length > 0;
+        setIsDirty(formIsDirty);
+
+        return () => {
+            setIsDirty(false);
+        };
+    }, [partyId, referenceId, itemsToReturn, setIsDirty]);
 
     const resetForm = () => {
         setPartyId('');
         setReferenceId('');
         setItemsToReturn([]);
-        setReturnDate(new Date().toISOString().split('T')[0]);
+        setReturnDate(getLocalDateString());
         setAmount('');
         setReason('');
     };

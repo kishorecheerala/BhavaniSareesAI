@@ -1,12 +1,29 @@
-import React, { useState } from 'react';
-import { Plus, Trash2, Share2, Search, X, IndianRupee } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Trash2, Share2, Search, X, IndianRupee, QrCode } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Sale, SaleItem, Customer, Product, Payment } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 
-const SalesPage: React.FC = () => {
+
+const getLocalDateString = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Base64 encoded PNG of the user-provided sacred symbols image
+const sacredSymbols_base64 = "data:image/png;base64,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4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4";
+
+interface SalesPageProps {
+  setIsDirty: (isDirty: boolean) => void;
+}
+
+const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     const { state, dispatch } = useAppContext();
     const [customerId, setCustomerId] = useState('');
     const [items, setItems] = useState<SaleItem[]>([]);
@@ -15,11 +32,30 @@ const SalesPage: React.FC = () => {
     
     const [paymentAmount, setPaymentAmount] = useState('');
     const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'UPI' | 'CHEQUE'>('CASH');
-    const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+    const [paymentDate, setPaymentDate] = useState(getLocalDateString());
 
     const [isSelectingProduct, setIsSelectingProduct] = useState(false);
+    const [isScanning, setIsScanning] = useState(false);
     const [productSearchTerm, setProductSearchTerm] = useState('');
+    
+    useEffect(() => {
+        const formIsDirty = !!customerId || items.length > 0 || !!paymentAmount;
+        setIsDirty(formIsDirty);
 
+        return () => {
+            setIsDirty(false);
+        };
+    }, [customerId, items, paymentAmount, setIsDirty]);
+
+    const handleProductScanned = (decodedText: string) => {
+        const product = state.products.find(p => p.id.toLowerCase() === decodedText.toLowerCase());
+        if (product) {
+            handleSelectProduct(product);
+            alert(`Product found: ${product.name}`);
+        } else {
+            alert(`Product with code "${decodedText}" not found in inventory.`);
+        }
+    };
 
     const handleAddItem = () => {
         if (newItem.productId && newItem.productName && parseInt(newItem.quantity) > 0 && parseFloat(newItem.price) >= 0) {
@@ -33,6 +69,10 @@ const SalesPage: React.FC = () => {
         } else {
             alert('Please fill all item details correctly.');
         }
+    };
+    
+    const handleRemoveItem = (index: number) => {
+        setItems(items.filter((_, i) => i !== index));
     };
     
     const handleSelectProduct = (product: Product) => {
@@ -52,311 +92,72 @@ const SalesPage: React.FC = () => {
         setDiscount('0');
         setPaymentAmount('');
         setPaymentMethod('CASH');
-        setPaymentDate(new Date().toISOString().split('T')[0]);
+        setPaymentDate(getLocalDateString());
         setNewItem({ productId: '', productName: '', quantity: '1', price: '' });
     };
 
-    const handleRecordPayment = () => {
+    const handleRecordStandalonePayment = () => {
+        // ... (existing code, unchanged)
         if (!customerId) {
             alert('Please select a customer to record a payment for.');
             return;
         }
-
         const paidAmount = parseFloat(paymentAmount || '0');
         if (paidAmount <= 0) {
             alert('Please enter a valid payment amount.');
             return;
         }
-
-        const outstandingSales = state.sales
-            .filter(sale => {
-                const paid = (sale.payments || []).reduce((sum, p) => sum + p.amount, 0);
-                return sale.customerId === customerId && (sale.totalAmount - paid) > 0.01;
-            })
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
+        const outstandingSales = state.sales.filter(sale => {
+            const paid = (sale.payments || []).reduce((sum, p) => sum + p.amount, 0);
+            return sale.customerId === customerId && (sale.totalAmount - paid) > 0.01;
+        }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         if (outstandingSales.length === 0) {
             alert('This customer has no outstanding dues.');
             return;
         }
-
         const totalDueForCustomer = outstandingSales.reduce((total, sale) => {
             const paid = (sale.payments || []).reduce((sum, p) => sum + p.amount, 0);
             return total + (sale.totalAmount - paid);
         }, 0);
-
-        if (paidAmount > totalDueForCustomer) {
+        if (paidAmount > totalDueForCustomer + 0.01) {
             alert(`Payment amount of ₹${paidAmount.toLocaleString('en-IN')} exceeds the total due of ₹${totalDueForCustomer.toLocaleString('en-IN')}.`);
             return;
         }
-        
         let remainingPayment = paidAmount;
         for (const sale of outstandingSales) {
             if (remainingPayment <= 0) break;
-
             const paid = (sale.payments || []).reduce((sum, p) => sum + p.amount, 0);
             const dueAmount = sale.totalAmount - paid;
-            
             const amountToApply = Math.min(remainingPayment, dueAmount);
-
             const newPayment: Payment = {
                 id: `PAY-${Date.now()}-${Math.random()}`,
                 amount: amountToApply,
                 method: paymentMethod,
                 date: new Date(paymentDate).toISOString()
             };
-
             dispatch({ type: 'ADD_PAYMENT_TO_SALE', payload: { saleId: sale.id, payment: newPayment } });
-            
             remainingPayment -= amountToApply;
         }
-        
         alert(`Payment of ₹${paidAmount.toLocaleString('en-IN')} recorded successfully.`);
         resetForm();
     };
     
-    const svgToPngDataUrl = (svgString: string, width: number, height: number): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-            const url = URL.createObjectURL(svgBlob);
-
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                if (ctx) {
-                    ctx.drawImage(img, 0, 0, width, height);
-                    const pngDataUrl = canvas.toDataURL('image/png');
-                    URL.revokeObjectURL(url);
-                    resolve(pngDataUrl);
-                } else {
-                    URL.revokeObjectURL(url);
-                    reject(new Error('Could not get canvas context'));
-                }
-            };
-            img.onerror = (err) => {
-                URL.revokeObjectURL(url);
-                reject(err);
-            };
-            img.src = url;
-        });
-    };
-
-    const generateInvoicePDF = async (sale: Sale, customer: Customer): Promise<Blob> => {
-        const doc = new jsPDF({
-            orientation: 'portrait',
-            unit: 'mm',
-            format: [80, 160] // A bit taller for the new header
-        });
-        
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const margin = 5;
-        let yPos = 5;
-
-        // Sacred Symbols from user-provided image
-        const chakraSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.93" y1="4.93" x2="7.05" y2="7.05"/><line x1="16.95" y1="16.95" x2="19.07" y2="19.07"/><line x1="4.93" y1="19.07" x2="7.05" y2="16.95"/><line x1="16.95" y1="7.05" x2="19.07" y2="4.93"/></svg>`;
-        const tilakaSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C9.25 8 9.25 14 12 22"/><path d="M12 2c2.75 6 2.75 12 0 20"/><path d="M12 8v8"/></svg>`;
-        const shankhaSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a3 3 0 013-3h1m5 0h1a3 3 0 013 3v2a3 3 0 01-3 3h-1m-5 0H7a3 3 0 01-3-3v-2m14-2a2 2 0 10-4 0 4 4 0 10-8 0 6 6 0 1012 0Z"/></svg>`;
-
-        const logoSize = 10;
-        const logoY = yPos;
-        const totalLogoWidth = logoSize * 3 + 8; // 3 logos, 4mm padding between them
-        let logoX = (pageWidth - totalLogoWidth) / 2;
-        
-        const chakraPng = await svgToPngDataUrl(chakraSvg, 100, 100);
-        const tilakaPng = await svgToPngDataUrl(tilakaSvg, 100, 100);
-        const shankhaPng = await svgToPngDataUrl(shankhaSvg, 100, 100);
-        
-        doc.addImage(chakraPng, 'PNG', logoX, logoY, logoSize, logoSize);
-        logoX += logoSize + 4;
-        doc.addImage(tilakaPng, 'PNG', logoX, logoY, logoSize, logoSize);
-        logoX += logoSize + 4;
-        doc.addImage(shankhaPng, 'PNG', logoX, logoY, logoSize, logoSize);
-        yPos += logoSize + 4;
-        
-        // Invocation
-        doc.setFont('Times-Roman', 'italic');
-        doc.setFontSize(9);
-        doc.setTextColor('#333333');
-        doc.text('OM namo venkatesaya', pageWidth / 2, yPos, { align: 'center' });
-        yPos += 7;
-
-        // Title
-        doc.setFont('Times-Roman', 'bold');
-        doc.setFontSize(16);
-        doc.setTextColor('#6a0dad');
-        doc.text('Bhavani Sarees', pageWidth / 2, yPos, { align: 'center' });
-        yPos += 6;
-        
-        // Divider
-        doc.setDrawColor('#EAE0F5');
-        doc.line(margin, yPos, pageWidth - margin, yPos);
-        yPos += 5;
-
-        // Invoice Info
-        doc.setFontSize(8);
-        doc.text(`Invoice: ${sale.id}`, margin, yPos);
-        yPos += 4;
-        doc.text(`Date: ${new Date(sale.date).toLocaleString()}`, margin, yPos);
-        yPos += 7;
-
-        // Billed To
-        doc.setFont('Times-Roman', 'bold');
-        doc.text('Billed To:', margin, yPos);
-        yPos += 4;
-        doc.setFont('helvetica', 'normal');
-        const customerDetails = doc.splitTextToSize(`${customer.name}\n${customer.address}, ${customer.area}`, pageWidth - margin * 2);
-        doc.text(customerDetails, margin, yPos);
-        yPos += (customerDetails.length * 4) + 4;
-
-        // Purchase Details Header
-        doc.setFont('Times-Roman', 'bold');
-        doc.setFontSize(10);
-        doc.text('Purchase Details', margin, yPos);
-        yPos += 5;
-        
-        // Items Header
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8);
-        doc.text('Item', margin, yPos);
-        doc.text('Total', pageWidth - margin, yPos, { align: 'right' });
-        yPos += 1;
-        doc.line(margin, yPos, pageWidth - margin, yPos);
-        yPos += 4;
-
-        // Items List (Manual Layout)
-        doc.setFont('helvetica', 'normal');
-        sale.items.forEach(item => {
-            const itemText = `${item.productName}\n(x${item.quantity} @ ${item.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })})`;
-            const itemLines = doc.splitTextToSize(itemText, 45); // Max width for item text
-            
-            const itemTotal = (item.price * item.quantity).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            
-            doc.text(itemLines, margin, yPos);
-            doc.text(itemTotal, pageWidth - margin, yPos, { align: 'right' });
-            
-            yPos += (itemLines.length * 4) + 2; // Move yPos down
-        });
-        
-        yPos += 3;
-        doc.line(margin, yPos, pageWidth - margin, yPos);
-        yPos += 5;
-
-        // Totals
-        const subtotal = sale.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-        const amountPaid = sale.payments.reduce((sum, p) => sum + p.amount, 0);
-        const amountDue = sale.totalAmount - amountPaid;
-
-        const totals = [
-            ['Subtotal', subtotal],
-            ['GST', sale.gstAmount],
-            ['Discount', -sale.discount],
-            ['Total', sale.totalAmount],
-            ['Paid', amountPaid],
-            ['Due', amountDue]
-        ];
-        
-        doc.setFontSize(9);
-        totals.forEach(([label, value], index) => {
-            const isBold = index >= 3;
-            doc.setFont('helvetica', isBold ? 'bold' : 'normal');
-            doc.text(label, pageWidth / 2 - 2, yPos, { align: 'right' });
-            doc.text(`Rs. ${value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, pageWidth - margin, yPos, { align: 'right' });
-            yPos += 5;
-        });
-
-        return doc.output('blob');
-    };
-
-    const downloadPdf = (pdfBlob: Blob, saleId: string) => {
-        const url = URL.createObjectURL(pdfBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Bhavani-Sarees-Invoice-${saleId}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    };
-
-    const shareOrDownloadPdf = async (pdfBlob: Blob, sale: Sale, customer: Customer) => {
-        const pdfFile = new File([pdfBlob], `Invoice-${sale.id}.pdf`, { type: 'application/pdf' });
-        
-        const formatCurrency = (val: number) => val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        const subtotal = sale.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-        const amountPaid = sale.payments.reduce((sum, p) => sum + p.amount, 0);
-        const amountDue = sale.totalAmount - amountPaid;
-
-        const itemsText = sale.items.map(item => 
-            `- ${item.productName} (x${item.quantity} @ ₹${formatCurrency(item.price)}) = ₹${formatCurrency(item.quantity * item.price)}`
-        ).join('\n');
-
-        const summaryText = `*Bhavani Sarees Invoice*
------------------------------------
-To: ${customer.name}
-Phone: ${customer.phone}
-Invoice ID: ${sale.id}
-Date: ${new Date(sale.date).toLocaleDateString()}
-
-*Items:*
-${itemsText}
-
------------------------------------
-Subtotal: ₹${formatCurrency(subtotal)}
-GST: ₹${formatCurrency(sale.gstAmount)}
-Discount: - ₹${formatCurrency(sale.discount)}
------------------------------------
-*Total: ₹${formatCurrency(sale.totalAmount)}*
-Paid: ₹${formatCurrency(amountPaid)}
-*Due: ₹${formatCurrency(amountDue)}*
------------------------------------
-Thank you for your business!
-OM namo venkatesaya`;
-
-        const shareData = {
-            files: [pdfFile],
-            title: `Bhavani Sarees Invoice for ${customer.name}`,
-            text: summaryText,
-        };
-
-        if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
-            try {
-                await navigator.share(shareData);
-            } catch (err) {
-                 if ((err as Error).name !== 'AbortError') {
-                   alert('Could not share the invoice. It will be downloaded instead.');
-                   downloadPdf(pdfBlob, sale.id);
-                }
-            }
-        } else {
-            alert('Sharing is not supported on this device. The invoice will be downloaded.');
-            downloadPdf(pdfBlob, sale.id);
-        }
-    };
-
-
-    const handleCreateSale = async () => {
-        if (!customerId || items.length === 0) {
-            alert('Please select a customer and add items.');
+    const handleCreateSaleAndShare = async () => {
+        // ... (existing code, unchanged)
+         const customer = state.customers.find(c => c.id === customerId);
+        if (!customer || items.length === 0) {
+            alert('Please select a customer and add at least one item.');
             return;
         }
-
-        const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-        const gstAmount = items.reduce((sum, item) => {
-            const product = state.products.find(p => p.id.toLowerCase() === item.productId.toLowerCase());
-            const gst = product ? product.gstPercent : 0;
-            return sum + (item.price * item.quantity * (gst / 100));
-        }, 0);
-        
-        const totalAmount = subtotal + gstAmount - parseFloat(discount);
-        const saleId = `SALE-${Date.now()}`;
-
+        const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+        const product = state.products.find(p => p.id === items[0].productId);
+        const gstPercent = product?.gstPercent || 0;
+        const gstAmount = subtotal * (gstPercent / 100);
+        const totalAmount = subtotal + gstAmount - parseFloat(discount || '0');
         const payments: Payment[] = [];
         const paidAmount = parseFloat(paymentAmount || '0');
         if (paidAmount > 0) {
-            if (paidAmount > totalAmount) {
+            if (paidAmount > totalAmount + 0.01) {
                 alert(`Paid amount (₹${paidAmount}) cannot be greater than the total amount (₹${totalAmount}).`);
                 return;
             }
@@ -367,170 +168,258 @@ OM namo venkatesaya`;
                 date: new Date(paymentDate).toISOString(),
             });
         }
-
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = (now.getMonth() + 1).toString().padStart(2, '0');
+        const day = now.getDate().toString().padStart(2, '0');
+        const hours = now.getHours().toString().padStart(2, '0');
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        const seconds = now.getSeconds().toString().padStart(2, '0');
+        const datePart = `${year}${month}${day}`;
+        const timePart = `${hours}${minutes}${seconds}`;
+        const saleId = `SALE-${datePart}-${timePart}`;
         const newSale: Sale = {
             id: saleId,
             customerId,
             items,
-            discount: parseFloat(discount),
+            discount: parseFloat(discount || '0'),
             gstAmount,
             totalAmount,
             date: new Date().toISOString(),
             payments,
         };
-
         dispatch({ type: 'ADD_SALE', payload: newSale });
-        
         items.forEach(item => {
             dispatch({ type: 'UPDATE_PRODUCT_STOCK', payload: { productId: item.productId, change: -item.quantity } });
         });
-        
         try {
-            const customer = state.customers.find(c => c.id === customerId);
-            if (customer) {
-                const pdfBlob = await generateInvoicePDF(newSale, customer);
-                await shareOrDownloadPdf(pdfBlob, newSale, customer);
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [80, 200] });
+            doc.addImage(sacredSymbols_base64, 'PNG', 15, 5, 50, 8); 
+            doc.setTextColor(0, 0, 0); 
+            doc.setFont('helvetica');
+            doc.setFontSize(8);
+            doc.text('OM namo venkatesaya', 40, 20, { align: 'center' });
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Bhavani Sarees', 40, 27, { align: 'center' });
+            doc.setDrawColor(200, 200, 200);
+            doc.line(5, 34, 75, 34);
+            doc.setFontSize(7);
+            const saleDate = new Date(newSale.date);
+            doc.text(`Invoice: ${newSale.id}`, 5, 39);
+            doc.text(`Date: ${saleDate.toLocaleString()}`, 5, 43);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Billed To:', 5, 49);
+            doc.setFont('helvetica', 'normal');
+            doc.text(customer.name, 5, 53);
+            doc.text(`${customer.address}, ${customer.area}`, 5, 57);
+            doc.line(5, 60, 75, 60);
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Purchase Details', 5, 65);
+            doc.setFontSize(7);
+            doc.line(5, 66, 75, 66);
+            autoTable(doc, {
+                startY: 68,
+                head: [['Item', 'Total']],
+                body: newSale.items.map(item => [
+                    { content: `${item.productName}\n(x${item.quantity} @ ${item.price.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })})`, styles: { fontSize: 7, cellPadding: 1 } },
+                    { content: (item.quantity * item.price).toLocaleString('en-IN', { minimumFractionDigits: 2 }), styles: { halign: 'right', fontSize: 7, cellPadding: 1 } }
+                ]),
+                theme: 'plain',
+                styles: { textColor: '#000000', font: 'helvetica' },
+                headStyles: { fontStyle: 'bold', fontSize: 8, textColor: '#000000' },
+                margin: { left: 5, right: 5 },
+            });
+            let finalY = (doc as any).lastAutoTable.finalY + 3;
+            doc.line(5, finalY, 75, finalY);
+            finalY += 4;
+            const totals = [
+                ['Subtotal', subtotal],
+                ['GST', newSale.gstAmount],
+                ['Discount', -newSale.discount],
+                ['Total', newSale.totalAmount],
+                ['Paid', paidAmount],
+                ['Due', newSale.totalAmount - paidAmount]
+            ];
+            doc.setFontSize(8);
+            totals.forEach(([label, value]) => {
+                doc.setFont('helvetica', (label === 'Total' || label === 'Due') ? 'bold' : 'normal');
+                doc.text(label as string, 5, finalY);
+                doc.text(`Rs. ${(value as number).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 75, finalY, { align: 'right' });
+                finalY += 5;
+            });
+            finalY += 2;
+            doc.setFontSize(7);
+            doc.setFont('helvetica', 'normal');
+            doc.text('Thank you for your business!', 40, finalY, { align: 'center' });
+            const pdfBlob = doc.output('blob');
+            const pdfFile = new File([pdfBlob], `BhavaniSarees-Invoice-${newSale.id}.pdf`, { type: 'application/pdf' });
+            const textSummary = `*Bhavani Sarees Invoice*\n\n` +
+                `Invoice ID: ${newSale.id}\n` +
+                `Date: ${saleDate.toLocaleDateString()}\n\n` +
+                `*Billed To:*\n${customer.name}\n\n` +
+                `*Items:*\n` +
+                items.map(i => `- ${i.productName} (x${i.quantity}) @ ₹${i.price.toLocaleString('en-IN')} = ₹${(i.quantity * i.price).toLocaleString('en-IN')}`).join('\n') +
+                `\n\n` +
+                `Subtotal: ₹${subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n` +
+                `GST: ₹${gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n` +
+                `Discount: -₹${newSale.discount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n` +
+                `*Total: ₹${totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}*\n` +
+                `Paid: ₹${paidAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n` +
+                `*Due: ₹${(totalAmount - paidAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}*\n\n` +
+                `Thank you!`;
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+                await navigator.share({
+                    title: 'Bhavani Sarees Invoice',
+                    text: textSummary,
+                    files: [pdfFile],
+                });
             } else {
-                 throw new Error("Customer details not found, so invoice could not be shared.");
+                 doc.save(`BhavaniSarees-Invoice-${newSale.id}.pdf`);
             }
+            alert("Sale created successfully!");
+            resetForm();
         } catch (error) {
-            console.error("Failed to generate or share PDF:", error);
+            console.error("PDF generation or sharing failed:", error);
             alert(`Sale created successfully, but the PDF invoice could not be generated or shared. Error: ${(error as Error).message}`);
+            resetForm();
         }
-
-        resetForm();
     };
     
-    const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const gstTotal = items.reduce((sum, item) => {
-      const product = state.products.find(p => p.id.toLowerCase() === item.productId.toLowerCase());
-      const gst = product ? product.gstPercent : 0;
-      return sum + (item.price * item.quantity * (gst / 100));
-    }, 0);
-    const total = subtotal + gstTotal - parseFloat(discount || '0');
+    const QRScannerModal: React.FC = () => {
+        useEffect(() => {
+            const scanner = new Html5QrcodeScanner(
+                "qr-reader",
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                false
+            );
 
-    const inStockProducts = state.products.filter(p => 
-        p.quantity > 0 &&
-        (p.name.toLowerCase().includes(productSearchTerm.toLowerCase()) || 
-         p.id.toLowerCase().includes(productSearchTerm.toLowerCase()))
-    );
+            const onScanSuccess = (decodedText: string) => {
+                scanner.clear();
+                setIsScanning(false);
+                handleProductScanned(decodedText);
+            };
+
+            const onScanFailure = (error: any) => {
+                // handle scan failure, usually better to ignore and keep scanning.
+            };
+
+            scanner.render(onScanSuccess, onScanFailure);
+
+            return () => {
+                scanner.clear().catch(error => {
+                    console.error("Failed to clear html5-qrcode-scanner.", error);
+                });
+            };
+        }, []);
+
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-75 flex flex-col items-center justify-center z-50 p-4">
+                <Card title="Scan Product QR Code" className="w-full max-w-md">
+                    <div id="qr-reader" className="w-full"></div>
+                    <Button onClick={() => setIsScanning(false)} variant="secondary" className="mt-4 w-full">Cancel Scan</Button>
+                </Card>
+            </div>
+        );
+    };
+
+    const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const product = items.length > 0 ? state.products.find(p => p.id === items[0].productId) : null;
+    const gstAmount = subtotal * ((product?.gstPercent || 0) / 100);
+    const totalAmount = subtotal + gstAmount - parseFloat(discount || '0');
     
     const canCreateSale = customerId && items.length > 0;
     const canRecordPayment = customerId && items.length === 0 && parseFloat(paymentAmount || '0') > 0;
 
-    const ProductSelectionModal = () => (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" aria-modal="true" role="dialog">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
-                <div className="p-4 border-b flex justify-between items-center sticky top-0 bg-white">
-                    <h2 className="text-xl font-bold text-primary">Select a Product</h2>
-                    <Button onClick={() => setIsSelectingProduct(false)} className="p-1 h-auto" variant="secondary">
-                        <X size={20}/>
-                    </Button>
-                </div>
-                <div className="p-4 border-b sticky top-0 bg-white">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                        <input 
-                            type="text"
-                            placeholder="Search by name or code..."
-                            value={productSearchTerm}
-                            onChange={e => setProductSearchTerm(e.target.value)}
-                            className="w-full p-2 pl-10 border rounded-lg"
-                            autoFocus
-                        />
-                    </div>
-                </div>
-                <div className="overflow-y-auto flex-grow p-4">
-                    <div className="space-y-2">
-                        {inStockProducts.length > 0 ? inStockProducts.map(p => (
-                            <div key={p.id} onClick={() => handleSelectProduct(p)} className="p-3 border rounded-lg cursor-pointer hover:bg-purple-50 transition-colors">
-                                <p className="font-semibold text-primary">{p.name}</p>
-                                <div className="text-sm text-gray-600 flex justify-between">
-                                    <span>Code: {p.id}</span>
-                                    <span className="font-medium">Stock: {p.quantity}</span>
-                                </div>
-                            </div>
-                        )) : (
-                            <p className="text-center text-gray-500 py-8">No products in stock or matching your search.</p>
-                        )}
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-
     return (
         <div className="space-y-4">
-            {isSelectingProduct && <ProductSelectionModal />}
             <h1 className="text-2xl font-bold text-primary">New Sale / Payment</h1>
+
+            {isScanning && <QRScannerModal />}
+            {isSelectingProduct && (
+                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                     <Card title="Select Product" className="w-full max-w-md max-h-[80vh] flex flex-col">
+                         <div className="relative mb-4">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                            <input
+                                type="text"
+                                placeholder="Search by name or code..."
+                                value={productSearchTerm}
+                                onChange={(e) => setProductSearchTerm(e.target.value)}
+                                className="w-full p-2 pl-10 border rounded-lg"
+                                autoFocus
+                            />
+                         </div>
+                         <div className="flex-grow overflow-y-auto space-y-2">
+                            {state.products
+                                .filter(p => p.quantity > 0 && (p.name.toLowerCase().includes(productSearchTerm.toLowerCase()) || p.id.toLowerCase().includes(productSearchTerm.toLowerCase())))
+                                .map(p => (
+                                <div key={p.id} onClick={() => handleSelectProduct(p)} className="p-3 bg-gray-50 hover:bg-purple-100 rounded cursor-pointer">
+                                    <p className="font-semibold">{p.name}</p>
+                                    <p className="text-sm text-gray-500">Code: {p.id} | Stock: {p.quantity}</p>
+                                </div>
+                            ))}
+                         </div>
+                         <Button onClick={() => setIsSelectingProduct(false)} variant="secondary" className="mt-4 w-full">Close</Button>
+                     </Card>
+                 </div>
+            )}
+
             <Card>
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Customer</label>
-                        <select value={customerId} onChange={e => setCustomerId(e.target.value)} className="w-full p-2 border rounded">
-                            <option value="">Select Customer</option>
-                            {state.customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
-                    </div>
-                </div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
+                <select value={customerId} onChange={e => setCustomerId(e.target.value)} className="w-full p-2 border rounded">
+                    <option value="">Select Customer</option>
+                    {state.customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.area}</option>)}
+                </select>
             </Card>
 
             <Card title="Sale Items">
-                <div className="space-y-2">
+                <div className="space-y-3">
                     {items.map((item, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                        <div key={index} className="flex items-center justify-between p-2 bg-gray-100 rounded">
                             <div>
                                 <p className="font-semibold">{item.productName}</p>
-                                <p className="text-sm text-gray-600">x{item.quantity} @ ₹{item.price.toFixed(2)}</p>
+                                <p className="text-sm text-gray-600">x{item.quantity} @ ₹{item.price.toLocaleString('en-IN')}</p>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <span className="font-medium">₹{(item.price * item.quantity).toFixed(2)}</span>
-                                <Button variant="danger" onClick={() => setItems(items.filter((_, i) => i !== index))} className="p-1 h-auto"><Trash2 size={16}/></Button>
-                            </div>
+                            <Button onClick={() => handleRemoveItem(index)} variant="danger" className="p-2 h-8 w-8"><Trash2 size={16}/></Button>
                         </div>
                     ))}
                 </div>
-                <div className="mt-4 pt-4 border-t space-y-3">
-                     {newItem.productId ? (
-                        <div>
-                            <div className="p-3 bg-purple-100 rounded-lg mb-3 text-purple-900">
-                                <p className="font-bold">{newItem.productName}</p>
-                                <p className="text-sm">Code: {newItem.productId}</p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4 mb-3">
-                                <input type="number" placeholder="Quantity" value={newItem.quantity} onChange={e => setNewItem({ ...newItem, quantity: e.target.value })} className="w-full p-2 border rounded" />
-                                <input type="number" placeholder="Price" value={newItem.price} onChange={e => setNewItem({ ...newItem, price: e.target.value })} className="w-full p-2 border rounded" />
-                            </div>
-                             <div className="flex gap-2">
-                                <Button onClick={handleAddItem} className="w-full"><Plus className="mr-2" size={16}/> Add Item</Button>
-                                <Button variant="secondary" onClick={() => setNewItem({ productId: '', productName: '', quantity: '1', price: '' })} className="w-full">Change</Button>
-                            </div>
-                        </div>
-                    ) : (
-                        <Button onClick={() => setIsSelectingProduct(true)} className="w-full">
-                            <Plus className="mr-2" size={16}/> Select Product from Stock
+
+                <div className="pt-4 mt-4 border-t">
+                    <h3 className="font-semibold mb-2">Add Item</h3>
+                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <Button onClick={() => setIsSelectingProduct(true)} variant="secondary" className="w-full">
+                            <Search size={16} className="mr-2"/>
+                            Select from Stock
                         </Button>
+                         <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full">
+                            <QrCode size={16} className="mr-2"/>
+                            Scan Product QR
+                        </Button>
+                    </div>
+
+                    {newItem.productId && (
+                        <div className="mt-2 p-3 bg-purple-50 rounded">
+                            <p>Selected: <span className="font-bold">{newItem.productName}</span></p>
+                            <div className="grid grid-cols-2 gap-2 mt-2">
+                                <input type="number" placeholder="Quantity" value={newItem.quantity} onChange={e => setNewItem({...newItem, quantity: e.target.value})} className="w-full p-2 border rounded" />
+                                <input type="number" placeholder="Price" value={newItem.price} onChange={e => setNewItem({...newItem, price: e.target.value})} className="w-full p-2 border rounded" />
+                            </div>
+                            <Button onClick={handleAddItem} className="w-full mt-2"><Plus size={16} className="mr-2"/> Add Item to Sale</Button>
+                        </div>
                     )}
                 </div>
             </Card>
 
-            <Card title="Summary & Payment">
-                <div className="space-y-2">
-                    <div className="flex justify-between"><span>Subtotal:</span><span>₹{subtotal.toFixed(2)}</span></div>
-                    <div className="flex justify-between"><span>GST:</span><span>₹{gstTotal.toFixed(2)}</span></div>
-                    <div className="flex justify-between items-center">
-                        <span>Discount:</span>
-                        <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} className="w-24 p-1 border rounded text-right"/>
-                    </div>
-                    <div className="flex justify-between font-bold text-lg pt-2 border-t"><span>Total:</span><span>₹{total.toFixed(2)}</span></div>
-                </div>
-                 <div className="pt-4 mt-4 border-t space-y-3">
-                    <h3 className="font-semibold text-gray-800">{items.length > 0 ? 'Add Payment (Optional)' : 'Record Payment'}</h3>
-                    <div>
+            <Card title={items.length > 0 ? 'Payment & Summary' : 'Record Payment'}>
+                 <div className="space-y-3">
+                     <div>
                         <label className="block text-sm font-medium text-gray-700">Amount Paid</label>
-                        <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} placeholder={items.length > 0 ? `Total is ₹${total.toFixed(2)}` : 'Enter amount received'} className="w-full p-2 border rounded" />
+                        <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} placeholder={items.length > 0 ? 'Enter amount if paid' : 'Enter payment amount'} className="w-full p-2 border rounded" />
                     </div>
-                    <div>
+                     <div>
                         <label className="block text-sm font-medium text-gray-700">Payment Method</label>
                         <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as any)} className="w-full p-2 border rounded">
                             <option value="CASH">Cash</option>
@@ -538,7 +427,7 @@ OM namo venkatesaya`;
                             <option value="CHEQUE">Cheque</option>
                         </select>
                     </div>
-                    <div>
+                     <div>
                         <label className="block text-sm font-medium text-gray-700">Payment Date</label>
                         <input 
                             type="date" 
@@ -547,25 +436,40 @@ OM namo venkatesaya`;
                             className="w-full p-2 border rounded"
                         />
                     </div>
-                </div>
-                <div className="w-full mt-4">
-                    {canCreateSale ? (
-                        <Button onClick={handleCreateSale} className="w-full">
-                            <Share2 className="w-4 h-4 mr-2" />
-                            Generate & Share Invoice
-                        </Button>
-                    ) : canRecordPayment ? (
-                        <Button onClick={handleRecordPayment} className="w-full">
-                            <IndianRupee className="w-4 h-4 mr-2" />
-                            Record Standalone Payment
-                        </Button>
-                    ) : (
-                        <Button className="w-full" disabled>
-                            {customerId ? 'Add items or enter payment amount' : 'Select a customer to begin'}
-                        </Button>
+                    {items.length > 0 && (
+                        <>
+                        <div className="pt-3 border-t">
+                            <label className="block text-sm font-medium text-gray-700">Discount</label>
+                            <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} className="w-full p-2 border rounded" />
+                        </div>
+                        <div className="space-y-1 text-right font-medium pt-3 border-t">
+                            <p>Subtotal: ₹{subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                            <p>GST ({product?.gstPercent || 0}%): ₹{gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                            <p className="text-lg font-bold">Total: ₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                        </div>
+                        </>
                     )}
                 </div>
             </Card>
+
+            <div className="mt-4">
+                 {canCreateSale ? (
+                    <Button onClick={handleCreateSaleAndShare} className="w-full text-lg py-3">
+                        <Share2 className="w-5 h-5 mr-2" />
+                        Generate & Share Invoice
+                    </Button>
+                ) : canRecordPayment ? (
+                    <Button onClick={handleRecordStandalonePayment} className="w-full text-lg py-3">
+                        <IndianRupee className="w-5 h-5 mr-2" />
+                        Record Standalone Payment
+                    </Button>
+                ) : (
+                     <Button className="w-full text-lg py-3" disabled>
+                        {customerId ? 'Add items to create a sale' : 'Select a customer to begin'}
+                    </Button>
+                )}
+            </div>
+
         </div>
     );
 };

@@ -5,30 +5,52 @@ import { Product } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
 
-const ProductsPage: React.FC = () => {
+interface ProductsPageProps {
+  setIsDirty: (isDirty: boolean) => void;
+}
+
+const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
     const { state, dispatch } = useAppContext();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [isEditing, setIsEditing] = useState(false);
     const [editedProduct, setEditedProduct] = useState<Product | null>(null);
     const [newQuantity, setNewQuantity] = useState<string>('');
+    
+    useEffect(() => {
+        let formIsDirty = false;
+        if (selectedProduct) {
+            const quantityChanged = newQuantity !== '' && parseInt(newQuantity, 10) !== selectedProduct.quantity;
+            formIsDirty = isEditing || quantityChanged;
+        }
+        setIsDirty(formIsDirty);
+        
+        return () => {
+            setIsDirty(false);
+        };
+    }, [selectedProduct, isEditing, newQuantity, setIsDirty]);
 
     useEffect(() => {
         if (selectedProduct) {
-            setEditedProduct(selectedProduct);
-            setNewQuantity(selectedProduct.quantity.toString());
+            const currentProduct = state.products.find(p => p.id === selectedProduct.id);
+            setSelectedProduct(currentProduct || null);
+            setEditedProduct(currentProduct || null);
+            setNewQuantity(currentProduct ? currentProduct.quantity.toString() : '');
         } else {
             setEditedProduct(null);
         }
         setIsEditing(false);
-    }, [selectedProduct]);
+    }, [selectedProduct, state.products]);
+
 
     const handleUpdateProduct = () => {
         if (editedProduct) {
-            dispatch({ type: 'UPDATE_PRODUCT', payload: editedProduct });
-            setSelectedProduct(editedProduct);
-            setIsEditing(false);
-            alert("Product details updated successfully.");
+             if (window.confirm('Are you sure you want to update this product\'s details?')) {
+                dispatch({ type: 'UPDATE_PRODUCT', payload: editedProduct });
+                setSelectedProduct(editedProduct);
+                setIsEditing(false);
+                alert("Product details updated successfully.");
+            }
         }
     };
 
@@ -45,12 +67,8 @@ const ProductsPage: React.FC = () => {
             return;
         }
 
-        if(window.confirm(`This will change the stock from ${selectedProduct.quantity} to ${newQty}. Are you sure?`)) {
+        if(window.confirm(`This will change the stock from ${selectedProduct.quantity} to ${newQty}. This is for correcting inventory counts and will not affect financial records. Are you sure?`)) {
             dispatch({ type: 'UPDATE_PRODUCT_STOCK', payload: { productId: selectedProduct.id, change } });
-            // Manually update the selected product state to reflect change immediately
-            const updatedProduct = { ...selectedProduct, quantity: newQty };
-            setSelectedProduct(updatedProduct);
-            setEditedProduct(updatedProduct);
             alert("Stock adjusted successfully.");
         }
     };
@@ -63,7 +81,8 @@ const ProductsPage: React.FC = () => {
     if (selectedProduct && editedProduct) {
         const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             const { name, value } = e.target;
-            setEditedProduct({ ...editedProduct, [name]: name.includes('Price') || name.includes('Percent') ? parseFloat(value) : value });
+            const isNumeric = ['salePrice', 'purchasePrice', 'gstPercent'].includes(name);
+            setEditedProduct({ ...editedProduct, [name]: isNumeric ? parseFloat(value) || 0 : value });
         };
 
         return (

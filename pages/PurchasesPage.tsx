@@ -1,11 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Upload, IndianRupee, Edit, Save, X } from 'lucide-react';
+import { Plus, Upload, IndianRupee, Edit, Save, X, Trash2, Download } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Supplier, Product, Purchase, PurchaseItem, Payment } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
 
-const PurchasesPage: React.FC = () => {
+const getLocalDateString = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+interface PurchasesPageProps {
+  setIsDirty: (isDirty: boolean) => void;
+}
+
+const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     const { state, dispatch } = useAppContext();
     const [view, setView] = useState<'list' | 'add_supplier' | 'add_purchase'>('list');
     const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
@@ -20,23 +31,42 @@ const PurchasesPage: React.FC = () => {
     const [newItem, setNewItem] = useState<{ productId: string, productName: string, quantity: string, price: string, gstPercent: string, saleValue: string }>({ productId: '', productName: '', quantity: '1', price: '', gstPercent: '5', saleValue: '' });
     const [paymentAmount, setPaymentAmount] = useState('');
     const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'UPI' | 'CHEQUE'>('CASH');
-    const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+    const [paymentDate, setPaymentDate] = useState(getLocalDateString());
 
     const [paymentModalState, setPaymentModalState] = useState<{ isOpen: boolean, purchaseId: string | null }>({ isOpen: false, purchaseId: null });
     const [paymentDetails, setPaymentDetails] = useState({ 
         amount: '', 
         method: 'CASH' as 'CASH' | 'UPI' | 'CHEQUE',
-        date: new Date().toISOString().split('T')[0]
+        date: getLocalDateString()
     });
     
+     useEffect(() => {
+        let formIsDirty = false;
+        if (view === 'add_supplier') {
+            formIsDirty = !!(newSupplier.name || newSupplier.phone || newSupplier.location);
+        } else if (view === 'add_purchase') {
+            formIsDirty = !!supplierId || items.length > 0 || !!paymentAmount;
+        } else if (selectedSupplier) {
+            formIsDirty = isEditing;
+        }
+        setIsDirty(formIsDirty);
+
+        return () => {
+            setIsDirty(false);
+        };
+    }, [view, newSupplier, supplierId, items, paymentAmount, isEditing, selectedSupplier, setIsDirty]);
+
     useEffect(() => {
         if (selectedSupplier) {
-            setEditedSupplier(selectedSupplier);
+            const currentSupplier = state.suppliers.find(s => s.id === selectedSupplier.id);
+            setSelectedSupplier(currentSupplier || null);
+            setEditedSupplier(currentSupplier || null);
         } else {
             setEditedSupplier(null);
         }
         setIsEditing(false);
-    }, [selectedSupplier]);
+    }, [selectedSupplier, state.suppliers, state.purchases]);
+
 
     const handleAddSupplier = () => {
         if (!newSupplier.name || !newSupplier.phone || !newSupplier.location) {
@@ -51,10 +81,19 @@ const PurchasesPage: React.FC = () => {
     
     const handleUpdateSupplier = () => {
         if (editedSupplier) {
-            dispatch({ type: 'UPDATE_SUPPLIER', payload: editedSupplier });
-            setSelectedSupplier(editedSupplier);
-            setIsEditing(false);
-            alert("Supplier details updated successfully.");
+             if (window.confirm('Are you sure you want to save these changes to the supplier details?')) {
+                dispatch({ type: 'UPDATE_SUPPLIER', payload: editedSupplier });
+                setSelectedSupplier(editedSupplier);
+                setIsEditing(false);
+                alert("Supplier details updated successfully.");
+            }
+        }
+    };
+
+    const handleDeletePurchase = (purchaseId: string) => {
+        if (window.confirm('Are you sure you want to delete this purchase? This action cannot be undone and will remove the items from your stock.')) {
+            dispatch({ type: 'DELETE_PURCHASE', payload: purchaseId });
+            alert('Purchase deleted successfully.');
         }
     };
 
@@ -72,7 +111,7 @@ const PurchasesPage: React.FC = () => {
         setItems([]);
         setPaymentAmount('');
         setPaymentMethod('CASH');
-        setPaymentDate(new Date().toISOString().split('T')[0]);
+        setPaymentDate(getLocalDateString());
         setNewItem({ productId: '', productName: '', quantity: '1', price: '', gstPercent: '5', saleValue: '' });
         setView('list');
     };
@@ -147,7 +186,7 @@ const PurchasesPage: React.FC = () => {
             return total + (purchase.totalAmount - paid);
         }, 0);
 
-        if (paidAmount > totalDueForSupplier) {
+        if (paidAmount > totalDueForSupplier + 0.01) {
             alert(`Payment amount of ₹${paidAmount.toLocaleString('en-IN')} exceeds the total due of ₹${totalDueForSupplier.toLocaleString('en-IN')}.`);
             return;
         }
@@ -186,7 +225,7 @@ const PurchasesPage: React.FC = () => {
         const dueAmount = purchase.totalAmount - amountPaid;
         const newPaymentAmount = parseFloat(paymentDetails.amount);
 
-        if(newPaymentAmount > dueAmount) {
+        if(newPaymentAmount > dueAmount + 0.01) {
              alert(`Payment exceeds due amount.`);
              return;
         }
@@ -201,18 +240,42 @@ const PurchasesPage: React.FC = () => {
         dispatch({ type: 'ADD_PAYMENT_TO_PURCHASE', payload: { purchaseId: purchase.id, payment } });
         
         setPaymentModalState({ isOpen: false, purchaseId: null });
-        setPaymentDetails({ amount: '', method: 'CASH', date: new Date().toISOString().split('T')[0] });
+        setPaymentDetails({ amount: '', method: 'CASH', date: getLocalDateString() });
+    };
+
+    const handleDownloadTemplate = () => {
+        const headers = ['Saree Code/ID', 'Saree Name', 'Quantity', 'Purchase Price', 'Sale Price', 'GST %'];
+        const examples = [
+            ['PATTU001', 'Red Kanchipuram Silk', 10, 5000, 12000, 12],
+            ['COTTON002', 'Blue Bengal Cotton', 25, 800, 2500, 5]
+        ];
+
+        const escapeCsvCell = (cell: any) => `"${String(cell).replace(/"/g, '""')}"`;
+        
+        const csvContent = [
+            headers.join(','),
+            ...examples.map(row => row.map(escapeCsvCell).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'stock-upload-template.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     };
     
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     
     const PaymentModal = () => {
+        // ... (existing code, unchanged)
         const purchase = state.purchases.find(p => p.id === paymentModalState.purchaseId);
         if (!paymentModalState.isOpen || !purchase) return null;
-        
         const amountPaid = purchase.payments.reduce((sum, p) => sum + p.amount, 0);
         const dueAmount = purchase.totalAmount - amountPaid;
-
         return (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                 <Card title="Add Payment to Supplier" className="w-full max-w-sm">
@@ -227,12 +290,7 @@ const PurchasesPage: React.FC = () => {
                         </select>
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Payment Date</label>
-                            <input 
-                                type="date" 
-                                value={paymentDetails.date} 
-                                onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} 
-                                className="w-full p-2 border rounded"
-                            />
+                            <input type="date" value={paymentDetails.date} onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} className="w-full p-2 border rounded"/>
                         </div>
                         <div className="flex gap-2">
                            <Button onClick={handleAddPaymentToPurchase} className="w-full">Save Payment</Button>
@@ -245,13 +303,12 @@ const PurchasesPage: React.FC = () => {
     };
     
     if (selectedSupplier && editedSupplier) {
+        // ... (existing code, unchanged)
         const supplierPurchases = state.purchases.filter(p => p.supplierId === selectedSupplier.id);
         const supplierReturns = state.returns.filter(r => r.type === 'SUPPLIER' && r.partyId === selectedSupplier.id);
-
         const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             setEditedSupplier({ ...editedSupplier, [e.target.name]: e.target.value });
         };
-
         return (
             <div className="space-y-4">
                 {paymentModalState.isOpen && <PaymentModal />}
@@ -289,19 +346,25 @@ const PurchasesPage: React.FC = () => {
                                 const amountPaid = purchase.payments.reduce((sum, p) => sum + p.amount, 0);
                                 const dueAmount = purchase.totalAmount - amountPaid;
                                 const isPaid = dueAmount <= 0.01;
-
                                 return (
                                 <div key={purchase.id} className="p-3 bg-gray-50 rounded-lg border">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div>
-                                            <p className="font-semibold">{new Date(purchase.date).toLocaleString()}</p>
-                                            <p className={`text-sm font-bold ${isPaid ? 'text-green-600' : 'text-red-600'}`}>
-                                                {isPaid ? 'Paid' : `Due: ₹${dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
+                                    <div className="flex justify-between items-start">
+                                      <div className="flex-grow">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <p className="font-semibold">{new Date(purchase.date).toLocaleString()}</p>
+                                                <p className={`text-sm font-bold ${isPaid ? 'text-green-600' : 'text-red-600'}`}>
+                                                    {isPaid ? 'Paid' : `Due: ₹${dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
+                                                </p>
+                                            </div>
+                                            <p className="font-bold text-lg text-primary">
+                                                ₹{purchase.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                             </p>
                                         </div>
-                                        <p className="font-bold text-lg text-primary">
-                                            ₹{purchase.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                        </p>
+                                      </div>
+                                       <Button onClick={() => handleDeletePurchase(purchase.id)} variant="danger" className="ml-4 flex-shrink-0 p-2 h-8 w-8">
+                                          <Trash2 size={16} />
+                                      </Button>
                                     </div>
                                     <div className="pl-4 mt-2 border-l-2 border-purple-200 space-y-3">
                                         <div>
@@ -379,12 +442,16 @@ const PurchasesPage: React.FC = () => {
         <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                 <h1 className="text-2xl font-bold text-primary">Purchases</h1>
-                <div>
-                  <input type="file" accept=".xlsx, .xls" ref={fileInputRef} className="hidden" onChange={(e) => alert("Feature coming soon!")} />
-                  <Button onClick={() => fileInputRef.current?.click()} variant="secondary" className="w-full sm:w-auto">
-                      <Upload className="w-4 h-4 mr-2" />
-                      Import Stock
-                  </Button>
+                <div className="flex flex-col sm:flex-row gap-2">
+                    <Button onClick={handleDownloadTemplate} variant="secondary" className="w-full sm:w-auto">
+                        <Download className="w-4 h-4 mr-2" />
+                        Download Template
+                    </Button>
+                    <input type="file" accept=".xlsx, .xls, .csv" ref={fileInputRef} className="hidden" onChange={(e) => alert("Feature coming soon!")} />
+                    <Button onClick={() => fileInputRef.current?.click()} variant="secondary" className="w-full sm:w-auto">
+                        <Upload className="w-4 h-4 mr-2" />
+                        Import Stock
+                    </Button>
                 </div>
             </div>
 
@@ -428,19 +495,19 @@ const PurchasesPage: React.FC = () => {
             )}
 
             {view === 'add_supplier' && (
-                <Card title="New Supplier">
-                    <div className="space-y-2">
-                        <input className="w-full p-2 border rounded" placeholder="Supplier Name" value={newSupplier.name} onChange={e => setNewSupplier({...newSupplier, name: e.target.value})} />
-                        <input className="w-full p-2 border rounded" placeholder="Phone" value={newSupplier.phone} onChange={e => setNewSupplier({...newSupplier, phone: e.target.value})} />
-                        <input className="w-full p-2 border rounded" placeholder="Location" value={newSupplier.location} onChange={e => setNewSupplier({...newSupplier, location: e.target.value})} />
-                        <Button onClick={handleAddSupplier} className="w-full">Save Supplier</Button>
-                        <Button onClick={() => setView('list')} variant="secondary" className="w-full">Cancel</Button>
-                    </div>
-                </Card>
+                 <Card title="New Supplier">
+                     <div className="space-y-2">
+                         <input className="w-full p-2 border rounded" placeholder="Supplier Name" value={newSupplier.name} onChange={e => setNewSupplier({...newSupplier, name: e.target.value})} />
+                         <input className="w-full p-2 border rounded" placeholder="Phone" value={newSupplier.phone} onChange={e => setNewSupplier({...newSupplier, phone: e.target.value})} />
+                         <input className="w-full p-2 border rounded" placeholder="Location" value={newSupplier.location} onChange={e => setNewSupplier({...newSupplier, location: e.target.value})} />
+                         <Button onClick={handleAddSupplier} className="w-full">Save Supplier</Button>
+                         <Button onClick={() => setView('list')} variant="secondary" className="w-full">Cancel</Button>
+                     </div>
+                 </Card>
             )}
             
             {view === 'add_purchase' && (
-                <div className="space-y-4">
+                 <div className="space-y-4">
                      <Card>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
                         <select value={supplierId} onChange={e => setSupplierId(e.target.value)} className="w-full p-2 border rounded">

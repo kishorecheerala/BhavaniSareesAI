@@ -1,11 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, User, Phone, MapPin, Search, Edit, Save, X } from 'lucide-react';
+import { Plus, User, Phone, MapPin, Search, Edit, Save, X, Trash2 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Customer, Payment, Sale } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
 
-const CustomersPage: React.FC = () => {
+const getLocalDateString = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+interface CustomersPageProps {
+  setIsDirty: (isDirty: boolean) => void;
+}
+
+const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
     const { state, dispatch } = useAppContext();
     const [searchTerm, setSearchTerm] = useState('');
     const [isAdding, setIsAdding] = useState(false);
@@ -19,17 +30,29 @@ const CustomersPage: React.FC = () => {
     const [paymentDetails, setPaymentDetails] = useState({
         amount: '',
         method: 'CASH' as 'CASH' | 'UPI' | 'CHEQUE',
-        date: new Date().toISOString().split('T')[0] 
+        date: getLocalDateString() 
     });
+    
+    useEffect(() => {
+        const formIsDirty = (isAdding && (newCustomer.name || newCustomer.phone || newCustomer.address || newCustomer.area)) || isEditing;
+        setIsDirty(formIsDirty);
+
+        return () => {
+            setIsDirty(false);
+        };
+    }, [isAdding, newCustomer, isEditing, setIsDirty]);
 
     useEffect(() => {
         if (selectedCustomer) {
-            setEditedCustomer(selectedCustomer);
+            const currentCustomer = state.customers.find(c => c.id === selectedCustomer.id);
+            setSelectedCustomer(currentCustomer || null);
+            setEditedCustomer(currentCustomer || null);
         } else {
             setEditedCustomer(null);
         }
         setIsEditing(false);
-    }, [selectedCustomer]);
+    }, [selectedCustomer, state.customers, state.sales]);
+
 
     const handleAddCustomer = () => {
         if (newCustomer.name && newCustomer.phone && newCustomer.address && newCustomer.area) {
@@ -44,12 +67,22 @@ const CustomersPage: React.FC = () => {
     
     const handleUpdateCustomer = () => {
         if (editedCustomer) {
-            dispatch({ type: 'UPDATE_CUSTOMER', payload: editedCustomer });
-            setSelectedCustomer(editedCustomer);
-            setIsEditing(false);
-            alert("Customer details updated successfully.");
+            if (window.confirm('Are you sure you want to save these changes to the customer details?')) {
+                dispatch({ type: 'UPDATE_CUSTOMER', payload: editedCustomer });
+                setSelectedCustomer(editedCustomer);
+                setIsEditing(false);
+                alert("Customer details updated successfully.");
+            }
         }
     };
+
+    const handleDeleteSale = (saleId: string) => {
+        if (window.confirm('Are you sure you want to delete this sale? This action cannot be undone and will add the items back to stock.')) {
+            dispatch({ type: 'DELETE_SALE', payload: saleId });
+            alert('Sale deleted successfully.');
+        }
+    };
+
 
     const handleAddPayment = () => {
         const sale = state.sales.find(s => s.id === paymentModalState.saleId);
@@ -62,7 +95,7 @@ const CustomersPage: React.FC = () => {
         const dueAmount = sale.totalAmount - amountPaid;
         const newPaymentAmount = parseFloat(paymentDetails.amount);
 
-        if(newPaymentAmount > dueAmount) {
+        if(newPaymentAmount > dueAmount + 0.01) { // Epsilon for float
             alert(`Payment of ₹${newPaymentAmount.toLocaleString('en-IN')} exceeds due amount of ₹${dueAmount.toLocaleString('en-IN')}.`);
             return;
         }
@@ -77,7 +110,7 @@ const CustomersPage: React.FC = () => {
         dispatch({ type: 'ADD_PAYMENT_TO_SALE', payload: { saleId: sale.id, payment } });
         
         setPaymentModalState({ isOpen: false, saleId: null });
-        setPaymentDetails({ amount: '', method: 'CASH', date: new Date().toISOString().split('T')[0] });
+        setPaymentDetails({ amount: '', method: 'CASH', date: getLocalDateString() });
     };
 
     const filteredCustomers = state.customers.filter(c =>
@@ -160,7 +193,7 @@ const CustomersPage: React.FC = () => {
                             <div><label className="text-sm font-medium">Phone</label><input type="text" name="phone" value={editedCustomer.phone} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
                             <div><label className="text-sm font-medium">Address</label><input type="text" name="address" value={editedCustomer.address} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
                             <div><label className="text-sm font-medium">Area</label><input type="text" name="area" value={editedCustomer.area} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
-                            <div><label className="text-sm font-medium">Reference</label><input type="text" name="reference" value={editedCustomer.reference} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
+                            <div><label className="text-sm font-medium">Reference</label><input type="text" name="reference" value={editedCustomer.reference ?? ''} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
                         </div>
                     ) : (
                         <div className="space-y-1 text-gray-700">
@@ -182,16 +215,23 @@ const CustomersPage: React.FC = () => {
 
                                 return (
                                 <div key={sale.id} className="p-3 bg-gray-50 rounded-lg border">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div>
-                                            <p className="font-semibold">{new Date(sale.date).toLocaleString()}</p>
-                                            <p className={`text-sm font-bold ${isPaid ? 'text-green-600' : 'text-red-600'}`}>
-                                                {isPaid ? 'Paid' : `Due: ₹${dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
+                                    <div className="flex justify-between items-start">
+                                      <div className="flex-grow">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <p className="font-semibold">{new Date(sale.date).toLocaleString()}</p>
+                                                <p className={`text-sm font-bold ${isPaid ? 'text-green-600' : 'text-red-600'}`}>
+                                                    {isPaid ? 'Paid' : `Due: ₹${dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
+                                                </p>
+                                            </div>
+                                            <p className="font-bold text-lg text-primary">
+                                                ₹{sale.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                             </p>
                                         </div>
-                                        <p className="font-bold text-lg text-primary">
-                                            ₹{sale.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                        </p>
+                                      </div>
+                                      <Button onClick={() => handleDeleteSale(sale.id)} variant="danger" className="ml-4 flex-shrink-0 p-2 h-8 w-8">
+                                          <Trash2 size={16} />
+                                      </Button>
                                     </div>
                                     <div className="pl-4 mt-2 border-l-2 border-purple-200 space-y-3">
                                         <div>
