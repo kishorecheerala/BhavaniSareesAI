@@ -58,7 +58,24 @@ const appReducer = (state: AppState, action: Action): AppState => {
     case 'ADD_PURCHASE':
       return { ...state, purchases: [...state.purchases, action.payload] };
     case 'ADD_RETURN':
-      return { ...state, returns: [...state.returns, action.payload] };
+      const stockUpdates = new Map<string, number>();
+      action.payload.items.forEach(item => {
+          const change = action.payload.type === 'CUSTOMER' ? item.quantity : -item.quantity;
+          stockUpdates.set(item.productId, (stockUpdates.get(item.productId) || 0) + change);
+      });
+
+      const updatedProducts = state.products.map(p => {
+          if (stockUpdates.has(p.id)) {
+              return { ...p, quantity: p.quantity + (stockUpdates.get(p.id) || 0) };
+          }
+          return p;
+      });
+
+      return { 
+          ...state, 
+          returns: [...state.returns, action.payload],
+          products: updatedProducts
+      };
     case 'ADD_PAYMENT_TO_SALE':
       return {
         ...state,

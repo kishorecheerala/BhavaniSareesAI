@@ -226,6 +226,8 @@ const PurchasesPage: React.FC = () => {
     
     if (selectedSupplier) {
         const supplierPurchases = state.purchases.filter(p => p.supplierId === selectedSupplier.id);
+        const supplierReturns = state.returns.filter(r => r.type === 'SUPPLIER' && r.partyId === selectedSupplier.id);
+
         return (
             <div className="space-y-4">
                 {paymentModalState.isOpen && <PaymentModal />}
@@ -292,6 +294,32 @@ const PurchasesPage: React.FC = () => {
                         </div>
                     ) : (
                         <p className="text-gray-500">No purchases recorded from this supplier.</p>
+                    )}
+                </Card>
+                 <Card title="Returns History">
+                     {supplierReturns.length > 0 ? (
+                         <div className="space-y-3">
+                            {supplierReturns.slice().reverse().map(ret => (
+                                <div key={ret.id} className="p-3 bg-gray-50 rounded-lg border">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="font-semibold">Return on {new Date(ret.returnDate).toLocaleDateString()}</p>
+                                            <p className="text-xs text-gray-500">Original Invoice: {ret.referenceId}</p>
+                                        </div>
+                                        <p className="font-semibold text-primary">Credit: ₹{ret.amount.toLocaleString('en-IN')}</p>
+                                    </div>
+                                    <div className="mt-2 pt-2 border-t">
+                                        <ul className="text-sm list-disc list-inside text-gray-600">
+                                            {ret.items.map((item, idx) => (
+                                                <li key={idx}>{item.productName} (x{item.quantity})</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-gray-500">No items have been returned to this supplier.</p>
                     )}
                 </Card>
             </div>

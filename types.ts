@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 
 export interface Payment {
   id: string;
@@ -72,13 +73,20 @@ export interface Purchase {
   payments: Payment[];
 }
 
-export interface Return {
-  id: string;
-  saleId: string;
-  customerId: string;
+export interface ReturnItem {
   productId: string;
   productName: string;
   quantity: number;
+  price: number; // The price at which it was sold/purchased
+}
+
+export interface Return {
+  id: string;
+  type: 'CUSTOMER' | 'SUPPLIER';
+  referenceId: string; // saleId or purchaseId
+  partyId: string; // customerId or supplierId
+  items: ReturnItem[];
   returnDate: string; // ISO string
-  amountRefunded: number;
+  amount: number; // Amount refunded to customer or credited from supplier
+  reason?: string;
 }

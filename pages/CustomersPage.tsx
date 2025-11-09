@@ -111,6 +111,7 @@ const CustomersPage: React.FC = () => {
     
     if (selectedCustomer) {
         const customerSales = state.sales.filter(s => s.customerId === selectedCustomer.id);
+        const customerReturns = state.returns.filter(r => r.type === 'CUSTOMER' && r.partyId === selectedCustomer.id);
         
         return (
             <div className="space-y-4">
@@ -183,7 +184,30 @@ const CustomersPage: React.FC = () => {
                     )}
                 </Card>
                  <Card title="Returns History">
-                    <p className="text-gray-500">Return details will be shown here.</p>
+                    {customerReturns.length > 0 ? (
+                         <div className="space-y-3">
+                            {customerReturns.slice().reverse().map(ret => (
+                                <div key={ret.id} className="p-3 bg-gray-50 rounded-lg border">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="font-semibold">Return on {new Date(ret.returnDate).toLocaleDateString()}</p>
+                                            <p className="text-xs text-gray-500">Original Invoice: {ret.referenceId}</p>
+                                        </div>
+                                        <p className="font-semibold text-primary">Refunded: ₹{ret.amount.toLocaleString('en-IN')}</p>
+                                    </div>
+                                    <div className="mt-2 pt-2 border-t">
+                                        <ul className="text-sm list-disc list-inside text-gray-600">
+                                            {ret.items.map((item, idx) => (
+                                                <li key={idx}>{item.productName} (x{item.quantity})</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-gray-500">No returns recorded for this customer.</p>
+                    )}
                 </Card>
             </div>
         );

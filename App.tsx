@@ -1,6 +1,7 @@
 
+
 import React, { useState } from 'react';
-import { Home, Users, ShoppingCart, Package, FileText } from 'lucide-react';
+import { Home, Users, ShoppingCart, Package, FileText, Undo2 } from 'lucide-react';
 
 import { AppProvider } from './context/AppContext';
 import Dashboard from './pages/Dashboard';
@@ -8,8 +9,9 @@ import CustomersPage from './pages/CustomersPage';
 import SalesPage from './pages/SalesPage';
 import PurchasesPage from './pages/PurchasesPage';
 import ReportsPage from './pages/ReportsPage';
+import ReturnsPage from './pages/ReturnsPage';
 
-type Page = 'DASHBOARD' | 'CUSTOMERS' | 'SALES' | 'PURCHASES' | 'REPORTS';
+type Page = 'DASHBOARD' | 'CUSTOMERS' | 'SALES' | 'PURCHASES' | 'REPORTS' | 'RETURNS';
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('DASHBOARD');
@@ -26,6 +28,8 @@ const App: React.FC = () => {
         return <PurchasesPage />;
       case 'REPORTS':
         return <ReportsPage />;
+      case 'RETURNS':
+        return <ReturnsPage />;
       default:
         return <Dashboard />;
     }
@@ -60,6 +64,7 @@ const App: React.FC = () => {
             <NavItem page="CUSTOMERS" label="Customers" icon={Users} />
             <NavItem page="SALES" label="Sales" icon={ShoppingCart} />
             <NavItem page="PURCHASES" label="Purchases" icon={Package} />
+            <NavItem page="RETURNS" label="Returns" icon={Undo2} />
             <NavItem page="REPORTS" label="Reports" icon={FileText} />
           </div>
         </nav>
