@@ -154,7 +154,7 @@ const SalesPage: React.FC = () => {
         
         const pageWidth = doc.internal.pageSize.getWidth();
         const pageHeight = doc.internal.pageSize.getHeight();
-        let yPos = 10;
+        let yPos = 8;
         const margin = 5;
 
         // Background
@@ -162,18 +162,36 @@ const SalesPage: React.FC = () => {
         const bgPngDataUrl = await svgToPngDataUrl(bgSvg, pageWidth * 4, pageHeight * 4);
         doc.addImage(bgPngDataUrl, 'PNG', 0, 0, pageWidth, pageHeight);
 
-        // Logo
-        const logoSvg = `<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="512" height="512" rx="96" fill="#f3e5f5"/><text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="300" font-family="Arial, sans-serif" fill="#6a0dad" font-weight="bold">B</text></svg>`;
-        const logoPngDataUrl = await svgToPngDataUrl(logoSvg, 200, 200);
-        doc.addImage(logoPngDataUrl, 'PNG', pageWidth / 2 - 10, yPos, 20, 20);
-        yPos += 25;
+        // Invocation
+        doc.setFont('Times-Roman', 'italic');
+        doc.setFontSize(9);
+        doc.setTextColor('#333333');
+        doc.text('OM namo venkatesaya', pageWidth / 2, yPos, { align: 'center' });
+        yPos += 8;
+        
+        // Venkateswara Logo
+        const venkateswaraLogoSvg = `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M25,90 L25,30 C25,10 75,10 75,30 L75,90" stroke="#6a0dad" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round" /><path d="M50,35 L50,85" stroke="#ff69b4" stroke-width="8" fill="none" stroke-linecap="round" /></svg>`;
+        const venkyLogoPngDataUrl = await svgToPngDataUrl(venkateswaraLogoSvg, 100, 100);
 
-        // Title
+        // Title with Logos
+        const logoSize = 8;
+        const logoPadding = 2;
         doc.setFont('Times-Roman', 'bold');
         doc.setFontSize(16);
+        const titleText = 'Bhavani Sarees';
+        const textWidth = doc.getTextWidth(titleText);
+        const totalHeaderWidth = logoSize + logoPadding + textWidth + logoPadding + logoSize;
+        let currentX = (pageWidth - totalHeaderWidth) / 2;
+        
+        doc.addImage(venkyLogoPngDataUrl, 'PNG', currentX, yPos - (logoSize/2) -1, logoSize, logoSize);
+        currentX += logoSize + logoPadding;
+        
         doc.setTextColor('#6a0dad');
-        doc.text('Bhavani Sarees', pageWidth / 2, yPos, { align: 'center' });
-        yPos += 6;
+        doc.text(titleText, currentX, yPos);
+        
+        currentX += textWidth + logoPadding;
+        doc.addImage(venkyLogoPngDataUrl, 'PNG', currentX, yPos - (logoSize/2) -1, logoSize, logoSize);
+        yPos += 8;
 
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(8);

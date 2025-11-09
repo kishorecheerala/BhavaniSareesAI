@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, Upload, IndianRupee } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Upload, IndianRupee, Edit, Save, X } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Supplier, Product, Purchase, PurchaseItem, Payment } from '../types';
 import Card from '../components/Card';
@@ -9,6 +9,9 @@ const PurchasesPage: React.FC = () => {
     const { state, dispatch } = useAppContext();
     const [view, setView] = useState<'list' | 'add_supplier' | 'add_purchase'>('list');
     const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+
+    const [isEditing, setIsEditing] = useState(false);
+    const [editedSupplier, setEditedSupplier] = useState<Supplier | null>(null);
 
     const [newSupplier, setNewSupplier] = useState<Omit<Supplier, 'id'>>({ name: '', phone: '', location: '' });
     
@@ -25,7 +28,15 @@ const PurchasesPage: React.FC = () => {
         method: 'CASH' as 'CASH' | 'UPI' | 'CHEQUE',
         date: new Date().toISOString().split('T')[0]
     });
-
+    
+    useEffect(() => {
+        if (selectedSupplier) {
+            setEditedSupplier(selectedSupplier);
+        } else {
+            setEditedSupplier(null);
+        }
+        setIsEditing(false);
+    }, [selectedSupplier]);
 
     const handleAddSupplier = () => {
         if (!newSupplier.name || !newSupplier.phone || !newSupplier.location) {
@@ -36,6 +47,15 @@ const PurchasesPage: React.FC = () => {
         setNewSupplier({ name: '', phone: '', location: '' });
         setView('list');
         alert("Supplier added successfully!");
+    };
+    
+    const handleUpdateSupplier = () => {
+        if (editedSupplier) {
+            dispatch({ type: 'UPDATE_SUPPLIER', payload: editedSupplier });
+            setSelectedSupplier(editedSupplier);
+            setIsEditing(false);
+            alert("Supplier details updated successfully.");
+        }
     };
 
     const handleAddItem = () => {
@@ -224,18 +244,43 @@ const PurchasesPage: React.FC = () => {
         )
     };
     
-    if (selectedSupplier) {
+    if (selectedSupplier && editedSupplier) {
         const supplierPurchases = state.purchases.filter(p => p.supplierId === selectedSupplier.id);
         const supplierReturns = state.returns.filter(r => r.type === 'SUPPLIER' && r.partyId === selectedSupplier.id);
+
+        const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+            setEditedSupplier({ ...editedSupplier, [e.target.name]: e.target.value });
+        };
 
         return (
             <div className="space-y-4">
                 {paymentModalState.isOpen && <PaymentModal />}
                 <Button onClick={() => setSelectedSupplier(null)}>&larr; Back to Purchases</Button>
-                <Card title={`Supplier Details: ${selectedSupplier.name}`}>
-                    <p><strong>ID:</strong> {selectedSupplier.id}</p>
-                    <p><strong>Phone:</strong> {selectedSupplier.phone}</p>
-                    <p><strong>Location:</strong> {selectedSupplier.location}</p>
+                <Card>
+                     <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-lg font-bold text-primary">Supplier Details: {selectedSupplier.name}</h2>
+                        {isEditing ? (
+                            <div className="flex gap-2">
+                                <Button onClick={handleUpdateSupplier} className="h-9 px-3"><Save size={16} /> Save</Button>
+                                <Button onClick={() => setIsEditing(false)} variant="secondary" className="h-9 px-3"><X size={16} /> Cancel</Button>
+                            </div>
+                        ) : (
+                            <Button onClick={() => setIsEditing(true)}><Edit size={16}/> Edit</Button>
+                        )}
+                    </div>
+                    {isEditing ? (
+                        <div className="space-y-3">
+                            <div><label className="text-sm font-medium">Name</label><input type="text" name="name" value={editedSupplier.name} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
+                            <div><label className="text-sm font-medium">Phone</label><input type="text" name="phone" value={editedSupplier.phone} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
+                            <div><label className="text-sm font-medium">Location</label><input type="text" name="location" value={editedSupplier.location} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
+                        </div>
+                    ) : (
+                        <div className="space-y-1 text-gray-700">
+                            <p><strong>ID:</strong> {selectedSupplier.id}</p>
+                            <p><strong>Phone:</strong> {selectedSupplier.phone}</p>
+                            <p><strong>Location:</strong> {selectedSupplier.location}</p>
+                        </div>
+                    )}
                 </Card>
                 <Card title="Purchase History">
                     {supplierPurchases.length > 0 ? (

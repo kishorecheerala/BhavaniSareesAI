@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, User, Phone, MapPin, Search, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, User, Phone, MapPin, Search, Edit, Save, X } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Customer, Payment, Sale } from '../types';
 import Card from '../components/Card';
@@ -12,12 +12,24 @@ const CustomersPage: React.FC = () => {
     const [newCustomer, setNewCustomer] = useState<Omit<Customer, 'id'>>({ name: '', phone: '', address: '', area: '', reference: '' });
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
+    const [isEditing, setIsEditing] = useState(false);
+    const [editedCustomer, setEditedCustomer] = useState<Customer | null>(null);
+
     const [paymentModalState, setPaymentModalState] = useState<{ isOpen: boolean, saleId: string | null }>({ isOpen: false, saleId: null });
     const [paymentDetails, setPaymentDetails] = useState({
         amount: '',
         method: 'CASH' as 'CASH' | 'UPI' | 'CHEQUE',
         date: new Date().toISOString().split('T')[0] 
     });
+
+    useEffect(() => {
+        if (selectedCustomer) {
+            setEditedCustomer(selectedCustomer);
+        } else {
+            setEditedCustomer(null);
+        }
+        setIsEditing(false);
+    }, [selectedCustomer]);
 
     const handleAddCustomer = () => {
         if (newCustomer.name && newCustomer.phone && newCustomer.address && newCustomer.area) {
@@ -30,6 +42,15 @@ const CustomersPage: React.FC = () => {
         }
     };
     
+    const handleUpdateCustomer = () => {
+        if (editedCustomer) {
+            dispatch({ type: 'UPDATE_CUSTOMER', payload: editedCustomer });
+            setSelectedCustomer(editedCustomer);
+            setIsEditing(false);
+            alert("Customer details updated successfully.");
+        }
+    };
+
     const handleAddPayment = () => {
         const sale = state.sales.find(s => s.id === paymentModalState.saleId);
         if (!sale || !paymentDetails.amount) {
@@ -109,20 +130,47 @@ const CustomersPage: React.FC = () => {
         )
     };
     
-    if (selectedCustomer) {
+    if (selectedCustomer && editedCustomer) {
         const customerSales = state.sales.filter(s => s.customerId === selectedCustomer.id);
         const customerReturns = state.returns.filter(r => r.type === 'CUSTOMER' && r.partyId === selectedCustomer.id);
         
+        const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+            setEditedCustomer({ ...editedCustomer, [e.target.name]: e.target.value });
+        };
+
         return (
             <div className="space-y-4">
                 {paymentModalState.isOpen && <PaymentModal />}
                 <Button onClick={() => setSelectedCustomer(null)}>&larr; Back to List</Button>
-                <Card title={`Customer Details: ${selectedCustomer.name}`}>
-                    <p><strong>ID:</strong> {selectedCustomer.id}</p>
-                    <p><strong>Phone:</strong> {selectedCustomer.phone}</p>
-                    <p><strong>Address:</strong> {selectedCustomer.address}</p>
-                    <p><strong>Area:</strong> {selectedCustomer.area}</p>
-                    {selectedCustomer.reference && <p><strong>Reference:</strong> {selectedCustomer.reference}</p>}
+                <Card>
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-lg font-bold text-primary">Customer Details: {selectedCustomer.name}</h2>
+                        {isEditing ? (
+                            <div className="flex gap-2">
+                                <Button onClick={handleUpdateCustomer} className="h-9 px-3"><Save size={16} /> Save</Button>
+                                <Button onClick={() => setIsEditing(false)} variant="secondary" className="h-9 px-3"><X size={16} /> Cancel</Button>
+                            </div>
+                        ) : (
+                            <Button onClick={() => setIsEditing(true)}><Edit size={16}/> Edit</Button>
+                        )}
+                    </div>
+                    {isEditing ? (
+                        <div className="space-y-3">
+                            <div><label className="text-sm font-medium">Name</label><input type="text" name="name" value={editedCustomer.name} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
+                            <div><label className="text-sm font-medium">Phone</label><input type="text" name="phone" value={editedCustomer.phone} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
+                            <div><label className="text-sm font-medium">Address</label><input type="text" name="address" value={editedCustomer.address} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
+                            <div><label className="text-sm font-medium">Area</label><input type="text" name="area" value={editedCustomer.area} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
+                            <div><label className="text-sm font-medium">Reference</label><input type="text" name="reference" value={editedCustomer.reference} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
+                        </div>
+                    ) : (
+                        <div className="space-y-1 text-gray-700">
+                             <p><strong>ID:</strong> {selectedCustomer.id}</p>
+                            <p><strong>Phone:</strong> {selectedCustomer.phone}</p>
+                            <p><strong>Address:</strong> {selectedCustomer.address}</p>
+                            <p><strong>Area:</strong> {selectedCustomer.area}</p>
+                            {selectedCustomer.reference && <p><strong>Reference:</strong> {selectedCustomer.reference}</p>}
+                        </div>
+                    )}
                 </Card>
                 <Card title="Sales History">
                     {customerSales.length > 0 ? (

@@ -13,8 +13,11 @@ interface AppState {
 type Action =
   | { type: 'SET_STATE'; payload: AppState }
   | { type: 'ADD_CUSTOMER'; payload: Customer }
+  | { type: 'UPDATE_CUSTOMER'; payload: Customer }
   | { type: 'ADD_SUPPLIER'; payload: Supplier }
+  | { type: 'UPDATE_SUPPLIER'; payload: Supplier }
   | { type: 'ADD_PRODUCT'; payload: Product }
+  | { type: 'UPDATE_PRODUCT'; payload: Product }
   | { type: 'UPDATE_PRODUCT_STOCK'; payload: { productId: string; change: number } }
   | { type: 'ADD_SALE'; payload: Sale }
   | { type: 'ADD_PURCHASE'; payload: Purchase }
@@ -37,8 +40,12 @@ const appReducer = (state: AppState, action: Action): AppState => {
         return action.payload;
     case 'ADD_CUSTOMER':
       return { ...state, customers: [...state.customers, action.payload] };
+    case 'UPDATE_CUSTOMER':
+      return { ...state, customers: state.customers.map(c => c.id === action.payload.id ? action.payload : c) };
     case 'ADD_SUPPLIER':
       return { ...state, suppliers: [...state.suppliers, action.payload] };
+    case 'UPDATE_SUPPLIER':
+      return { ...state, suppliers: state.suppliers.map(s => s.id === action.payload.id ? action.payload : s) };
     case 'ADD_PRODUCT':
         const existingProduct = state.products.find(p => p.id === action.payload.id);
         if (existingProduct) {
@@ -48,6 +55,8 @@ const appReducer = (state: AppState, action: Action): AppState => {
             };
         }
         return { ...state, products: [...state.products, action.payload] };
+    case 'UPDATE_PRODUCT':
+        return { ...state, products: state.products.map(p => p.id === action.payload.id ? action.payload : p) };
     case 'UPDATE_PRODUCT_STOCK':
         return {
             ...state,
