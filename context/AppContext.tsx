@@ -62,7 +62,7 @@ const appReducer = (state: AppState, action: Action): AppState => {
 
       // 1. Adjust product stock based on return type
       const updatedProducts = state.products.map(product => {
-        const itemReturned = returnPayload.items.find(item => item.productId.toLowerCase() === product.id.toLowerCase());
+        const itemReturned = returnPayload.items.find(item => item.productId.trim().toLowerCase() === product.id.trim().toLowerCase());
         if (itemReturned) {
           const quantityChange = returnPayload.type === 'CUSTOMER' ? itemReturned.quantity : -itemReturned.quantity;
           return { ...product, quantity: product.quantity + quantityChange };

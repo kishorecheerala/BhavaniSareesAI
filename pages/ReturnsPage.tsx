@@ -88,6 +88,22 @@ const ReturnsPage: React.FC = () => {
             : state.purchases.find(p => p.id === referenceId);
         return invoice?.items || [];
     }, [referenceId, activeTab, state.sales, state.purchases]);
+
+    const invoiceFinancials = useMemo(() => {
+        if (!referenceId) return null;
+
+        const invoice: Sale | Purchase | undefined = activeTab === 'CUSTOMER'
+            ? state.sales.find(s => s.id === referenceId)
+            : state.purchases.find(p => p.id === referenceId);
+
+        if (!invoice) return null;
+
+        const totalAmount = invoice.totalAmount;
+        const paidAmount = (invoice.payments || []).reduce((sum, p) => sum + p.amount, 0);
+        const dueAmount = totalAmount - paidAmount;
+
+        return { totalAmount, paidAmount, dueAmount };
+    }, [referenceId, activeTab, state.sales, state.purchases]);
     
     const allReturns = state.returns.slice().reverse();
 
@@ -122,6 +138,23 @@ const ReturnsPage: React.FC = () => {
                         </div>
                     )}
                     
+                    {referenceId && invoiceFinancials && (
+                        <div className="p-3 bg-purple-50 rounded-lg text-sm text-purple-800 space-y-1 my-4">
+                            <div className="flex justify-between">
+                                <span className="font-semibold">Invoice Total:</span>
+                                <span>₹{invoiceFinancials.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="font-semibold">Amount Paid:</span>
+                                <span className="text-green-600">₹{invoiceFinancials.paidAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                            <div className="flex justify-between font-bold">
+                                <span className="font-semibold">Current Due:</span>
+                                <span className="text-red-600">₹{invoiceFinancials.dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                        </div>
+                    )}
+
                     {referenceId && (
                         <div>
                             <h3 className="text-md font-semibold text-gray-800 mb-2">Select Items to Return</h3>

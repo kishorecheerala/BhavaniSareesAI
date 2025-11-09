@@ -115,8 +115,37 @@ const SalesPage: React.FC = () => {
         alert(`Payment of ₹${paidAmount.toLocaleString('en-IN')} recorded successfully.`);
         resetForm();
     };
+    
+    const svgToPngDataUrl = (svgString: string, width: number, height: number): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(svgBlob);
 
-    const generateInvoicePDF = (sale: Sale, customer: Customer): Blob => {
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const pngDataUrl = canvas.toDataURL('image/png');
+                    URL.revokeObjectURL(url);
+                    resolve(pngDataUrl);
+                } else {
+                    URL.revokeObjectURL(url);
+                    reject(new Error('Could not get canvas context'));
+                }
+            };
+            img.onerror = (err) => {
+                URL.revokeObjectURL(url);
+                reject(err);
+            };
+            img.src = url;
+        });
+    };
+
+    const generateInvoicePDF = async (sale: Sale, customer: Customer): Promise<Blob> => {
         const doc = new jsPDF({
             orientation: 'portrait',
             unit: 'mm',
@@ -130,13 +159,13 @@ const SalesPage: React.FC = () => {
 
         // Background
         const bgSvg = `<svg width="80" height="150" viewBox="0 0 80 150" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#fff" /><g opacity="0.08" fill="#6a0dad"><path d="M10 10 C 15 0, 25 0, 30 10 S 40 20, 30 30 C 20 40, 10 40, 10 30 S 5 20, 10 10 Z" /><path d="M50 40 C 55 30, 65 30, 70 40 S 80 50, 70 60 C 60 70, 50 70, 50 60 S 45 50, 50 40 Z" /><path d="M20 70 C 25 60, 35 60, 40 70 S 50 80, 40 90 C 30 100, 20 100, 20 90 S 15 80, 20 70 Z" /><path d="M60 100 C 65 90, 75 90, 80 100 S 90 110, 80 120 C 70 130, 60 130, 60 120 S 55 110, 60 100 Z" /><path d="M5 130 C 10 120, 20 120, 25 130 S 35 140, 25 150 C 15 160, 5 160, 5 150 S 0 140, 5 130 Z" /></g></svg>`;
-        const bgDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(bgSvg)}`;
-        doc.addImage(bgDataUrl, 'SVG', 0, 0, pageWidth, pageHeight);
+        const bgPngDataUrl = await svgToPngDataUrl(bgSvg, pageWidth * 4, pageHeight * 4);
+        doc.addImage(bgPngDataUrl, 'PNG', 0, 0, pageWidth, pageHeight);
 
         // Logo
         const logoSvg = `<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="512" height="512" rx="96" fill="#f3e5f5"/><text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="300" font-family="Arial, sans-serif" fill="#6a0dad" font-weight="bold">B</text></svg>`;
-        const logoDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(logoSvg)}`;
-        doc.addImage(logoDataUrl, 'SVG', pageWidth / 2 - 10, yPos, 20, 20);
+        const logoPngDataUrl = await svgToPngDataUrl(logoSvg, 200, 200);
+        doc.addImage(logoPngDataUrl, 'PNG', pageWidth / 2 - 10, yPos, 20, 20);
         yPos += 25;
 
         // Title
@@ -309,7 +338,7 @@ const SalesPage: React.FC = () => {
         try {
             const customer = state.customers.find(c => c.id === customerId);
             if (customer) {
-                const pdfBlob = generateInvoicePDF(newSale, customer);
+                const pdfBlob = await generateInvoicePDF(newSale, customer);
                 await shareOrDownloadPdf(pdfBlob, newSale.id, customer.name);
             } else {
                  throw new Error("Customer details not found, so invoice could not be shared.");
