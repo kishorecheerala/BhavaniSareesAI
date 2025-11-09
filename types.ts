@@ -4,7 +4,7 @@ export interface Payment {
   id: string;
   amount: number;
   date: string; // ISO string
-  method: 'CASH' | 'UPI' | 'CHEQUE';
+  method: 'CASH' | 'UPI' | 'CHEQUE' | 'RETURN_CREDIT';
 }
 
 export interface Customer {

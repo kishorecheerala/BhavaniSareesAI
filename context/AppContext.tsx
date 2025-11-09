@@ -57,25 +57,54 @@ const appReducer = (state: AppState, action: Action): AppState => {
       return { ...state, sales: [...state.sales, action.payload] };
     case 'ADD_PURCHASE':
       return { ...state, purchases: [...state.purchases, action.payload] };
-    case 'ADD_RETURN':
-      const stockUpdates = new Map<string, number>();
-      action.payload.items.forEach(item => {
-          const change = action.payload.type === 'CUSTOMER' ? item.quantity : -item.quantity;
-          stockUpdates.set(item.productId, (stockUpdates.get(item.productId) || 0) + change);
+    case 'ADD_RETURN': {
+      const returnPayload = action.payload;
+
+      // 1. Adjust product stock based on return type
+      const updatedProducts = state.products.map(product => {
+        const itemReturned = returnPayload.items.find(item => item.productId === product.id);
+        if (itemReturned) {
+          const quantityChange = returnPayload.type === 'CUSTOMER' ? itemReturned.quantity : -itemReturned.quantity;
+          return { ...product, quantity: product.quantity + quantityChange };
+        }
+        return product;
       });
 
-      const updatedProducts = state.products.map(p => {
-          if (stockUpdates.has(p.id)) {
-              return { ...p, quantity: p.quantity + (stockUpdates.get(p.id) || 0) };
-          }
-          return p;
-      });
-
-      return { 
-          ...state, 
-          returns: [...state.returns, action.payload],
-          products: updatedProducts
+      // 2. Create a credit payment record to adjust dues
+      const creditPayment: Payment = {
+        id: `PAY-RET-${returnPayload.id}`,
+        amount: returnPayload.amount,
+        date: returnPayload.returnDate,
+        method: 'RETURN_CREDIT',
       };
+      
+      let updatedSales = state.sales;
+      let updatedPurchases = state.purchases;
+
+      // 3. Apply the credit to the correct sale or purchase invoice
+      if (returnPayload.type === 'CUSTOMER') {
+        updatedSales = state.sales.map(sale =>
+          sale.id === returnPayload.referenceId
+            ? { ...sale, payments: [...(sale.payments || []), creditPayment] }
+            : sale
+        );
+      } else { // SUPPLIER
+        updatedPurchases = state.purchases.map(purchase =>
+          purchase.id === returnPayload.referenceId
+            ? { ...purchase, payments: [...(purchase.payments || []), creditPayment] }
+            : purchase
+        );
+      }
+
+      // 4. Return the new state
+      return {
+        ...state,
+        products: updatedProducts,
+        sales: updatedSales,
+        purchases: updatedPurchases,
+        returns: [...state.returns, returnPayload],
+      };
+    }
     case 'ADD_PAYMENT_TO_SALE':
       return {
         ...state,

@@ -275,7 +275,7 @@ const PurchasesPage: React.FC = () => {
                                                  <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
                                                     {purchase.payments.map(payment => (
                                                         <li key={payment.id}>
-                                                            ₹{payment.amount.toLocaleString('en-IN')} via {payment.method} on {new Date(payment.date).toLocaleDateString()}
+                                                            ₹{payment.amount.toLocaleString('en-IN')} {payment.method === 'RETURN_CREDIT' ? <span className="text-blue-600 font-semibold">(Return Credit)</span> : `via ${payment.method}`} on {new Date(payment.date).toLocaleDateString()}
                                                         </li>
                                                     ))}
                                                 </ul>
