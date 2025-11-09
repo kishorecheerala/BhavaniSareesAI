@@ -170,8 +170,8 @@ const SalesPage: React.FC = () => {
         yPos += 8;
         
         // Venkateswara Logo
-        const venkateswaraLogoSvg = `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M25,90 L25,30 C25,10 75,10 75,30 L75,90" stroke="#6a0dad" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round" /><path d="M50,35 L50,85" stroke="#ff69b4" stroke-width="8" fill="none" stroke-linecap="round" /></svg>`;
-        const venkyLogoPngDataUrl = await svgToPngDataUrl(venkateswaraLogoSvg, 100, 100);
+        const venkateswaraLogoSvg = `<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path fill="#6a0dad" d="M256 0C161.766 0 83.266 78.5 83.266 172.734v33.032c-27.563 7.344-46.891 32.25-46.891 60.203v16.516c0 34.625 28.109 62.734 62.734 62.734h4.125c-2.313 13.063-2.313 27.844 1.719 42.625 14.75 52.375 66.813 91.438 134.906 91.438s120.156-39.063 134.906-91.438c4.031-14.781 4.031-29.563 1.719-42.625h4.125c34.625 0 62.734-28.109 62.734-62.734v-16.516c0-27.953-19.328-52.859-46.891-60.203v-33.032C428.734 78.5 350.234 0 256 0zm-20.625 219.625c-11.375 0-20.625-9.25-20.625-20.625s9.25-20.625 20.625-20.625 20.625 9.25 20.625 20.625-9.25 20.625-20.625 20.625zm41.25 0c-11.375 0-20.625-9.25-20.625-20.625s9.25-20.625 20.625-20.625 20.625 9.25 20.625 20.625-9.25 20.625-20.625 20.625z" /></svg>`;
+        const venkyLogoPngDataUrl = await svgToPngDataUrl(venkateswaraLogoSvg, 512, 512);
 
         // Title with Logos
         const logoSize = 8;
@@ -280,13 +280,44 @@ const SalesPage: React.FC = () => {
         URL.revokeObjectURL(url);
     };
 
-    const shareOrDownloadPdf = async (pdfBlob: Blob, saleId: string, customerName: string) => {
-        const pdfFile = new File([pdfBlob], `Invoice-${saleId}.pdf`, { type: 'application/pdf' });
+    const shareOrDownloadPdf = async (pdfBlob: Blob, sale: Sale, customer: Customer) => {
+        const pdfFile = new File([pdfBlob], `Invoice-${sale.id}.pdf`, { type: 'application/pdf' });
         
+        const formatCurrency = (val: number) => val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const subtotal = sale.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        const amountPaid = sale.payments.reduce((sum, p) => sum + p.amount, 0);
+        const amountDue = sale.totalAmount - amountPaid;
+
+        const itemsText = sale.items.map(item => 
+            `- ${item.productName} (x${item.quantity} @ ₹${formatCurrency(item.price)}) = ₹${formatCurrency(item.quantity * item.price)}`
+        ).join('\n');
+
+        const summaryText = `*Bhavani Sarees Invoice*
+-----------------------------------
+To: ${customer.name}
+Phone: ${customer.phone}
+Invoice ID: ${sale.id}
+Date: ${new Date(sale.date).toLocaleDateString()}
+
+*Items:*
+${itemsText}
+
+-----------------------------------
+Subtotal: ₹${formatCurrency(subtotal)}
+GST: ₹${formatCurrency(sale.gstAmount)}
+Discount: - ₹${formatCurrency(sale.discount)}
+-----------------------------------
+*Total: ₹${formatCurrency(sale.totalAmount)}*
+Paid: ₹${formatCurrency(amountPaid)}
+*Due: ₹${formatCurrency(amountDue)}*
+-----------------------------------
+Thank you for your business!
+OM namo venkatesaya`;
+
         const shareData = {
             files: [pdfFile],
-            title: `Bhavani Sarees Invoice for ${customerName}`,
-            text: `Dear ${customerName},\n\nThank you for your purchase! Here is your invoice: ${saleId}.\n\n- Bhavani Sarees`,
+            title: `Bhavani Sarees Invoice for ${customer.name}`,
+            text: summaryText,
         };
 
         if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
@@ -295,12 +326,12 @@ const SalesPage: React.FC = () => {
             } catch (err) {
                  if ((err as Error).name !== 'AbortError') {
                    alert('Could not share the invoice. It will be downloaded instead.');
-                   downloadPdf(pdfBlob, saleId);
+                   downloadPdf(pdfBlob, sale.id);
                 }
             }
         } else {
             alert('Sharing is not supported on this device. The invoice will be downloaded.');
-            downloadPdf(pdfBlob, saleId);
+            downloadPdf(pdfBlob, sale.id);
         }
     };
 
@@ -357,7 +388,7 @@ const SalesPage: React.FC = () => {
             const customer = state.customers.find(c => c.id === customerId);
             if (customer) {
                 const pdfBlob = await generateInvoicePDF(newSale, customer);
-                await shareOrDownloadPdf(pdfBlob, newSale.id, customer.name);
+                await shareOrDownloadPdf(pdfBlob, newSale, customer);
             } else {
                  throw new Error("Customer details not found, so invoice could not be shared.");
             }
