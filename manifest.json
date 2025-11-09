@@ -1,0 +1,18 @@
+{
+  "short_name": "Bhavani Sarees",
+  "name": "Bhavani Sarees - Business Manager",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#6a0dad",
+  "background_color": "#f3e5f5",
+  "description": "A comprehensive sales, purchase, and customer management application for a saree business."
+}
