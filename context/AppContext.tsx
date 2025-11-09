@@ -1,5 +1,5 @@
 import React, { createContext, useReducer, useContext, useEffect, ReactNode } from 'react';
-import { Customer, Supplier, Product, Sale, Purchase, Return } from '../types';
+import { Customer, Supplier, Product, Sale, Purchase, Return, Payment } from '../types';
 
 interface AppState {
   customers: Customer[];
@@ -18,7 +18,9 @@ type Action =
   | { type: 'UPDATE_PRODUCT_STOCK'; payload: { productId: string; change: number } }
   | { type: 'ADD_SALE'; payload: Sale }
   | { type: 'ADD_PURCHASE'; payload: Purchase }
-  | { type: 'ADD_RETURN'; payload: Return };
+  | { type: 'ADD_RETURN'; payload: Return }
+  | { type: 'ADD_PAYMENT_TO_SALE'; payload: { saleId: string; payment: Payment } }
+  | { type: 'ADD_PAYMENT_TO_PURCHASE'; payload: { purchaseId: string; payment: Payment } };
 
 const initialState: AppState = {
   customers: [],
@@ -57,6 +59,24 @@ const appReducer = (state: AppState, action: Action): AppState => {
       return { ...state, purchases: [...state.purchases, action.payload] };
     case 'ADD_RETURN':
       return { ...state, returns: [...state.returns, action.payload] };
+    case 'ADD_PAYMENT_TO_SALE':
+      return {
+        ...state,
+        sales: state.sales.map(sale =>
+          sale.id === action.payload.saleId
+            ? { ...sale, payments: [...(sale.payments || []), action.payload.payment] }
+            : sale
+        ),
+      };
+    case 'ADD_PAYMENT_TO_PURCHASE':
+      return {
+        ...state,
+        purchases: state.purchases.map(purchase =>
+          purchase.id === action.payload.purchaseId
+            ? { ...purchase, payments: [...(purchase.payments || []), action.payload.payment] }
+            : purchase
+        ),
+      };
     default:
       return state;
   }
@@ -75,27 +95,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const storedState = localStorage.getItem('bhavaniSareesState');
         if (storedState) {
             const parsedState = JSON.parse(storedState);
-            // Validate the parsed state to ensure it has the correct structure.
-            // This prevents crashes if localStorage data is corrupted or from an older app version.
             const validatedState: AppState = {
                 customers: Array.isArray(parsedState.customers) ? parsedState.customers : [],
                 suppliers: Array.isArray(parsedState.suppliers) ? parsedState.suppliers : [],
                 products: Array.isArray(parsedState.products) ? parsedState.products : [],
-                sales: Array.isArray(parsedState.sales) ? parsedState.sales : [],
-                purchases: Array.isArray(parsedState.purchases) ? parsedState.purchases : [],
+                sales: (Array.isArray(parsedState.sales) ? parsedState.sales : []).map((s: any) => ({ ...s, payments: s.payments || [] })),
+                purchases: (Array.isArray(parsedState.purchases) ? parsedState.purchases : []).map((p: any) => ({ ...p, payments: p.payments || [] })),
                 returns: Array.isArray(parsedState.returns) ? parsedState.returns : [],
             };
             dispatch({ type: 'SET_STATE', payload: validatedState });
         }
     } catch (error) {
         console.error("Could not load or parse state from localStorage, using initial state.", error);
-        // If data is corrupted, remove it to prevent future errors.
         localStorage.removeItem('bhavaniSareesState');
     }
   }, []);
 
   useEffect(() => {
-    // Avoid writing the initial empty state to localStorage on first render
     if (state !== initialState) {
         try {
             localStorage.setItem('bhavaniSareesState', JSON.stringify(state));

@@ -13,42 +13,42 @@ const ReportsPage: React.FC = () => {
     const [startDate, setStartDate] = useState<string>('');
     const [endDate, setEndDate] = useState<string>('');
 
-    // 1. Filter sales by the selected date range
     const filteredSalesByDate = state.sales.filter(sale => {
-        if (!startDate && !endDate) return true; // No date filter applied
+        if (!startDate && !endDate) return true;
         const saleDate = new Date(sale.date);
-
         if (startDate) {
             const start = new Date(startDate);
-            start.setHours(0, 0, 0, 0); // Start of the selected day
+            start.setHours(0, 0, 0, 0);
             if (saleDate < start) return false;
         }
-
         if (endDate) {
             const end = new Date(endDate);
-            end.setHours(23, 59, 59, 999); // End of the selected day
+            end.setHours(23, 59, 59, 999);
             if (saleDate > end) return false;
         }
         return true;
     });
 
-    // 2. Calculate customer dues based on the date-filtered sales
     const customerDues = filteredSalesByDate
-        .filter(sale => !sale.isPaid)
+        .map(sale => {
+            const amountPaid = (sale.payments || []).reduce((sum, p) => sum + p.amount, 0);
+            const dueAmount = sale.totalAmount - amountPaid;
+            return { ...sale, dueAmount };
+        })
+        .filter(sale => sale.dueAmount > 0.01)
         .reduce((acc, sale) => {
             const customer = state.customers.find(c => c.id === sale.customerId);
             if (customer) {
                 if (!acc[customer.id]) {
                     acc[customer.id] = { ...customer, totalDue: 0 };
                 }
-                acc[customer.id].totalDue += sale.totalAmount;
+                acc[customer.id].totalDue += sale.dueAmount;
             }
             return acc;
         }, {} as {[key: string]: Customer & { totalDue: number } });
 
     const customerDuesArray: (Customer & { totalDue: number })[] = Object.values(customerDues);
 
-    // 3. Filter the final dues list by the selected area
     const filteredDues = selectedArea 
         ? customerDuesArray.filter(c => c.area.toLowerCase() === selectedArea.toLowerCase())
         : customerDuesArray;
@@ -189,12 +189,12 @@ const ReportsPage: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredDues.length > 0 ? filteredDues.map(customer => (
+                            {filteredDues.length > 0 ? filteredDues.sort((a,b) => b.totalDue - a.totalDue).map(customer => (
                                 <tr key={customer.id} className="border-b">
                                     <td className="p-2 font-medium">{customer.name}</td>
                                     <td className="p-2">{customer.phone}</td>
                                     <td className="p-2">{customer.area}</td>
-                                    <td className="p-2 text-right font-semibold text-red-600">₹{customer.totalDue.toLocaleString('en-IN')}</td>
+                                    <td className="p-2 text-right font-semibold text-red-600">₹{customer.totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                                 </tr>
                             )) : (
                                 <tr>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, Share2, Search, X } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
-import { Sale, SaleItem, Customer, Product } from '../types';
+import { Sale, SaleItem, Customer, Product, Payment } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import jsPDF from 'jspdf';
@@ -14,7 +14,9 @@ const SalesPage: React.FC = () => {
     const [newItem, setNewItem] = useState<{ productId: string; productName: string; quantity: string; price: string }>({ productId: '', productName: '', quantity: '1', price: '' });
     const [discount, setDiscount] = useState('0');
     
-    // State for the product selection modal
+    const [paymentAmount, setPaymentAmount] = useState('');
+    const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'UPI' | 'CHEQUE'>('CASH');
+
     const [isSelectingProduct, setIsSelectingProduct] = useState(false);
     const [productSearchTerm, setProductSearchTerm] = useState('');
 
@@ -38,7 +40,7 @@ const SalesPage: React.FC = () => {
             productId: product.id,
             productName: product.name,
             price: product.salePrice.toString(),
-            quantity: '1', // default quantity
+            quantity: '1',
         });
         setIsSelectingProduct(false);
         setProductSearchTerm('');
@@ -50,18 +52,15 @@ const SalesPage: React.FC = () => {
         const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
         const pageWidth = doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
 
-        // Title
         doc.setFontSize(26);
         doc.setFont('helvetica', 'bold');
         doc.text('Bhavani Sarees Invoice', pageWidth / 2, 22, { align: 'center' });
 
-        // Invoice Info
         doc.setFontSize(11);
         doc.setFont('helvetica', 'normal');
         doc.text(`Invoice ID: ${sale.id}`, 20, 40);
         doc.text(`Date: ${new Date(sale.date).toLocaleDateString()}`, 20, 46);
 
-        // Customer Info
         doc.setFont('helvetica', 'bold');
         doc.text('Billed To:', 20, 60);
         doc.setFont('helvetica', 'normal');
@@ -69,7 +68,6 @@ const SalesPage: React.FC = () => {
         doc.text(customer.phone, 20, 72);
         doc.text(`${customer.address}, ${customer.area}`, 20, 78);
 
-        // Table
         const tableColumn = ["#", "Item", "Qty", "Price", "Total"];
         const tableRows: (string | number)[][] = [];
 
@@ -100,15 +98,18 @@ const SalesPage: React.FC = () => {
             }
         });
 
-        // Totals
         const finalY = (doc as any).lastAutoTable.finalY || 150;
         const subtotal = sale.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-
+        const amountPaid = sale.payments.reduce((sum, p) => sum + p.amount, 0);
+        const amountDue = sale.totalAmount - amountPaid;
+        
         const totalsData = [
             ['Subtotal:', `Rs. ${formatCurrency(subtotal)}`],
             ['GST:', `Rs. ${formatCurrency(sale.gstAmount)}`],
             ['Discount:', `- Rs. ${formatCurrency(sale.discount)}`],
-            ['Total:', `Rs. ${formatCurrency(sale.totalAmount)}`]
+            ['Total:', `Rs. ${formatCurrency(sale.totalAmount)}`],
+            ['Amount Paid:', `Rs. ${formatCurrency(amountPaid)}`],
+            ['Amount Due:', `Rs. ${formatCurrency(amountDue)}`]
         ];
         
         autoTable(doc, {
@@ -117,31 +118,24 @@ const SalesPage: React.FC = () => {
             theme: 'plain',
             tableWidth: 'wrap',
             margin: { left: pageWidth - 90 },
-            styles: {
-                fontSize: 12,
-                cellPadding: 1.5,
-                overflow: 'visible'
-            },
+            styles: { fontSize: 12, cellPadding: 1.5, overflow: 'visible' },
             columnStyles: {
                 0: { halign: 'right', cellWidth: 30 },
                 1: { halign: 'right', cellWidth: 'auto' },
             },
             didDrawCell: (data) => {
-                if (data.row.index === totalsData.length - 1) {
+                if (data.row.index >= 3) { // Style Total, Paid, and Due
                     doc.setFont('helvetica', 'bold');
                 }
             },
         });
 
-
-        // Footer
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
         doc.text('Thank you for your business!', pageWidth / 2, pageHeight - 20, { align: 'center' });
 
-        // Save the PDF
         const today = new Date();
-        const dateString = today.toISOString().split('T')[0]; // YYYY-MM-DD
+        const dateString = today.toISOString().split('T')[0];
         const randomNumber = Math.floor(1000 + Math.random() * 9000);
         doc.save(`BhavaniSarees-Invoice-${dateString}-${randomNumber}.pdf`);
     };
@@ -162,6 +156,21 @@ const SalesPage: React.FC = () => {
         const totalAmount = subtotal + gstAmount - parseFloat(discount);
         const saleId = `SALE-${Date.now()}`;
 
+        const payments: Payment[] = [];
+        const paidAmount = parseFloat(paymentAmount || '0');
+        if (paidAmount > 0) {
+            if (paidAmount > totalAmount) {
+                alert(`Paid amount (₹${paidAmount}) cannot be greater than the total amount (₹${totalAmount}).`);
+                return;
+            }
+            payments.push({
+                id: `PAY-${Date.now()}`,
+                amount: paidAmount,
+                method: paymentMethod,
+                date: new Date().toISOString(),
+            });
+        }
+
         const newSale: Sale = {
             id: saleId,
             customerId,
@@ -170,7 +179,7 @@ const SalesPage: React.FC = () => {
             gstAmount,
             totalAmount,
             date: new Date().toISOString(),
-            isPaid: false,
+            payments,
         };
 
         dispatch({ type: 'ADD_SALE', payload: newSale });
@@ -184,6 +193,7 @@ const SalesPage: React.FC = () => {
             generateInvoicePDF(newSale, customer);
             
             const itemsText = items.map(item => `- ${item.productName} (x${item.quantity}): ₹${(item.price * item.quantity).toFixed(2)}`).join('\n');
+            const amountDue = totalAmount - paidAmount;
             
             const invoiceText = `*Bhavani Sarees Invoice Summary*\n\n` +
                 `*Invoice ID:* ${saleId}\n` +
@@ -194,10 +204,12 @@ const SalesPage: React.FC = () => {
                 `*GST:* ₹${gstAmount.toFixed(2)}\n` +
                 `*Discount:* -₹${parseFloat(discount).toFixed(2)}\n` +
                 `--------------------\n` +
-                `*Total Amount: ₹${totalAmount.toFixed(2)}*\n\n` +
+                `*Total Amount: ₹${totalAmount.toFixed(2)}*\n` +
+                `*Amount Paid: ₹${paidAmount.toFixed(2)}*\n` +
+                `*Balance Due: ₹${amountDue.toFixed(2)}*\n\n` +
                 `Thank you for your business!`;
 
-            if (window.confirm(`Sale created successfully! Invoice PDF has been downloaded.\n\nTotal: ₹${totalAmount.toFixed(2)}\n\nDo you want to share a summary on WhatsApp?`)) {
+            if (window.confirm(`Sale created successfully! Invoice PDF has been downloaded.\n\nTotal: ₹${totalAmount.toFixed(2)}\nDue: ₹${amountDue.toFixed(2)}\n\nDo you want to share a summary on WhatsApp?`)) {
                 const encodedText = encodeURIComponent(invoiceText);
                 const whatsappUrl = `https://wa.me/?text=${encodedText}`;
                 window.open(whatsappUrl, '_blank');
@@ -209,6 +221,8 @@ const SalesPage: React.FC = () => {
         setCustomerId('');
         setItems([]);
         setDiscount('0');
+        setPaymentAmount('');
+        setPaymentMethod('CASH');
     };
     
     const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -219,7 +233,6 @@ const SalesPage: React.FC = () => {
     }, 0);
     const total = subtotal + gstTotal - parseFloat(discount || '0');
 
-    // Filter products for selection modal
     const inStockProducts = state.products.filter(p => 
         p.quantity > 0 &&
         (p.name.toLowerCase().includes(productSearchTerm.toLowerCase()) || 
@@ -322,7 +335,7 @@ const SalesPage: React.FC = () => {
                 </div>
             </Card>
 
-            <Card title="Summary">
+            <Card title="Summary & Payment">
                 <div className="space-y-2">
                     <div className="flex justify-between"><span>Subtotal:</span><span>₹{subtotal.toFixed(2)}</span></div>
                     <div className="flex justify-between"><span>GST:</span><span>₹{gstTotal.toFixed(2)}</span></div>
@@ -331,6 +344,21 @@ const SalesPage: React.FC = () => {
                         <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} className="w-24 p-1 border rounded text-right"/>
                     </div>
                     <div className="flex justify-between font-bold text-lg pt-2 border-t"><span>Total:</span><span>₹{total.toFixed(2)}</span></div>
+                </div>
+                 <div className="pt-4 mt-4 border-t space-y-3">
+                    <h3 className="font-semibold text-gray-800">Add Payment (Optional)</h3>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Amount Paid</label>
+                        <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} placeholder={`Total is ₹${total.toFixed(2)}`} className="w-full p-2 border rounded" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Payment Method</label>
+                        <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as any)} className="w-full p-2 border rounded">
+                            <option value="CASH">Cash</option>
+                            <option value="UPI">UPI</option>
+                            <option value="CHEQUE">Cheque</option>
+                        </select>
+                    </div>
                 </div>
                  <Button onClick={handleCreateSale} className="w-full mt-4">
                     <Share2 className="w-4 h-4 mr-2" />

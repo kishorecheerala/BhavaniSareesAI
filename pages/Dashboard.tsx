@@ -9,13 +9,17 @@ const Dashboard: React.FC = () => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [restoreStatus, setRestoreStatus] = useState<{ type: 'info' | 'success' | 'error', message: string } | null>(null);
 
-    const totalCustomerDues = state.sales
-        .filter(sale => !sale.isPaid)
-        .reduce((sum, sale) => sum + sale.totalAmount, 0);
+    const totalCustomerDues = state.sales.reduce((sum, sale) => {
+        const amountPaid = (sale.payments || []).reduce((paidSum, p) => paidSum + p.amount, 0);
+        const due = sale.totalAmount - amountPaid;
+        return sum + (due > 0 ? due : 0);
+    }, 0);
 
-    const totalPurchaseDues = state.purchases
-        .filter(purchase => !purchase.isPaid)
-        .reduce((sum, purchase) => sum + purchase.totalAmount, 0);
+    const totalPurchaseDues = state.purchases.reduce((sum, purchase) => {
+        const amountPaid = (purchase.payments || []).reduce((paidSum, p) => paidSum + p.amount, 0);
+        const due = purchase.totalAmount - amountPaid;
+        return sum + (due > 0 ? due : 0);
+    }, 0);
 
     const lowStockProducts = state.products.filter(p => p.quantity > 0 && p.quantity <= 5).length;
     
@@ -89,7 +93,6 @@ const Dashboard: React.FC = () => {
                 setRestoreStatus({ type: 'info', message: 'Data validated. Applying update...' });
                 dispatch({ type: 'SET_STATE', payload: validatedState });
                 
-                // Use a short delay to allow React state to update before showing final success
                 setTimeout(() => {
                    setRestoreStatus({ type: 'success', message: 'Data restored successfully! The app is now using the new data.' });
                 }, 100);

@@ -1,4 +1,11 @@
 
+export interface Payment {
+  id: string;
+  amount: number;
+  date: string; // ISO string
+  method: 'CASH' | 'UPI' | 'CHEQUE';
+}
+
 export interface Customer {
   id: string; // Manual input
   name: string;
@@ -43,7 +50,7 @@ export interface Sale {
   gstAmount: number;
   totalAmount: number;
   date: string; // ISO string
-  isPaid: boolean;
+  payments: Payment[];
 }
 
 export interface PurchaseItem {
@@ -62,7 +69,7 @@ export interface Purchase {
   totalAmount: number;
   date: string; // ISO string
   invoiceUrl?: string; // For uploaded invoice
-  isPaid: boolean;
+  payments: Payment[];
 }
 
 export interface Return {

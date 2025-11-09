@@ -3,42 +3,26 @@
 import React, { useState } from 'react';
 import { Plus, Upload } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
-import { Supplier, Product, Purchase, PurchaseItem } from '../types';
+import { Supplier, Product, Purchase, PurchaseItem, Payment } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
-
-// Dummy excel handler. In a real scenario, you'd use a library like 'xlsx'.
-const handleExcelImport = (file: File, dispatch: React.Dispatch<any>) => {
-    alert("Excel import functionality is a placeholder. In a real app, this would parse the file and add products.");
-    // Example logic:
-    // const reader = new FileReader();
-    // reader.onload = (evt) => {
-    //     const data = new Uint8Array(evt.target.result);
-    //     const workbook = XLSX.read(data, {type: 'array'});
-    //     const sheetName = workbook.SheetNames[0];
-    //     const worksheet = workbook.Sheets[sheetName];
-    //     const json = XLSX.utils.sheet_to_json(worksheet);
-    //     json.forEach((row: any) => {
-    //         const newProduct: Product = { ... };
-    //         dispatch({ type: 'ADD_PRODUCT', payload: newProduct });
-    //     });
-    // };
-    // reader.readAsArrayBuffer(file);
-}
-
 
 const PurchasesPage: React.FC = () => {
     const { state, dispatch } = useAppContext();
     const [view, setView] = useState<'list' | 'add_supplier' | 'add_purchase'>('list');
     const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
 
-    // Add Supplier State
     const [newSupplier, setNewSupplier] = useState<Omit<Supplier, 'id'>>({ name: '', phone: '', location: '' });
     
-    // Add Purchase State
     const [supplierId, setSupplierId] = useState('');
     const [items, setItems] = useState<PurchaseItem[]>([]);
     const [newItem, setNewItem] = useState<{ productId: string, productName: string, quantity: string, price: string, gstPercent: string, saleValue: string }>({ productId: '', productName: '', quantity: '1', price: '', gstPercent: '5', saleValue: '' });
+    const [paymentAmount, setPaymentAmount] = useState('');
+    const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'UPI' | 'CHEQUE'>('CASH');
+
+    const [paymentModalState, setPaymentModalState] = useState<{ isOpen: boolean, purchaseId: string | null }>({ isOpen: false, purchaseId: null });
+    const [paymentDetails, setPaymentDetails] = useState({ amount: '', method: 'CASH' as 'CASH' | 'UPI' | 'CHEQUE' });
+
 
     const handleAddSupplier = () => {
         if (!newSupplier.name || !newSupplier.phone || !newSupplier.location) {
@@ -66,42 +50,107 @@ const PurchasesPage: React.FC = () => {
             return;
         }
         const totalAmount = items.reduce((sum, i) => sum + (i.price * i.quantity), 0);
+        
+        const payments: Payment[] = [];
+        const paidAmount = parseFloat(paymentAmount || '0');
+        if (paidAmount > 0) {
+             if (paidAmount > totalAmount) {
+                alert(`Paid amount (₹${paidAmount}) cannot be greater than the total amount (₹${totalAmount}).`);
+                return;
+            }
+            payments.push({
+                id: `PAY-P-${Date.now()}`,
+                amount: paidAmount,
+                method: paymentMethod,
+                date: new Date().toISOString(),
+            });
+        }
+        
         const newPurchase: Purchase = {
             id: `PUR-${Date.now()}`,
             supplierId,
             items,
             totalAmount,
             date: new Date().toISOString(),
-            isPaid: false
+            payments
         };
         dispatch({ type: 'ADD_PURCHASE', payload: newPurchase });
 
-        // Add/update products in stock
         items.forEach(item => {
-            const product: Product = {
-                id: item.productId,
-                name: item.productName,
-                quantity: item.quantity,
-                purchasePrice: item.price,
-                salePrice: item.saleValue,
-                gstPercent: item.gstPercent
-            };
+            const product: Product = { id: item.productId, name: item.productName, quantity: item.quantity, purchasePrice: item.price, salePrice: item.saleValue, gstPercent: item.gstPercent };
             dispatch({ type: 'ADD_PRODUCT', payload: product });
         });
         
         alert("Purchase added successfully!");
-        // Reset form state
         setSupplierId('');
         setItems([]);
+        setPaymentAmount('');
+        setPaymentMethod('CASH');
         setView('list');
+    };
+
+    const handleAddPaymentToPurchase = () => {
+        const purchase = state.purchases.find(p => p.id === paymentModalState.purchaseId);
+        if (!purchase || !paymentDetails.amount) return;
+        
+        const amountPaid = purchase.payments.reduce((sum, p) => sum + p.amount, 0);
+        const dueAmount = purchase.totalAmount - amountPaid;
+        const newPaymentAmount = parseFloat(paymentDetails.amount);
+
+        if(newPaymentAmount > dueAmount) {
+             alert(`Payment exceeds due amount.`);
+             return;
+        }
+
+        const payment: Payment = {
+            id: `PAY-P-${Date.now()}`,
+            amount: newPaymentAmount,
+            method: paymentDetails.method,
+            date: new Date().toISOString()
+        };
+
+        dispatch({ type: 'ADD_PAYMENT_TO_PURCHASE', payload: { purchaseId: purchase.id, payment } });
+        
+        setPaymentModalState({ isOpen: false, purchaseId: null });
+        setPaymentDetails({ amount: '', method: 'CASH' });
     };
     
     const fileInputRef = React.useRef<HTMLInputElement>(null);
+    
+    const PaymentModal = () => {
+        const purchase = state.purchases.find(p => p.id === paymentModalState.purchaseId);
+        if (!paymentModalState.isOpen || !purchase) return null;
+        
+        const amountPaid = purchase.payments.reduce((sum, p) => sum + p.amount, 0);
+        const dueAmount = purchase.totalAmount - amountPaid;
+
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <Card title="Add Payment to Supplier" className="w-full max-w-sm">
+                    <div className="space-y-4">
+                        <p>Invoice Total: <span className="font-bold">₹{purchase.totalAmount.toLocaleString('en-IN')}</span></p>
+                        <p>Amount Due: <span className="font-bold text-red-600">₹{dueAmount.toLocaleString('en-IN')}</span></p>
+                        <input type="number" placeholder="Amount" value={paymentDetails.amount} onChange={e => setPaymentDetails({ ...paymentDetails, amount: e.target.value })} className="w-full p-2 border rounded" autoFocus/>
+                        <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any })} className="w-full p-2 border rounded">
+                            <option value="CASH">Cash</option>
+                            <option value="UPI">UPI</option>
+                            <option value="CHEQUE">Cheque</option>
+                        </select>
+                        <div className="flex gap-2">
+                           <Button onClick={handleAddPaymentToPurchase} className="w-full">Save Payment</Button>
+                           <Button onClick={() => setPaymentModalState({isOpen: false, purchaseId: null})} variant="secondary" className="w-full">Cancel</Button>
+                        </div>
+                    </div>
+                </Card>
+            </div>
+        )
+    };
     
     if (selectedSupplier) {
         const supplierPurchases = state.purchases.filter(p => p.supplierId === selectedSupplier.id);
         return (
             <div className="space-y-4">
+                {paymentModalState.isOpen && <PaymentModal />}
                 <Button onClick={() => setSelectedSupplier(null)}>&larr; Back to Purchases</Button>
                 <Card title={`Supplier Details: ${selectedSupplier.name}`}>
                     <p><strong>ID:</strong> {selectedSupplier.id}</p>
@@ -111,31 +160,57 @@ const PurchasesPage: React.FC = () => {
                 <Card title="Purchase History">
                     {supplierPurchases.length > 0 ? (
                         <div className="space-y-4">
-                            {supplierPurchases.slice().reverse().map(purchase => (
+                            {supplierPurchases.slice().reverse().map(purchase => {
+                                const amountPaid = purchase.payments.reduce((sum, p) => sum + p.amount, 0);
+                                const dueAmount = purchase.totalAmount - amountPaid;
+                                const isPaid = dueAmount <= 0.01;
+
+                                return (
                                 <div key={purchase.id} className="p-3 bg-gray-50 rounded-lg border">
                                     <div className="flex justify-between items-start mb-2">
                                         <div>
                                             <p className="font-semibold">{new Date(purchase.date).toLocaleString()}</p>
-                                            <p className={`text-sm font-bold ${purchase.isPaid ? 'text-green-600' : 'text-red-600'}`}>
-                                                {purchase.isPaid ? 'Paid' : 'Due'}
+                                            <p className={`text-sm font-bold ${isPaid ? 'text-green-600' : 'text-red-600'}`}>
+                                                {isPaid ? 'Paid' : `Due: ₹${dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
                                             </p>
                                         </div>
                                         <p className="font-bold text-lg text-primary">
                                             ₹{purchase.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                         </p>
                                     </div>
-                                    <div className="pl-4 mt-2 border-l-2 border-purple-200">
-                                        <h4 className="font-semibold text-sm text-gray-700 mb-1">Items Purchased:</h4>
-                                        <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                                            {purchase.items.map((item, index) => (
-                                                <li key={index}>
-                                                    {item.productName} (x{item.quantity}) @ ₹{item.price.toLocaleString('en-IN')} each
-                                                </li>
-                                            ))}
-                                        </ul>
+                                    <div className="pl-4 mt-2 border-l-2 border-purple-200 space-y-3">
+                                        <div>
+                                            <h4 className="font-semibold text-sm text-gray-700 mb-1">Items Purchased:</h4>
+                                            <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                                                {purchase.items.map((item, index) => (
+                                                    <li key={index}>
+                                                        {item.productName} (x{item.quantity}) @ ₹{item.price.toLocaleString('en-IN')} each
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                        {purchase.payments.length > 0 && (
+                                            <div>
+                                                <h4 className="font-semibold text-sm text-gray-700 mb-1">Payments Made:</h4>
+                                                 <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                                                    {purchase.payments.map(payment => (
+                                                        <li key={payment.id}>
+                                                            ₹{payment.amount.toLocaleString('en-IN')} via {payment.method} on {new Date(payment.date).toLocaleDateString()}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+                                        {!isPaid && (
+                                            <div className="pt-2">
+                                                 <Button onClick={() => setPaymentModalState({ isOpen: true, purchaseId: purchase.id })} className="w-full sm:w-auto">
+                                                    <Plus size={16} className="mr-2"/> Add Payment
+                                                </Button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                            ))}
+                            )})}
                         </div>
                     ) : (
                         <p className="text-gray-500">No purchases recorded from this supplier.</p>
@@ -150,7 +225,7 @@ const PurchasesPage: React.FC = () => {
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                 <h1 className="text-2xl font-bold text-primary">Purchases</h1>
                 <div>
-                  <input type="file" accept=".xlsx, .xls" ref={fileInputRef} className="hidden" onChange={(e) => e.target.files && handleExcelImport(e.target.files[0], dispatch)} />
+                  <input type="file" accept=".xlsx, .xls" ref={fileInputRef} className="hidden" onChange={(e) => alert("Feature coming soon!")} />
                   <Button onClick={() => fileInputRef.current?.click()} variant="secondary" className="w-full sm:w-auto">
                       <Upload className="w-4 h-4 mr-2" />
                       Import Stock
@@ -173,11 +248,8 @@ const PurchasesPage: React.FC = () => {
                                     <div key={purchase.id} 
                                         className="p-3 bg-gray-50 rounded-lg border cursor-pointer hover:shadow-md transition-shadow"
                                         onClick={() => {
-                                            if (supplier) {
-                                                setSelectedSupplier(supplier);
-                                            } else {
-                                                alert(`Could not find details for supplier ID: ${purchase.supplierId}. The supplier may have been deleted.`);
-                                            }
+                                            if (supplier) setSelectedSupplier(supplier);
+                                            else alert(`Supplier not found.`);
                                         }}
                                     >
                                         <div className="flex justify-between items-center">
@@ -222,7 +294,7 @@ const PurchasesPage: React.FC = () => {
                         </select>
                     </Card>
                      <Card title="Purchase Items">
-                         {items.length > 0 ? (
+                         {items.length > 0 && (
                             <div className="space-y-2 mb-4">
                                 {items.map((item, index) => (
                                     <div key={index} className="p-2 bg-gray-100 rounded text-sm flex justify-between">
@@ -231,7 +303,7 @@ const PurchasesPage: React.FC = () => {
                                     </div>
                                 ))}
                             </div>
-                         ) : null }
+                         ) }
                          <div className="pt-4 border-t space-y-3">
                             <h3 className="font-semibold">Add New Item</h3>
                             <input type="text" placeholder="Saree Code / ID" value={newItem.productId} onChange={e => setNewItem({...newItem, productId: e.target.value})} className="w-full p-2 border rounded" />
@@ -244,6 +316,22 @@ const PurchasesPage: React.FC = () => {
                             </div>
                             <Button onClick={handleAddItem} className="w-full"><Plus className="mr-2" size={16}/>Add Item to Purchase</Button>
                          </div>
+                    </Card>
+                     <Card title="Add Payment (Optional)">
+                        <div className="space-y-2">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Amount Paid</label>
+                                <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} placeholder="Enter amount paid now" className="w-full p-2 border rounded" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Payment Method</label>
+                                <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as any)} className="w-full p-2 border rounded">
+                                    <option value="CASH">Cash</option>
+                                    <option value="UPI">UPI</option>
+                                    <option value="CHEQUE">Cheque</option>
+                                </select>
+                            </div>
+                        </div>
                     </Card>
                     <Button onClick={handleAddPurchase} className="w-full" disabled={items.length === 0 || !supplierId}>Complete Purchase</Button>
                     <Button onClick={() => { setView('list'); setSelectedSupplier(null); }} variant="secondary" className="w-full">Cancel</Button>
