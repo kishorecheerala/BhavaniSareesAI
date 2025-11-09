@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, User, Phone, MapPin, Search, Edit, Save, X, Trash2 } from 'lucide-react';
+import { Plus, User, Phone, MapPin, Search, Edit, Save, X, Trash2, IndianRupee, ShoppingCart } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Customer, Payment, Sale } from '../types';
 import Card from '../components/Card';
@@ -337,20 +337,34 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
             </div>
 
             <div className="space-y-3">
-                {filteredCustomers.map(customer => (
-                    <Card key={customer.id} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setSelectedCustomer(customer)}>
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <p className="font-bold text-lg text-primary flex items-center gap-2"><User size={16}/> {customer.name}</p>
-                                <p className="text-sm text-gray-600 flex items-center gap-2"><Phone size={14}/> {customer.phone}</p>
-                                <p className="text-sm text-gray-500 flex items-center gap-2"><MapPin size={14}/> {customer.area}</p>
+                {filteredCustomers.map(customer => {
+                    const customerSales = state.sales.filter(s => s.customerId === customer.id);
+                    const totalPurchase = customerSales.reduce((sum, s) => sum + s.totalAmount, 0);
+                    const totalPaid = customerSales.reduce((sum, s) => sum + s.payments.reduce((pSum, p) => pSum + p.amount, 0), 0);
+                    const totalDue = totalPurchase - totalPaid;
+
+                    return (
+                        <Card key={customer.id} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setSelectedCustomer(customer)}>
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <p className="font-bold text-lg text-primary flex items-center gap-2"><User size={16}/> {customer.name}</p>
+                                    <p className="text-sm text-gray-600 flex items-center gap-2"><Phone size={14}/> {customer.phone}</p>
+                                    <p className="text-sm text-gray-500 flex items-center gap-2"><MapPin size={14}/> {customer.area}</p>
+                                </div>
+                                <div className="text-right flex-shrink-0 ml-4">
+                                    <div className="flex items-center justify-end gap-1 text-green-600">
+                                        <ShoppingCart size={14} />
+                                        <span className="font-semibold">₹{totalPurchase.toLocaleString('en-IN')}</span>
+                                    </div>
+                                     <div className={`flex items-center justify-end gap-1 ${totalDue > 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                                        <IndianRupee size={14} />
+                                        <span className="font-semibold">₹{totalDue.toLocaleString('en-IN')}</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="text-right">
-                                <span className="text-gray-500">&rarr;</span>
-                            </div>
-                        </div>
-                    </Card>
-                ))}
+                        </Card>
+                    );
+                })}
             </div>
         </div>
     );

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Upload, IndianRupee, Edit, Save, X, Trash2, Download } from 'lucide-react';
+import { Plus, Upload, IndianRupee, Edit, Save, X, Trash2, Download, QrCode, Package } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Supplier, Product, Purchase, PurchaseItem, Payment } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
+import { Html5Qrcode } from 'html5-qrcode';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -23,6 +24,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
 
     const [isEditing, setIsEditing] = useState(false);
     const [editedSupplier, setEditedSupplier] = useState<Supplier | null>(null);
+    const [isScanning, setIsScanning] = useState(false);
 
     const [newSupplier, setNewSupplier] = useState<Omit<Supplier, 'id'>>({ name: '', phone: '', location: '' });
     
@@ -216,6 +218,10 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         resetPurchaseForm();
     };
 
+    const handleProductScanned = (decodedText: string) => {
+        setNewItem(prev => ({ ...prev, productId: decodedText }));
+        alert(`Scanned code: ${decodedText}. Please fill the remaining details.`);
+    };
 
     const handleAddPaymentToPurchase = () => {
         const purchase = state.purchases.find(p => p.id === paymentModalState.purchaseId);
@@ -270,8 +276,54 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     
+     const QRScannerModal: React.FC = () => {
+        const [scanStatus, setScanStatus] = useState<string>("Requesting camera permissions...");
+
+        useEffect(() => {
+            const html5QrCode = new Html5Qrcode("qr-reader-purchase");
+
+            const qrCodeSuccessCallback = (decodedText: string) => {
+                html5QrCode.stop().then(() => {
+                    setIsScanning(false);
+                    handleProductScanned(decodedText);
+                }).catch(err => {
+                    console.error("Failed to stop scanning.", err);
+                    setIsScanning(false);
+                    handleProductScanned(decodedText);
+                });
+            };
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+            html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback, undefined)
+                .then(() => {
+                    setScanStatus("Scanning for QR Code...");
+                })
+                .catch(err => {
+                    console.error("Camera start failed.", err);
+                    setScanStatus(`Failed to start camera. Please grant camera permissions. Error: ${err}`);
+                });
+
+            return () => {
+                 if (html5QrCode && html5QrCode.isScanning) {
+                    html5QrCode.stop().catch(err => {
+                        console.error("Failed to stop QR scanner on cleanup.", err);
+                    });
+                }
+            };
+        }, []);
+
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-75 flex flex-col items-center justify-center z-50 p-4">
+                <Card title="Scan Product QR Code" className="w-full max-w-md">
+                    <div id="qr-reader-purchase" className="w-full"></div>
+                    {scanStatus && <p className="text-center text-sm mt-2 text-gray-600">{scanStatus}</p>}
+                    <Button onClick={() => setIsScanning(false)} variant="secondary" className="mt-4 w-full">Cancel Scan</Button>
+                </Card>
+            </div>
+        );
+    };
+
     const PaymentModal = () => {
-        // ... (existing code, unchanged)
         const purchase = state.purchases.find(p => p.id === paymentModalState.purchaseId);
         if (!paymentModalState.isOpen || !purchase) return null;
         const amountPaid = purchase.payments.reduce((sum, p) => sum + p.amount, 0);
@@ -303,7 +355,6 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     };
     
     if (selectedSupplier && editedSupplier) {
-        // ... (existing code, unchanged)
         const supplierPurchases = state.purchases.filter(p => p.supplierId === selectedSupplier.id);
         const supplierReturns = state.returns.filter(r => r.type === 'SUPPLIER' && r.partyId === selectedSupplier.id);
         const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -440,8 +491,9 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
 
     return (
         <div className="space-y-4">
+             {isScanning && <QRScannerModal />}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-                <h1 className="text-2xl font-bold text-primary">Purchases</h1>
+                <h1 className="text-2xl font-bold text-primary">Purchases & Suppliers</h1>
                 <div className="flex flex-col sm:flex-row gap-2">
                     <Button onClick={handleDownloadTemplate} variant="secondary" className="w-full sm:w-auto">
                         <Download className="w-4 h-4 mr-2" />
@@ -461,35 +513,43 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             </div>
             
             {view === 'list' && (
-                <Card title="Recent Purchases">
-                    {state.purchases.length > 0 ? (
+                <Card title="Supplier Overview">
+                    {state.suppliers.length > 0 ? (
                         <div className="space-y-3">
-                            {state.purchases.slice().reverse().map(purchase => {
-                                const supplier = state.suppliers.find(s => s.id === purchase.supplierId);
+                            {state.suppliers.map(supplier => {
+                                const supplierPurchases = state.purchases.filter(p => p.supplierId === supplier.id);
+                                const totalPurchase = supplierPurchases.reduce((sum, p) => sum + p.totalAmount, 0);
+                                const totalPaid = supplierPurchases.reduce((sum, p) => sum + p.payments.reduce((pSum, payment) => pSum + payment.amount, 0), 0);
+                                const totalDue = totalPurchase - totalPaid;
+
                                 return (
-                                    <div key={purchase.id} 
-                                        className="p-3 bg-gray-50 rounded-lg border cursor-pointer hover:shadow-md transition-shadow"
-                                        onClick={() => {
-                                            if (supplier) setSelectedSupplier(supplier);
-                                            else alert(`Supplier not found.`);
-                                        }}
+                                    <Card 
+                                        key={supplier.id} 
+                                        className="cursor-pointer hover:shadow-lg transition-shadow"
+                                        onClick={() => setSelectedSupplier(supplier)}
                                     >
-                                        <div className="flex justify-between items-center">
+                                        <div className="flex justify-between items-start">
                                             <div>
-                                                <p className="font-bold">{supplier ? supplier.name : 'Unknown Supplier'}</p>
-                                                <p className="text-sm text-gray-500">{new Date(purchase.date).toLocaleDateString()}</p>
+                                                <p className="font-bold text-lg text-primary">{supplier.name}</p>
+                                                <p className="text-sm text-gray-500">{supplier.location}</p>
                                             </div>
-                                            <div className="text-right">
-                                                <p className="font-semibold text-primary">₹{purchase.totalAmount.toLocaleString('en-IN')}</p>
-                                                <p className="text-xs text-gray-400">{purchase.items.length} item(s)</p>
+                                             <div className="text-right flex-shrink-0 ml-4">
+                                                <div className="flex items-center justify-end gap-1 text-blue-600">
+                                                    <Package size={14} />
+                                                    <span className="font-semibold">₹{totalPurchase.toLocaleString('en-IN')}</span>
+                                                </div>
+                                                 <div className={`flex items-center justify-end gap-1 ${totalDue > 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                                                    <IndianRupee size={14} />
+                                                    <span className="font-semibold">₹{totalDue.toLocaleString('en-IN')}</span>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    </Card>
                                 );
                             })}
                         </div>
                     ) : (
-                        <p className="text-gray-500">No purchases recorded yet.</p>
+                        <p className="text-gray-500">No suppliers added yet. Click "Add Supplier" to start.</p>
                     )}
                 </Card>
             )}
@@ -528,7 +588,12 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                          ) }
                          <div className="pt-4 border-t space-y-3">
                             <h3 className="font-semibold">Add New Item</h3>
-                            <input type="text" placeholder="Saree Code / ID" value={newItem.productId} onChange={e => setNewItem({...newItem, productId: e.target.value})} className="w-full p-2 border rounded" />
+                             <div className="flex flex-col sm:flex-row gap-2">
+                                <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full sm:w-auto flex-grow">
+                                    <QrCode size={16} className="mr-2"/> Scan Saree Code/ID
+                                </Button>
+                                <input type="text" placeholder="Or Enter Manually" value={newItem.productId} onChange={e => setNewItem({...newItem, productId: e.target.value})} className="w-full sm:w-auto flex-grow p-2 border rounded" />
+                            </div>
                             <input type="text" placeholder="Saree Name" value={newItem.productName} onChange={e => setNewItem({...newItem, productName: e.target.value})} className="w-full p-2 border rounded" />
                             <div className="grid grid-cols-2 gap-2">
                                 <input type="number" placeholder="Quantity" value={newItem.quantity} onChange={e => setNewItem({...newItem, quantity: e.target.value})} className="w-full p-2 border rounded" />

@@ -6,7 +6,7 @@ import Card from '../components/Card';
 import Button from '../components/Button';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 
 
 const getLocalDateString = (date = new Date()) => {
@@ -17,7 +17,7 @@ const getLocalDateString = (date = new Date()) => {
 };
 
 // Base64 encoded PNG of the user-provided sacred symbols image
-const sacredSymbols_base64 = "data:image/png;base64,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4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4";
+const sacredSymbols_base64 = "data:image/png;base64,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4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4ECAAB0g6g+fr8MAAAAsP4ECAAB0g6g+fr8MAAAAsP4gAAACQEAQAABoB4";
 
 interface SalesPageProps {
   setIsDirty: (isDirty: boolean) => void;
@@ -97,7 +97,6 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     };
 
     const handleRecordStandalonePayment = () => {
-        // ... (existing code, unchanged)
         if (!customerId) {
             alert('Please select a customer to record a payment for.');
             return;
@@ -143,7 +142,6 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     };
     
     const handleCreateSaleAndShare = async () => {
-        // ... (existing code, unchanged)
          const customer = state.customers.find(c => c.id === customerId);
         if (!customer || items.length === 0) {
             alert('Please select a customer and add at least one item.');
@@ -288,29 +286,38 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     };
     
     const QRScannerModal: React.FC = () => {
+        const [scanStatus, setScanStatus] = useState<string>("Requesting camera permissions...");
+
         useEffect(() => {
-            const scanner = new Html5QrcodeScanner(
-                "qr-reader",
-                { fps: 10, qrbox: { width: 250, height: 250 } },
-                false
-            );
+            const html5QrCode = new Html5Qrcode("qr-reader");
 
-            const onScanSuccess = (decodedText: string) => {
-                scanner.clear();
-                setIsScanning(false);
-                handleProductScanned(decodedText);
+            const qrCodeSuccessCallback = (decodedText: string) => {
+                html5QrCode.stop().then(() => {
+                    setIsScanning(false);
+                    handleProductScanned(decodedText);
+                }).catch(err => {
+                    console.error("Failed to stop scanning.", err);
+                    setIsScanning(false);
+                    handleProductScanned(decodedText);
+                });
             };
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
-            const onScanFailure = (error: any) => {
-                // handle scan failure, usually better to ignore and keep scanning.
-            };
-
-            scanner.render(onScanSuccess, onScanFailure);
+            html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback, undefined)
+                .then(() => {
+                    setScanStatus("Scanning for QR Code...");
+                })
+                .catch(err => {
+                    console.error("Camera start failed.", err);
+                    setScanStatus(`Failed to start camera. Please grant camera permissions in your browser settings. Error: ${err}`);
+                });
 
             return () => {
-                scanner.clear().catch(error => {
-                    console.error("Failed to clear html5-qrcode-scanner.", error);
-                });
+                 if (html5QrCode && html5QrCode.isScanning) {
+                    html5QrCode.stop().catch(err => {
+                        console.error("Failed to stop QR scanner on cleanup.", err);
+                    });
+                }
             };
         }, []);
 
@@ -318,6 +325,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             <div className="fixed inset-0 bg-black bg-opacity-75 flex flex-col items-center justify-center z-50 p-4">
                 <Card title="Scan Product QR Code" className="w-full max-w-md">
                     <div id="qr-reader" className="w-full"></div>
+                    {scanStatus && <p className="text-center text-sm mt-2 text-gray-600">{scanStatus}</p>}
                     <Button onClick={() => setIsScanning(false)} variant="secondary" className="mt-4 w-full">Cancel Scan</Button>
                 </Card>
             </div>

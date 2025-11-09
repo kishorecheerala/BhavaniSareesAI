@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { IndianRupee, UserCheck, AlertTriangle, Download, Upload, ShoppingCart, Package, XCircle, CheckCircle, Info } from 'lucide-react';
+import React, { useState, useMemo, useRef } from 'react';
+import { IndianRupee, UserCheck, AlertTriangle, Download, Upload, ShoppingCart, Package, XCircle, CheckCircle, Info, Calendar } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -8,6 +8,9 @@ const Dashboard: React.FC = () => {
     const { state, dispatch } = useAppContext();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [restoreStatus, setRestoreStatus] = useState<{ type: 'info' | 'success' | 'error', message: string } | null>(null);
+
+    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
     const totalCustomerDues = state.sales.reduce((sum, sale) => {
         const amountPaid = (sale.payments || []).reduce((paidSum, p) => paidSum + p.amount, 0);
@@ -26,6 +29,24 @@ const Dashboard: React.FC = () => {
     const totalSales = state.sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
     const totalPurchases = state.purchases.reduce((sum, purchase) => sum + purchase.totalAmount, 0);
     
+    const availableYears = useMemo(() => {
+        const years = new Set(state.sales.map(s => new Date(s.date).getFullYear()));
+        if (!years.has(new Date().getFullYear())) {
+            years.add(new Date().getFullYear());
+        }
+        // FIX: Explicitly type the sort function parameters to resolve potential type inference issues.
+        return Array.from(years).sort((a: number, b: number) => b - a);
+    }, [state.sales]);
+
+    const monthlySalesTotal = useMemo(() => {
+        return state.sales
+            .filter(sale => {
+                const saleDate = new Date(sale.date);
+                return saleDate.getFullYear() === selectedYear && saleDate.getMonth() === selectedMonth;
+            })
+            .reduce((sum, sale) => sum + sale.totalAmount, 0);
+    }, [state.sales, selectedMonth, selectedYear]);
+
     const handleBackup = () => {
         try {
             const data = localStorage.getItem('bhavaniSareesState');
@@ -153,19 +174,21 @@ const Dashboard: React.FC = () => {
         );
     };
 
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
     return (
         <div className="space-y-6">
             <h1 className="text-2xl font-bold text-primary">Dashboard</h1>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <MetricCard 
                     icon={ShoppingCart} 
-                    title="Total Sales" 
+                    title="Total Sales (All Time)" 
                     value={totalSales} 
                     color="bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg" 
                 />
                  <MetricCard 
                     icon={Package} 
-                    title="Total Purchases" 
+                    title="Total Purchases (All Time)" 
                     value={totalPurchases} 
                     color="bg-gradient-to-br from-teal-500 to-cyan-600 shadow-lg" 
                 />
@@ -181,14 +204,35 @@ const Dashboard: React.FC = () => {
                     value={totalPurchaseDues} 
                     color="bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg"
                 />
-                <MetricCard 
-                    icon={UserCheck} 
-                    title="Total Customers" 
-                    value={state.customers.length} 
-                    color="bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg"
-                    unit=""
-                />
-                <MetricCard 
+                <Card title="Monthly Sales Report" className="md:col-span-2">
+                    <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                        <select
+                            value={selectedMonth}
+                            onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                            className="w-full p-2 border rounded-lg"
+                        >
+                            {monthNames.map((month, index) => (
+                                <option key={month} value={index}>{month}</option>
+                            ))}
+                        </select>
+                        <select
+                            value={selectedYear}
+                            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                            className="w-full p-2 border rounded-lg"
+                        >
+                            {availableYears.map(year => (
+                                <option key={year} value={year}>{year}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="text-center p-4 bg-purple-50 rounded-lg">
+                        <p className="text-lg font-semibold text-primary">Sales for {monthNames[selectedMonth]} {selectedYear}</p>
+                        <p className="text-3xl font-bold text-primary mt-2">
+                            ₹{monthlySalesTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </p>
+                    </div>
+                </Card>
+                 <MetricCard 
                     icon={AlertTriangle} 
                     title="Low Stock Items" 
                     value={lowStockProducts} 
@@ -220,10 +264,6 @@ const Dashboard: React.FC = () => {
                     </Button>
                 </div>
             </Card>
-
-             <Card title="Recent Activity">
-                <p className="text-gray-500">Activity feed coming soon...</p>
-             </Card>
         </div>
     );
 };
