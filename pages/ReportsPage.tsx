@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Download, Filter } from 'lucide-react';
+import { Download, Filter, XCircle } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Customer } from '../types';
 import Card from '../components/Card';
@@ -10,8 +10,30 @@ import autoTable from 'jspdf-autotable';
 const ReportsPage: React.FC = () => {
     const { state } = useAppContext();
     const [selectedArea, setSelectedArea] = useState<string>('');
+    const [startDate, setStartDate] = useState<string>('');
+    const [endDate, setEndDate] = useState<string>('');
 
-    const customerDues = state.sales
+    // 1. Filter sales by the selected date range
+    const filteredSalesByDate = state.sales.filter(sale => {
+        if (!startDate && !endDate) return true; // No date filter applied
+        const saleDate = new Date(sale.date);
+
+        if (startDate) {
+            const start = new Date(startDate);
+            start.setHours(0, 0, 0, 0); // Start of the selected day
+            if (saleDate < start) return false;
+        }
+
+        if (endDate) {
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999); // End of the selected day
+            if (saleDate > end) return false;
+        }
+        return true;
+    });
+
+    // 2. Calculate customer dues based on the date-filtered sales
+    const customerDues = filteredSalesByDate
         .filter(sale => !sale.isPaid)
         .reduce((acc, sale) => {
             const customer = state.customers.find(c => c.id === sale.customerId);
@@ -26,15 +48,22 @@ const ReportsPage: React.FC = () => {
 
     const customerDuesArray: (Customer & { totalDue: number })[] = Object.values(customerDues);
 
+    // 3. Filter the final dues list by the selected area
     const filteredDues = selectedArea 
         ? customerDuesArray.filter(c => c.area.toLowerCase() === selectedArea.toLowerCase())
         : customerDuesArray;
 
     const uniqueAreas = [...new Set(state.customers.map(c => c.area))];
 
+    const handleClearFilters = () => {
+        setSelectedArea('');
+        setStartDate('');
+        setEndDate('');
+    };
+
     const generatePDF = () => {
         if (filteredDues.length === 0) {
-            alert("No data to export.");
+            alert("No data to export for the selected filters.");
             return;
         }
         const doc = new jsPDF();
@@ -43,13 +72,21 @@ const ReportsPage: React.FC = () => {
         doc.text('Customer Dues Report', 14, 22);
         doc.setFontSize(11);
         doc.setTextColor(100);
-        doc.text(`Generated on: ${date}`, 14, 28);
-        if(selectedArea) {
-            doc.text(`Filtered by Area: ${selectedArea}`, 14, 34);
+        
+        let currentY = 28;
+        doc.text(`Generated on: ${date}`, 14, currentY);
+        
+        if (selectedArea) {
+            currentY += 6;
+            doc.text(`Filtered by Area: ${selectedArea}`, 14, currentY);
+        }
+        if (startDate || endDate) {
+            currentY += 6;
+            doc.text(`Date Range: ${startDate || 'Start'} to ${endDate || 'End'}`, 14, currentY);
         }
 
         autoTable(doc, {
-            startY: 40,
+            startY: currentY + 6,
             head: [['Name', 'Phone', 'Area', 'Due Amount (Rs.)']],
             body: filteredDues.map(c => [
                 c.name,
@@ -79,19 +116,17 @@ const ReportsPage: React.FC = () => {
     
     const generateCSV = () => {
         if (filteredDues.length === 0) {
-            alert("No data to export.");
+            alert("No data to export for the selected filters.");
             return;
         }
-        // Use quotes to handle potential commas in string fields
         const escapeCsvCell = (cell: any) => `"${String(cell).replace(/"/g, '""')}"`;
-
         const headers = ['Name', 'Phone', 'Area', 'Due Amount'];
         const rows = filteredDues.map(c => 
             [
                 escapeCsvCell(c.name),
                 escapeCsvCell(c.phone),
                 escapeCsvCell(c.area),
-                c.totalDue // No quotes for numbers
+                c.totalDue
             ].join(',')
         );
         
@@ -112,20 +147,35 @@ const ReportsPage: React.FC = () => {
             <h1 className="text-2xl font-bold text-primary">Reports</h1>
             
             <Card title="Customer Dues Collection List">
-                <div className="flex flex-col sm:flex-row gap-4 mb-4">
-                    <div className="relative flex-grow">
-                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                        <select
-                            value={selectedArea}
-                            onChange={(e) => setSelectedArea(e.target.value)}
-                            className="w-full p-2 pl-10 border rounded-lg"
-                        >
-                            <option value="">All Areas</option>
-                            {uniqueAreas.map(area => <option key={area} value={area}>{area}</option>)}
-                        </select>
+                <div className="flex flex-col gap-4 mb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="relative">
+                            <label htmlFor="areaFilter" className="block text-sm font-medium text-gray-700 mb-1">Filter by Area</label>
+                            <Filter className="absolute left-3 bottom-2.5 text-gray-400" size={20} />
+                            <select
+                                id="areaFilter"
+                                value={selectedArea}
+                                onChange={(e) => setSelectedArea(e.target.value)}
+                                className="w-full p-2 pl-10 border rounded-lg appearance-none"
+                            >
+                                <option value="">All Areas</option>
+                                {uniqueAreas.map(area => <option key={area} value={area}>{area}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                            <input id="startDate" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full p-2 border rounded-lg" />
+                        </div>
+                        <div>
+                            <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                            <input id="endDate" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full p-2 border rounded-lg" />
+                        </div>
                     </div>
-                    <Button onClick={generatePDF} className="w-full sm:w-auto"><Download className="w-4 h-4 mr-2" />Export PDF</Button>
-                    <Button onClick={generateCSV} variant="secondary" className="w-full sm:w-auto"><Download className="w-4 h-4 mr-2" />Export CSV</Button>
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        <Button onClick={generatePDF} className="w-full sm:w-auto"><Download className="w-4 h-4 mr-2" />Export PDF</Button>
+                        <Button onClick={generateCSV} variant="secondary" className="w-full sm:w-auto"><Download className="w-4 h-4 mr-2" />Export CSV</Button>
+                        <Button onClick={handleClearFilters} variant="danger" className="w-full sm:w-auto sm:ml-auto"><XCircle className="w-4 h-4 mr-2" />Clear Filters</Button>
+                    </div>
                 </div>
                 
                 <div className="overflow-x-auto">
@@ -139,14 +189,18 @@ const ReportsPage: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredDues.map(customer => (
+                            {filteredDues.length > 0 ? filteredDues.map(customer => (
                                 <tr key={customer.id} className="border-b">
                                     <td className="p-2 font-medium">{customer.name}</td>
                                     <td className="p-2">{customer.phone}</td>
                                     <td className="p-2">{customer.area}</td>
                                     <td className="p-2 text-right font-semibold text-red-600">₹{customer.totalDue.toLocaleString('en-IN')}</td>
                                 </tr>
-                            ))}
+                            )) : (
+                                <tr>
+                                    <td colSpan={4} className="text-center text-gray-500 p-4">No dues found for the selected filters.</td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>

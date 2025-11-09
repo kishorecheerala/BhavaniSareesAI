@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { Plus, Upload } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
@@ -146,20 +147,20 @@ const PurchasesPage: React.FC = () => {
 
     return (
         <div className="space-y-4">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                 <h1 className="text-2xl font-bold text-primary">Purchases</h1>
                 <div>
                   <input type="file" accept=".xlsx, .xls" ref={fileInputRef} className="hidden" onChange={(e) => e.target.files && handleExcelImport(e.target.files[0], dispatch)} />
-                  <Button onClick={() => fileInputRef.current?.click()} className="mr-2" variant="secondary">
+                  <Button onClick={() => fileInputRef.current?.click()} variant="secondary" className="w-full sm:w-auto">
                       <Upload className="w-4 h-4 mr-2" />
                       Import Stock
                   </Button>
                 </div>
             </div>
 
-            <div className="flex gap-2">
-                <Button onClick={() => { setView('add_purchase'); setSelectedSupplier(null); }}><Plus className="w-4 h-4 mr-2" />Add Purchase</Button>
-                <Button onClick={() => { setView('add_supplier'); setSelectedSupplier(null); }} variant="secondary"><Plus className="w-4 h-4 mr-2" />Add Supplier</Button>
+            <div className="flex flex-col sm:flex-row gap-2">
+                <Button className="w-full sm:w-auto" onClick={() => { setView('add_purchase'); setSelectedSupplier(null); }}><Plus className="w-4 h-4 mr-2" />Add Purchase</Button>
+                <Button className="w-full sm:w-auto" onClick={() => { setView('add_supplier'); setSelectedSupplier(null); }} variant="secondary"><Plus className="w-4 h-4 mr-2" />Add Supplier</Button>
             </div>
             
             {view === 'list' && (
