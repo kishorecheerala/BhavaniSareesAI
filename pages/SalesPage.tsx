@@ -5,7 +5,6 @@ import { Sale, SaleItem, Customer, Product, Payment } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
 const SalesPage: React.FC = () => {
     const { state, dispatch } = useAppContext();
@@ -149,97 +148,99 @@ const SalesPage: React.FC = () => {
         const doc = new jsPDF({
             orientation: 'portrait',
             unit: 'mm',
-            format: [80, 150] // Receipt-like size
+            format: [80, 160] // A bit taller for the new header
         });
         
         const pageWidth = doc.internal.pageSize.getWidth();
-        const pageHeight = doc.internal.pageSize.getHeight();
-        let yPos = 8;
         const margin = 5;
+        let yPos = 5;
 
-        // Background
-        const bgSvg = `<svg width="80" height="150" viewBox="0 0 80 150" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#fff" /><g opacity="0.08" fill="#6a0dad"><path d="M10 10 C 15 0, 25 0, 30 10 S 40 20, 30 30 C 20 40, 10 40, 10 30 S 5 20, 10 10 Z" /><path d="M50 40 C 55 30, 65 30, 70 40 S 80 50, 70 60 C 60 70, 50 70, 50 60 S 45 50, 50 40 Z" /><path d="M20 70 C 25 60, 35 60, 40 70 S 50 80, 40 90 C 30 100, 20 100, 20 90 S 15 80, 20 70 Z" /><path d="M60 100 C 65 90, 75 90, 80 100 S 90 110, 80 120 C 70 130, 60 130, 60 120 S 55 110, 60 100 Z" /><path d="M5 130 C 10 120, 20 120, 25 130 S 35 140, 25 150 C 15 160, 5 160, 5 150 S 0 140, 5 130 Z" /></g></svg>`;
-        const bgPngDataUrl = await svgToPngDataUrl(bgSvg, pageWidth * 4, pageHeight * 4);
-        doc.addImage(bgPngDataUrl, 'PNG', 0, 0, pageWidth, pageHeight);
+        // Sacred Symbols from user-provided image
+        const chakraSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.93" y1="4.93" x2="7.05" y2="7.05"/><line x1="16.95" y1="16.95" x2="19.07" y2="19.07"/><line x1="4.93" y1="19.07" x2="7.05" y2="16.95"/><line x1="16.95" y1="7.05" x2="19.07" y2="4.93"/></svg>`;
+        const tilakaSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C9.25 8 9.25 14 12 22"/><path d="M12 2c2.75 6 2.75 12 0 20"/><path d="M12 8v8"/></svg>`;
+        const shankhaSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a3 3 0 013-3h1m5 0h1a3 3 0 013 3v2a3 3 0 01-3 3h-1m-5 0H7a3 3 0 01-3-3v-2m14-2a2 2 0 10-4 0 4 4 0 10-8 0 6 6 0 1012 0Z"/></svg>`;
 
+        const logoSize = 10;
+        const logoY = yPos;
+        const totalLogoWidth = logoSize * 3 + 8; // 3 logos, 4mm padding between them
+        let logoX = (pageWidth - totalLogoWidth) / 2;
+        
+        const chakraPng = await svgToPngDataUrl(chakraSvg, 100, 100);
+        const tilakaPng = await svgToPngDataUrl(tilakaSvg, 100, 100);
+        const shankhaPng = await svgToPngDataUrl(shankhaSvg, 100, 100);
+        
+        doc.addImage(chakraPng, 'PNG', logoX, logoY, logoSize, logoSize);
+        logoX += logoSize + 4;
+        doc.addImage(tilakaPng, 'PNG', logoX, logoY, logoSize, logoSize);
+        logoX += logoSize + 4;
+        doc.addImage(shankhaPng, 'PNG', logoX, logoY, logoSize, logoSize);
+        yPos += logoSize + 4;
+        
         // Invocation
         doc.setFont('Times-Roman', 'italic');
         doc.setFontSize(9);
         doc.setTextColor('#333333');
         doc.text('OM namo venkatesaya', pageWidth / 2, yPos, { align: 'center' });
-        yPos += 8;
-        
-        // Venkateswara Logo
-        const venkateswaraLogoSvg = `<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path fill="#6a0dad" d="M256 0C161.766 0 83.266 78.5 83.266 172.734v33.032c-27.563 7.344-46.891 32.25-46.891 60.203v16.516c0 34.625 28.109 62.734 62.734 62.734h4.125c-2.313 13.063-2.313 27.844 1.719 42.625 14.75 52.375 66.813 91.438 134.906 91.438s120.156-39.063 134.906-91.438c4.031-14.781 4.031-29.563 1.719-42.625h4.125c34.625 0 62.734-28.109 62.734-62.734v-16.516c0-27.953-19.328-52.859-46.891-60.203v-33.032C428.734 78.5 350.234 0 256 0zm-20.625 219.625c-11.375 0-20.625-9.25-20.625-20.625s9.25-20.625 20.625-20.625 20.625 9.25 20.625 20.625-9.25 20.625-20.625 20.625zm41.25 0c-11.375 0-20.625-9.25-20.625-20.625s9.25-20.625 20.625-20.625 20.625 9.25 20.625 20.625-9.25 20.625-20.625 20.625z" /></svg>`;
-        const venkyLogoPngDataUrl = await svgToPngDataUrl(venkateswaraLogoSvg, 512, 512);
+        yPos += 7;
 
-        // Title with Logos
-        const logoSize = 8;
-        const logoPadding = 2;
+        // Title
         doc.setFont('Times-Roman', 'bold');
         doc.setFontSize(16);
-        const titleText = 'Bhavani Sarees';
-        const textWidth = doc.getTextWidth(titleText);
-        const totalHeaderWidth = logoSize + logoPadding + textWidth + logoPadding + logoSize;
-        let currentX = (pageWidth - totalHeaderWidth) / 2;
-        
-        doc.addImage(venkyLogoPngDataUrl, 'PNG', currentX, yPos - (logoSize/2) -1, logoSize, logoSize);
-        currentX += logoSize + logoPadding;
-        
         doc.setTextColor('#6a0dad');
-        doc.text(titleText, currentX, yPos);
+        doc.text('Bhavani Sarees', pageWidth / 2, yPos, { align: 'center' });
+        yPos += 6;
         
-        currentX += textWidth + logoPadding;
-        doc.addImage(venkyLogoPngDataUrl, 'PNG', currentX, yPos - (logoSize/2) -1, logoSize, logoSize);
-        yPos += 8;
-
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
-        doc.setTextColor('#333333');
-        doc.text('Thank you for your business', pageWidth / 2, yPos, { align: 'center' });
-        yPos += 8;
-
         // Divider
         doc.setDrawColor('#EAE0F5');
         doc.line(margin, yPos, pageWidth - margin, yPos);
-        yPos += 6;
+        yPos += 5;
 
         // Invoice Info
+        doc.setFontSize(8);
         doc.text(`Invoice: ${sale.id}`, margin, yPos);
-        doc.text(`Date: ${new Date(sale.date).toLocaleString()}`, pageWidth - margin, yPos, { align: 'right' });
-        yPos += 8;
+        yPos += 4;
+        doc.text(`Date: ${new Date(sale.date).toLocaleString()}`, margin, yPos);
+        yPos += 7;
 
         // Billed To
         doc.setFont('Times-Roman', 'bold');
         doc.text('Billed To:', margin, yPos);
+        yPos += 4;
         doc.setFont('helvetica', 'normal');
-        yPos += 4;
-        doc.text(customer.name, margin, yPos);
-        yPos += 4;
-        doc.text(`${customer.address}, ${customer.area}`, margin, yPos);
-        yPos += 8;
+        const customerDetails = doc.splitTextToSize(`${customer.name}\n${customer.address}, ${customer.area}`, pageWidth - margin * 2);
+        doc.text(customerDetails, margin, yPos);
+        yPos += (customerDetails.length * 4) + 4;
 
-        // Items Table
-        const formatCurrency = (val: number) => val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        const tableRows = sale.items.map(item => [
-            `${item.productName}\n  (x${item.quantity} @ ${formatCurrency(item.price)})`,
-            formatCurrency(item.price * item.quantity)
-        ]);
+        // Purchase Details Header
+        doc.setFont('Times-Roman', 'bold');
+        doc.setFontSize(10);
+        doc.text('Purchase Details', margin, yPos);
+        yPos += 5;
         
-        autoTable(doc, {
-            body: tableRows,
-            startY: yPos,
-            theme: 'plain',
-            styles: { fontSize: 8, cellPadding: 1 },
-            columnStyles: {
-                0: { cellWidth: 45 },
-                1: { halign: 'right' }
-            }
+        // Items Header
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.text('Item', margin, yPos);
+        doc.text('Total', pageWidth - margin, yPos, { align: 'right' });
+        yPos += 1;
+        doc.line(margin, yPos, pageWidth - margin, yPos);
+        yPos += 4;
+
+        // Items List (Manual Layout)
+        doc.setFont('helvetica', 'normal');
+        sale.items.forEach(item => {
+            const itemText = `${item.productName}\n(x${item.quantity} @ ${item.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })})`;
+            const itemLines = doc.splitTextToSize(itemText, 45); // Max width for item text
+            
+            const itemTotal = (item.price * item.quantity).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            
+            doc.text(itemLines, margin, yPos);
+            doc.text(itemTotal, pageWidth - margin, yPos, { align: 'right' });
+            
+            yPos += (itemLines.length * 4) + 2; // Move yPos down
         });
-
-        yPos = (doc as any).lastAutoTable.finalY + 5;
         
-        // Divider
+        yPos += 3;
         doc.line(margin, yPos, pageWidth - margin, yPos);
         yPos += 5;
 
@@ -249,20 +250,20 @@ const SalesPage: React.FC = () => {
         const amountDue = sale.totalAmount - amountPaid;
 
         const totals = [
-            ['Subtotal', formatCurrency(subtotal)],
-            ['GST', formatCurrency(sale.gstAmount)],
-            ['Discount', `- ${formatCurrency(sale.discount)}`],
-            ['Total', formatCurrency(sale.totalAmount)],
-            ['Paid', formatCurrency(amountPaid)],
-            ['Due', formatCurrency(amountDue)]
+            ['Subtotal', subtotal],
+            ['GST', sale.gstAmount],
+            ['Discount', -sale.discount],
+            ['Total', sale.totalAmount],
+            ['Paid', amountPaid],
+            ['Due', amountDue]
         ];
         
         doc.setFontSize(9);
         totals.forEach(([label, value], index) => {
             const isBold = index >= 3;
             doc.setFont('helvetica', isBold ? 'bold' : 'normal');
-            doc.text(label, margin + 30, yPos);
-            doc.text(`Rs. ${value}`, pageWidth - margin, yPos, { align: 'right' });
+            doc.text(label, pageWidth / 2 - 2, yPos, { align: 'right' });
+            doc.text(`Rs. ${value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, pageWidth - margin, yPos, { align: 'right' });
             yPos += 5;
         });
 
