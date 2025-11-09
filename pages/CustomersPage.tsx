@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Plus, User, Phone, MapPin, Search, X } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
@@ -14,7 +13,11 @@ const CustomersPage: React.FC = () => {
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
     const [paymentModalState, setPaymentModalState] = useState<{ isOpen: boolean, saleId: string | null }>({ isOpen: false, saleId: null });
-    const [paymentDetails, setPaymentDetails] = useState({ amount: '', method: 'CASH' as 'CASH' | 'UPI' | 'CHEQUE' });
+    const [paymentDetails, setPaymentDetails] = useState({
+        amount: '',
+        method: 'CASH' as 'CASH' | 'UPI' | 'CHEQUE',
+        date: new Date().toISOString().split('T')[0] 
+    });
 
     const handleAddCustomer = () => {
         if (newCustomer.name && newCustomer.phone && newCustomer.address && newCustomer.area) {
@@ -47,13 +50,13 @@ const CustomersPage: React.FC = () => {
             id: `PAY-${Date.now()}`,
             amount: newPaymentAmount,
             method: paymentDetails.method,
-            date: new Date().toISOString()
+            date: new Date(paymentDetails.date).toISOString()
         };
 
         dispatch({ type: 'ADD_PAYMENT_TO_SALE', payload: { saleId: sale.id, payment } });
         
         setPaymentModalState({ isOpen: false, saleId: null });
-        setPaymentDetails({ amount: '', method: 'CASH' });
+        setPaymentDetails({ amount: '', method: 'CASH', date: new Date().toISOString().split('T')[0] });
     };
 
     const filteredCustomers = state.customers.filter(c =>
@@ -86,6 +89,15 @@ const CustomersPage: React.FC = () => {
                                 <option value="UPI">UPI</option>
                                 <option value="CHEQUE">Cheque</option>
                             </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Payment Date</label>
+                            <input 
+                                type="date" 
+                                value={paymentDetails.date} 
+                                onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} 
+                                className="w-full p-2 border rounded"
+                            />
                         </div>
                         <div className="flex gap-2">
                            <Button onClick={handleAddPayment} className="w-full">Save Payment</Button>

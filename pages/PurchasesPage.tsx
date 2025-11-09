@@ -1,7 +1,5 @@
-
-
 import React, { useState } from 'react';
-import { Plus, Upload } from 'lucide-react';
+import { Plus, Upload, IndianRupee } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Supplier, Product, Purchase, PurchaseItem, Payment } from '../types';
 import Card from '../components/Card';
@@ -19,9 +17,14 @@ const PurchasesPage: React.FC = () => {
     const [newItem, setNewItem] = useState<{ productId: string, productName: string, quantity: string, price: string, gstPercent: string, saleValue: string }>({ productId: '', productName: '', quantity: '1', price: '', gstPercent: '5', saleValue: '' });
     const [paymentAmount, setPaymentAmount] = useState('');
     const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'UPI' | 'CHEQUE'>('CASH');
+    const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
 
     const [paymentModalState, setPaymentModalState] = useState<{ isOpen: boolean, purchaseId: string | null }>({ isOpen: false, purchaseId: null });
-    const [paymentDetails, setPaymentDetails] = useState({ amount: '', method: 'CASH' as 'CASH' | 'UPI' | 'CHEQUE' });
+    const [paymentDetails, setPaymentDetails] = useState({ 
+        amount: '', 
+        method: 'CASH' as 'CASH' | 'UPI' | 'CHEQUE',
+        date: new Date().toISOString().split('T')[0]
+    });
 
 
     const handleAddSupplier = () => {
@@ -44,6 +47,16 @@ const PurchasesPage: React.FC = () => {
         setNewItem({ productId: '', productName: '', quantity: '1', price: '', gstPercent: '5', saleValue: '' });
     }
 
+    const resetPurchaseForm = () => {
+        setSupplierId('');
+        setItems([]);
+        setPaymentAmount('');
+        setPaymentMethod('CASH');
+        setPaymentDate(new Date().toISOString().split('T')[0]);
+        setNewItem({ productId: '', productName: '', quantity: '1', price: '', gstPercent: '5', saleValue: '' });
+        setView('list');
+    };
+
     const handleAddPurchase = () => {
         if (!supplierId || items.length === 0) {
             alert("Please select a supplier and add at least one item.");
@@ -62,7 +75,7 @@ const PurchasesPage: React.FC = () => {
                 id: `PAY-P-${Date.now()}`,
                 amount: paidAmount,
                 method: paymentMethod,
-                date: new Date().toISOString(),
+                date: new Date(paymentDate).toISOString(),
             });
         }
         
@@ -82,12 +95,68 @@ const PurchasesPage: React.FC = () => {
         });
         
         alert("Purchase added successfully!");
-        setSupplierId('');
-        setItems([]);
-        setPaymentAmount('');
-        setPaymentMethod('CASH');
-        setView('list');
+        resetPurchaseForm();
     };
+
+    const handleRecordStandalonePayment = () => {
+        if (!supplierId) {
+            alert('Please select a supplier to record a payment for.');
+            return;
+        }
+
+        const paidAmount = parseFloat(paymentAmount || '0');
+        if (paidAmount <= 0) {
+            alert('Please enter a valid payment amount.');
+            return;
+        }
+
+        const outstandingPurchases = state.purchases
+            .filter(purchase => {
+                const paid = (purchase.payments || []).reduce((sum, p) => sum + p.amount, 0);
+                return purchase.supplierId === supplierId && (purchase.totalAmount - paid) > 0.01;
+            })
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        if (outstandingPurchases.length === 0) {
+            alert('This supplier has no outstanding dues.');
+            return;
+        }
+        
+        const totalDueForSupplier = outstandingPurchases.reduce((total, purchase) => {
+            const paid = (purchase.payments || []).reduce((sum, p) => sum + p.amount, 0);
+            return total + (purchase.totalAmount - paid);
+        }, 0);
+
+        if (paidAmount > totalDueForSupplier) {
+            alert(`Payment amount of ₹${paidAmount.toLocaleString('en-IN')} exceeds the total due of ₹${totalDueForSupplier.toLocaleString('en-IN')}.`);
+            return;
+        }
+        
+        let remainingPayment = paidAmount;
+        for (const purchase of outstandingPurchases) {
+            if (remainingPayment <= 0) break;
+
+            const paid = (purchase.payments || []).reduce((sum, p) => sum + p.amount, 0);
+            const dueAmount = purchase.totalAmount - paid;
+            
+            const amountToApply = Math.min(remainingPayment, dueAmount);
+
+            const newPayment: Payment = {
+                id: `PAY-P-${Date.now()}-${Math.random()}`,
+                amount: amountToApply,
+                method: paymentMethod,
+                date: new Date(paymentDate).toISOString()
+            };
+
+            dispatch({ type: 'ADD_PAYMENT_TO_PURCHASE', payload: { purchaseId: purchase.id, payment: newPayment } });
+            
+            remainingPayment -= amountToApply;
+        }
+        
+        alert(`Payment of ₹${paidAmount.toLocaleString('en-IN')} recorded successfully.`);
+        resetPurchaseForm();
+    };
+
 
     const handleAddPaymentToPurchase = () => {
         const purchase = state.purchases.find(p => p.id === paymentModalState.purchaseId);
@@ -106,13 +175,13 @@ const PurchasesPage: React.FC = () => {
             id: `PAY-P-${Date.now()}`,
             amount: newPaymentAmount,
             method: paymentDetails.method,
-            date: new Date().toISOString()
+            date: new Date(paymentDetails.date).toISOString()
         };
 
         dispatch({ type: 'ADD_PAYMENT_TO_PURCHASE', payload: { purchaseId: purchase.id, payment } });
         
         setPaymentModalState({ isOpen: false, purchaseId: null });
-        setPaymentDetails({ amount: '', method: 'CASH' });
+        setPaymentDetails({ amount: '', method: 'CASH', date: new Date().toISOString().split('T')[0] });
     };
     
     const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -136,6 +205,15 @@ const PurchasesPage: React.FC = () => {
                             <option value="UPI">UPI</option>
                             <option value="CHEQUE">Cheque</option>
                         </select>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Payment Date</label>
+                            <input 
+                                type="date" 
+                                value={paymentDetails.date} 
+                                onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} 
+                                className="w-full p-2 border rounded"
+                            />
+                        </div>
                         <div className="flex gap-2">
                            <Button onClick={handleAddPaymentToPurchase} className="w-full">Save Payment</Button>
                            <Button onClick={() => setPaymentModalState({isOpen: false, purchaseId: null})} variant="secondary" className="w-full">Cancel</Button>
@@ -220,6 +298,10 @@ const PurchasesPage: React.FC = () => {
         );
     }
 
+    const canCompletePurchase = supplierId && items.length > 0;
+    const canRecordPayment = supplierId && items.length === 0 && parseFloat(paymentAmount || '0') > 0;
+    const totalAmount = items.reduce((sum, i) => sum + (i.price * i.quantity), 0);
+
     return (
         <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
@@ -234,7 +316,7 @@ const PurchasesPage: React.FC = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2">
-                <Button className="w-full sm:w-auto" onClick={() => { setView('add_purchase'); setSelectedSupplier(null); }}><Plus className="w-4 h-4 mr-2" />Add Purchase</Button>
+                <Button className="w-full sm:w-auto" onClick={() => { setView('add_purchase'); setSelectedSupplier(null); }}><Plus className="w-4 h-4 mr-2" />Add Purchase/Payment</Button>
                 <Button className="w-full sm:w-auto" onClick={() => { setView('add_supplier'); setSelectedSupplier(null); }} variant="secondary"><Plus className="w-4 h-4 mr-2" />Add Supplier</Button>
             </div>
             
@@ -317,11 +399,11 @@ const PurchasesPage: React.FC = () => {
                             <Button onClick={handleAddItem} className="w-full"><Plus className="mr-2" size={16}/>Add Item to Purchase</Button>
                          </div>
                     </Card>
-                     <Card title="Add Payment (Optional)">
+                     <Card title={items.length > 0 ? 'Add Payment (Optional)' : 'Record Payment'}>
                         <div className="space-y-2">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Amount Paid</label>
-                                <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} placeholder="Enter amount paid now" className="w-full p-2 border rounded" />
+                                <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} placeholder={items.length > 0 ? `Total is ₹${totalAmount.toLocaleString('en-IN')}` : 'Enter amount paid'} className="w-full p-2 border rounded" />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Payment Method</label>
@@ -331,10 +413,34 @@ const PurchasesPage: React.FC = () => {
                                     <option value="CHEQUE">Cheque</option>
                                 </select>
                             </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Payment Date</label>
+                                <input 
+                                    type="date" 
+                                    value={paymentDate} 
+                                    onChange={e => setPaymentDate(e.target.value)} 
+                                    className="w-full p-2 border rounded"
+                                />
+                            </div>
                         </div>
                     </Card>
-                    <Button onClick={handleAddPurchase} className="w-full" disabled={items.length === 0 || !supplierId}>Complete Purchase</Button>
-                    <Button onClick={() => { setView('list'); setSelectedSupplier(null); }} variant="secondary" className="w-full">Cancel</Button>
+                    
+                    <div className="space-y-2">
+                        {canCompletePurchase ? (
+                            <Button onClick={handleAddPurchase} className="w-full">Complete Purchase</Button>
+                        ) : canRecordPayment ? (
+                            <Button onClick={handleRecordStandalonePayment} className="w-full">
+                                <IndianRupee className="w-4 h-4 mr-2" />
+                                Record Standalone Payment
+                            </Button>
+                        ) : (
+                            <Button className="w-full" disabled>
+                                {supplierId ? 'Add items or enter payment amount' : 'Select a supplier to begin'}
+                            </Button>
+                        )}
+                        <Button onClick={() => { setView('list'); setSelectedSupplier(null); }} variant="secondary" className="w-full">Cancel</Button>
+                    </div>
+
                 </div>
             )}
         </div>

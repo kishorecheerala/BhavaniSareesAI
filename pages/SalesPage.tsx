@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Share2, Search, X } from 'lucide-react';
+import { Plus, Trash2, Share2, Search, X, IndianRupee } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Sale, SaleItem, Customer, Product, Payment } from '../types';
 import Card from '../components/Card';
@@ -16,6 +16,7 @@ const SalesPage: React.FC = () => {
     
     const [paymentAmount, setPaymentAmount] = useState('');
     const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'UPI' | 'CHEQUE'>('CASH');
+    const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
 
     const [isSelectingProduct, setIsSelectingProduct] = useState(false);
     const [productSearchTerm, setProductSearchTerm] = useState('');
@@ -44,6 +45,75 @@ const SalesPage: React.FC = () => {
         });
         setIsSelectingProduct(false);
         setProductSearchTerm('');
+    };
+
+    const resetForm = () => {
+        setCustomerId('');
+        setItems([]);
+        setDiscount('0');
+        setPaymentAmount('');
+        setPaymentMethod('CASH');
+        setPaymentDate(new Date().toISOString().split('T')[0]);
+        setNewItem({ productId: '', productName: '', quantity: '1', price: '' });
+    };
+
+    const handleRecordPayment = () => {
+        if (!customerId) {
+            alert('Please select a customer to record a payment for.');
+            return;
+        }
+
+        const paidAmount = parseFloat(paymentAmount || '0');
+        if (paidAmount <= 0) {
+            alert('Please enter a valid payment amount.');
+            return;
+        }
+
+        const outstandingSales = state.sales
+            .filter(sale => {
+                const paid = (sale.payments || []).reduce((sum, p) => sum + p.amount, 0);
+                return sale.customerId === customerId && (sale.totalAmount - paid) > 0.01;
+            })
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        if (outstandingSales.length === 0) {
+            alert('This customer has no outstanding dues.');
+            return;
+        }
+
+        const totalDueForCustomer = outstandingSales.reduce((total, sale) => {
+            const paid = (sale.payments || []).reduce((sum, p) => sum + p.amount, 0);
+            return total + (sale.totalAmount - paid);
+        }, 0);
+
+        if (paidAmount > totalDueForCustomer) {
+            alert(`Payment amount of ₹${paidAmount.toLocaleString('en-IN')} exceeds the total due of ₹${totalDueForCustomer.toLocaleString('en-IN')}.`);
+            return;
+        }
+        
+        let remainingPayment = paidAmount;
+        for (const sale of outstandingSales) {
+            if (remainingPayment <= 0) break;
+
+            const paid = (sale.payments || []).reduce((sum, p) => sum + p.amount, 0);
+            const dueAmount = sale.totalAmount - paid;
+            
+            const amountToApply = Math.min(remainingPayment, dueAmount);
+
+            const newPayment: Payment = {
+                id: `PAY-${Date.now()}-${Math.random()}`,
+                amount: amountToApply,
+                method: paymentMethod,
+                date: new Date(paymentDate).toISOString()
+            };
+
+            dispatch({ type: 'ADD_PAYMENT_TO_SALE', payload: { saleId: sale.id, payment: newPayment } });
+            
+            remainingPayment -= amountToApply;
+        }
+        
+        alert(`Payment of ₹${paidAmount.toLocaleString('en-IN')} recorded successfully.`);
+        resetForm();
     };
 
 
@@ -167,7 +237,7 @@ const SalesPage: React.FC = () => {
                 id: `PAY-${Date.now()}`,
                 amount: paidAmount,
                 method: paymentMethod,
-                date: new Date().toISOString(),
+                date: new Date(paymentDate).toISOString(),
             });
         }
 
@@ -218,11 +288,7 @@ const SalesPage: React.FC = () => {
              alert(`Sale created successfully! Total: ₹${totalAmount.toFixed(2)}. Customer details not found for sharing.`);
         }
 
-        setCustomerId('');
-        setItems([]);
-        setDiscount('0');
-        setPaymentAmount('');
-        setPaymentMethod('CASH');
+        resetForm();
     };
     
     const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -239,6 +305,9 @@ const SalesPage: React.FC = () => {
          p.id.toLowerCase().includes(productSearchTerm.toLowerCase()))
     );
     
+    const canCreateSale = customerId && items.length > 0;
+    const canRecordPayment = customerId && items.length === 0 && parseFloat(paymentAmount || '0') > 0;
+
     const ProductSelectionModal = () => (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" aria-modal="true" role="dialog">
             <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
@@ -283,7 +352,7 @@ const SalesPage: React.FC = () => {
     return (
         <div className="space-y-4">
             {isSelectingProduct && <ProductSelectionModal />}
-            <h1 className="text-2xl font-bold text-primary">New Sale</h1>
+            <h1 className="text-2xl font-bold text-primary">New Sale / Payment</h1>
             <Card>
                 <div className="space-y-4">
                     <div>
@@ -346,10 +415,10 @@ const SalesPage: React.FC = () => {
                     <div className="flex justify-between font-bold text-lg pt-2 border-t"><span>Total:</span><span>₹{total.toFixed(2)}</span></div>
                 </div>
                  <div className="pt-4 mt-4 border-t space-y-3">
-                    <h3 className="font-semibold text-gray-800">Add Payment (Optional)</h3>
+                    <h3 className="font-semibold text-gray-800">{items.length > 0 ? 'Add Payment (Optional)' : 'Record Payment'}</h3>
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Amount Paid</label>
-                        <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} placeholder={`Total is ₹${total.toFixed(2)}`} className="w-full p-2 border rounded" />
+                        <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} placeholder={items.length > 0 ? `Total is ₹${total.toFixed(2)}` : 'Enter amount received'} className="w-full p-2 border rounded" />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Payment Method</label>
@@ -359,11 +428,33 @@ const SalesPage: React.FC = () => {
                             <option value="CHEQUE">Cheque</option>
                         </select>
                     </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Payment Date</label>
+                        <input 
+                            type="date" 
+                            value={paymentDate} 
+                            onChange={e => setPaymentDate(e.target.value)} 
+                            className="w-full p-2 border rounded"
+                        />
+                    </div>
                 </div>
-                 <Button onClick={handleCreateSale} className="w-full mt-4">
-                    <Share2 className="w-4 h-4 mr-2" />
-                    Create Sale & Generate Invoice
-                </Button>
+                <div className="w-full mt-4">
+                    {canCreateSale ? (
+                        <Button onClick={handleCreateSale} className="w-full">
+                            <Share2 className="w-4 h-4 mr-2" />
+                            Create Sale & Generate Invoice
+                        </Button>
+                    ) : canRecordPayment ? (
+                        <Button onClick={handleRecordPayment} className="w-full">
+                            <IndianRupee className="w-4 h-4 mr-2" />
+                            Record Standalone Payment
+                        </Button>
+                    ) : (
+                        <Button className="w-full" disabled>
+                            {customerId ? 'Add items or enter payment amount' : 'Select a customer to begin'}
+                        </Button>
+                    )}
+                </div>
             </Card>
         </div>
     );
