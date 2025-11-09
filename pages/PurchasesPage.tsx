@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Plus, Upload } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
@@ -39,16 +38,30 @@ const PurchasesPage: React.FC = () => {
     const [newItem, setNewItem] = useState<{ productId: string, productName: string, quantity: string, price: string, gstPercent: string, saleValue: string }>({ productId: '', productName: '', quantity: '1', price: '', gstPercent: '5', saleValue: '' });
 
     const handleAddSupplier = () => {
+        if (!newSupplier.name || !newSupplier.phone || !newSupplier.location) {
+            alert("Please fill all supplier details.");
+            return;
+        }
         dispatch({ type: 'ADD_SUPPLIER', payload: { ...newSupplier, id: `SUP-${Date.now()}` } });
+        setNewSupplier({ name: '', phone: '', location: '' });
         setView('list');
+        alert("Supplier added successfully!");
     };
 
     const handleAddItem = () => {
+         if (!newItem.productId || !newItem.productName || !newItem.quantity || !newItem.price || !newItem.saleValue) {
+            alert("Please fill all item fields.");
+            return;
+        }
         setItems([...items, { ...newItem, quantity: parseInt(newItem.quantity), price: parseFloat(newItem.price), gstPercent: parseFloat(newItem.gstPercent), saleValue: parseFloat(newItem.saleValue) }]);
         setNewItem({ productId: '', productName: '', quantity: '1', price: '', gstPercent: '5', saleValue: '' });
     }
 
     const handleAddPurchase = () => {
+        if (!supplierId || items.length === 0) {
+            alert("Please select a supplier and add at least one item.");
+            return;
+        }
         const totalAmount = items.reduce((sum, i) => sum + (i.price * i.quantity), 0);
         const newPurchase: Purchase = {
             id: `PUR-${Date.now()}`,
@@ -74,6 +87,9 @@ const PurchasesPage: React.FC = () => {
         });
         
         alert("Purchase added successfully!");
+        // Reset form state
+        setSupplierId('');
+        setItems([]);
         setView('list');
     };
     
@@ -99,17 +115,38 @@ const PurchasesPage: React.FC = () => {
             
             {view === 'list' && (
                 <Card title="Recent Purchases">
-                    {/* List of purchases */}
-                    <p className="text-gray-500">Purchase history will be shown here.</p>
+                    {state.purchases.length > 0 ? (
+                        <div className="space-y-3">
+                            {state.purchases.slice().reverse().map(purchase => {
+                                const supplier = state.suppliers.find(s => s.id === purchase.supplierId);
+                                return (
+                                    <div key={purchase.id} className="p-3 bg-gray-50 rounded-lg border">
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <p className="font-bold">{supplier ? supplier.name : 'Unknown Supplier'}</p>
+                                                <p className="text-sm text-gray-500">{new Date(purchase.date).toLocaleDateString()}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="font-semibold text-primary">₹{purchase.totalAmount.toLocaleString('en-IN')}</p>
+                                                <p className="text-xs text-gray-400">{purchase.items.length} item(s)</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <p className="text-gray-500">No purchases recorded yet.</p>
+                    )}
                 </Card>
             )}
 
             {view === 'add_supplier' && (
                 <Card title="New Supplier">
                     <div className="space-y-2">
-                        <input className="w-full p-2 border rounded" placeholder="Supplier Name" onChange={e => setNewSupplier({...newSupplier, name: e.target.value})} />
-                        <input className="w-full p-2 border rounded" placeholder="Phone" onChange={e => setNewSupplier({...newSupplier, phone: e.target.value})} />
-                        <input className="w-full p-2 border rounded" placeholder="Location" onChange={e => setNewSupplier({...newSupplier, location: e.target.value})} />
+                        <input className="w-full p-2 border rounded" placeholder="Supplier Name" value={newSupplier.name} onChange={e => setNewSupplier({...newSupplier, name: e.target.value})} />
+                        <input className="w-full p-2 border rounded" placeholder="Phone" value={newSupplier.phone} onChange={e => setNewSupplier({...newSupplier, phone: e.target.value})} />
+                        <input className="w-full p-2 border rounded" placeholder="Location" value={newSupplier.location} onChange={e => setNewSupplier({...newSupplier, location: e.target.value})} />
                         <Button onClick={handleAddSupplier} className="w-full">Save Supplier</Button>
                         <Button onClick={() => setView('list')} variant="secondary" className="w-full">Cancel</Button>
                     </div>
@@ -119,14 +156,25 @@ const PurchasesPage: React.FC = () => {
             {view === 'add_purchase' && (
                 <div className="space-y-4">
                      <Card>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
                         <select value={supplierId} onChange={e => setSupplierId(e.target.value)} className="w-full p-2 border rounded">
                             <option value="">Select Supplier</option>
                             {state.suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
                     </Card>
                      <Card title="Purchase Items">
-                         {items.map((item, index) => <div key={index} className="p-2 bg-gray-100 rounded">{item.productName} x {item.quantity}</div>)}
-                         <div className="mt-4 pt-4 border-t space-y-3">
+                         {items.length > 0 ? (
+                            <div className="space-y-2 mb-4">
+                                {items.map((item, index) => (
+                                    <div key={index} className="p-2 bg-gray-100 rounded text-sm flex justify-between">
+                                        <span>{item.productName} (x{item.quantity})</span>
+                                        <span>@ ₹{item.price.toLocaleString('en-IN')}</span>
+                                    </div>
+                                ))}
+                            </div>
+                         ) : null }
+                         <div className="pt-4 border-t space-y-3">
+                            <h3 className="font-semibold">Add New Item</h3>
                             <input type="text" placeholder="Saree Code / ID" value={newItem.productId} onChange={e => setNewItem({...newItem, productId: e.target.value})} className="w-full p-2 border rounded" />
                             <input type="text" placeholder="Saree Name" value={newItem.productName} onChange={e => setNewItem({...newItem, productName: e.target.value})} className="w-full p-2 border rounded" />
                             <div className="grid grid-cols-2 gap-2">
@@ -135,10 +183,10 @@ const PurchasesPage: React.FC = () => {
                                 <input type="number" placeholder="GST %" value={newItem.gstPercent} onChange={e => setNewItem({...newItem, gstPercent: e.target.value})} className="w-full p-2 border rounded" />
                                 <input type="number" placeholder="Sale Price" value={newItem.saleValue} onChange={e => setNewItem({...newItem, saleValue: e.target.value})} className="w-full p-2 border rounded" />
                             </div>
-                            <Button onClick={handleAddItem} className="w-full"><Plus className="mr-2" size={16}/>Add Item</Button>
+                            <Button onClick={handleAddItem} className="w-full"><Plus className="mr-2" size={16}/>Add Item to Purchase</Button>
                          </div>
                     </Card>
-                    <Button onClick={handleAddPurchase} className="w-full">Complete Purchase</Button>
+                    <Button onClick={handleAddPurchase} className="w-full" disabled={items.length === 0 || !supplierId}>Complete Purchase</Button>
                     <Button onClick={() => setView('list')} variant="secondary" className="w-full">Cancel</Button>
                 </div>
             )}
