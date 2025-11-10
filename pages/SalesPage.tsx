@@ -6,6 +6,7 @@ import Card from '../components/Card';
 import Button from '../components/Button';
 import jsPDF from 'jspdf';
 import { Html5Qrcode } from 'html5-qrcode';
+import DeleteButton from '../components/DeleteButton';
 
 
 const getLocalDateString = (date = new Date()) => {
@@ -534,9 +535,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <p>₹{(item.quantity * item.price).toLocaleString('en-IN')}</p>
-                                    <button onClick={() => handleRemoveItem(item.productId)} className="p-2 rounded-full text-red-500 hover:bg-red-100 transition-colors">
-                                        <Trash2 size={16}/>
-                                    </button>
+                                    <DeleteButton variant="remove" onClick={() => handleRemoveItem(item.productId)} />
                                 </div>
                             </div>
                         ))}

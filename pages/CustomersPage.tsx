@@ -5,6 +5,7 @@ import { Customer, Payment, Sale } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import ConfirmationModal from '../components/ConfirmationModal';
+import DeleteButton from '../components/DeleteButton';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -247,9 +248,11 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                                             </p>
                                         </div>
                                       </div>
-                                      <button onClick={(e) => { e.stopPropagation(); handleDeleteSale(sale.id); }} className="ml-4 flex-shrink-0 p-2 rounded-full text-red-500 hover:bg-red-100 transition-colors">
-                                          <Trash2 size={16} />
-                                      </button>
+                                      <DeleteButton 
+                                        variant="delete" 
+                                        onClick={(e) => { e.stopPropagation(); handleDeleteSale(sale.id); }} 
+                                        className="ml-4" 
+                                      />
                                     </div>
                                     <div className="pl-4 mt-2 border-l-2 border-purple-200 space-y-3">
                                         <div>

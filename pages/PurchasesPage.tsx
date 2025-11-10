@@ -6,6 +6,7 @@ import Card from '../components/Card';
 import Button from '../components/Button';
 import { Html5Qrcode } from 'html5-qrcode';
 import ConfirmationModal from '../components/ConfirmationModal';
+import DeleteButton from '../components/DeleteButton';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -46,6 +47,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     const [confirmModalState, setConfirmModalState] = useState<{ isOpen: boolean, purchaseIdToDelete: string | null }>({ isOpen: false, purchaseIdToDelete: null });
     
     const purchaseCsvInputRef = useRef<HTMLInputElement>(null);
+    const [isImportMode, setIsImportMode] = useState(false);
 
      useEffect(() => {
         let formIsDirty = false;
@@ -135,6 +137,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         setPaymentMethod('CASH');
         setPaymentDate(getLocalDateString());
         setNewItem({ productId: '', productName: '', quantity: '1', price: '', gstPercent: '5', saleValue: '' });
+        setIsImportMode(false);
         setView('list');
     };
 
@@ -447,6 +450,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                 });
             }
             setItems(importedItems);
+            setIsImportMode(true);
             showToast(`${importedItems.length} items loaded from CSV successfully.`);
 
         } catch (error) {
@@ -606,9 +610,11 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                             </p>
                                         </div>
                                       </div>
-                                       <button onClick={(e) => { e.stopPropagation(); handleDeletePurchase(purchase.id); }} className="ml-4 flex-shrink-0 p-2 rounded-full text-red-500 hover:bg-red-100 transition-colors">
-                                          <Trash2 size={16} />
-                                      </button>
+                                       <DeleteButton
+                                          variant="delete"
+                                          onClick={(e) => { e.stopPropagation(); handleDeletePurchase(purchase.id); }}
+                                          className="ml-4"
+                                       />
                                     </div>
                                     <div className="pl-4 mt-2 border-l-2 border-purple-200 space-y-3">
                                         <div>
@@ -819,49 +825,49 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                                 <label className="block text-xs font-medium text-gray-700">GST %</label>
                                                 <input type="number" value={item.gstPercent} onChange={(e) => handleItemUpdate(index, { ...item, gstPercent: parseFloat(e.target.value) || 0 })} className="w-full p-1 border rounded" />
                                             </div>
-                                            <Button variant="danger" onClick={() => handleRemoveItem(index)} className="p-2 h-8 w-8 flex-shrink-0">
-                                                <Trash2 size={14} />
-                                            </Button>
+                                            <DeleteButton variant="remove" onClick={() => handleRemoveItem(index)} />
                                         </div>
                                     </div>
                                 ))}
                             </div>
                          ) }
-                         <div className="pt-4 border-t space-y-3">
-                            <h3 className="font-semibold">Add New Item Manually</h3>
-                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Saree Code/ID</label>
-                                <div className="flex flex-col sm:flex-row gap-2 mt-1">
-                                    <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full sm:w-auto flex-grow">
-                                        <QrCode size={16} className="mr-2"/> Scan Saree Code/ID
-                                    </Button>
-                                    <input type="text" placeholder="Or Enter Manually" value={newItem.productId} onChange={e => setNewItem({...newItem, productId: e.target.value})} className="w-full sm:w-auto flex-grow p-2 border rounded" />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Saree Name</label>
-                                <input type="text" placeholder="Saree Name" value={newItem.productName} onChange={e => setNewItem({...newItem, productName: e.target.value})} className="w-full p-2 border rounded mt-1" />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Quantity</label>
-                                    <input type="number" placeholder="Quantity" value={newItem.quantity} onChange={e => setNewItem({...newItem, quantity: e.target.value})} className="w-full p-2 border rounded mt-1" />
+                         { !isImportMode && (
+                             <div className="pt-4 border-t space-y-3">
+                                <h3 className="font-semibold">Add New Item Manually</h3>
+                                 <div>
+                                    <label className="block text-sm font-medium text-gray-700">Saree Code/ID</label>
+                                    <div className="flex flex-col sm:flex-row gap-2 mt-1">
+                                        <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full sm:w-auto flex-grow">
+                                            <QrCode size={16} className="mr-2"/> Scan Saree Code/ID
+                                        </Button>
+                                        <input type="text" placeholder="Or Enter Manually" value={newItem.productId} onChange={e => setNewItem({...newItem, productId: e.target.value})} className="w-full sm:w-auto flex-grow p-2 border rounded" />
+                                    </div>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Purchase Price</label>
-                                    <input type="number" placeholder="Purchase Price" value={newItem.price} onChange={e => setNewItem({...newItem, price: e.target.value})} className="w-full p-2 border rounded mt-1" />
+                                    <label className="block text-sm font-medium text-gray-700">Saree Name</label>
+                                    <input type="text" placeholder="Saree Name" value={newItem.productName} onChange={e => setNewItem({...newItem, productName: e.target.value})} className="w-full p-2 border rounded mt-1" />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">GST %</label>
-                                    <input type="number" placeholder="GST %" value={newItem.gstPercent} onChange={e => setNewItem({...newItem, gstPercent: e.target.value})} className="w-full p-2 border rounded mt-1" />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Quantity</label>
+                                        <input type="number" placeholder="Quantity" value={newItem.quantity} onChange={e => setNewItem({...newItem, quantity: e.target.value})} className="w-full p-2 border rounded mt-1" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Purchase Price</label>
+                                        <input type="number" placeholder="Purchase Price" value={newItem.price} onChange={e => setNewItem({...newItem, price: e.target.value})} className="w-full p-2 border rounded mt-1" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">GST %</label>
+                                        <input type="number" placeholder="GST %" value={newItem.gstPercent} onChange={e => setNewItem({...newItem, gstPercent: e.target.value})} className="w-full p-2 border rounded mt-1" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Sale Price</label>
+                                        <input type="number" placeholder="Sale Price" value={newItem.saleValue} onChange={e => setNewItem({...newItem, saleValue: e.target.value})} className="w-full p-2 border rounded mt-1" />
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Sale Price</label>
-                                    <input type="number" placeholder="Sale Price" value={newItem.saleValue} onChange={e => setNewItem({...newItem, saleValue: e.target.value})} className="w-full p-2 border rounded mt-1" />
-                                </div>
-                            </div>
-                            <Button onClick={handleAddItem} className="w-full"><Plus className="mr-2" size={16}/>Add Item to Purchase</Button>
-                         </div>
+                                <Button onClick={handleAddItem} className="w-full"><Plus className="mr-2" size={16}/>Add Item to Purchase</Button>
+                             </div>
+                         )}
                     </Card>
                      <Card title={items.length > 0 ? 'Add Payment (Optional)' : 'Record Payment'}>
                         <div className="space-y-2">
@@ -902,7 +908,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                 {supplierId ? 'Add items or enter payment amount' : 'Select a supplier to begin'}
                             </Button>
                         )}
-                        <Button onClick={() => { setView('list'); setSelectedSupplier(null); }} variant="secondary" className="w-full">Cancel</Button>
+                        <Button onClick={resetPurchaseForm} variant="secondary" className="w-full">Cancel</Button>
                     </div>
 
                 </div>
