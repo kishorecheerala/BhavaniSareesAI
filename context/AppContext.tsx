@@ -1,236 +1,221 @@
-import React, { createContext, useContext, useReducer, useEffect, ReactNode, Dispatch } from 'react';
+import React, { createContext, useReducer, useContext, useEffect, ReactNode } from 'react';
 import { Customer, Supplier, Product, Sale, Purchase, Return, Payment } from '../types';
 
 interface AppState {
-    customers: Customer[];
-    suppliers: Supplier[];
-    products: Product[];
-    sales: Sale[];
-    purchases: Purchase[];
-    returns: Return[];
+  customers: Customer[];
+  suppliers: Supplier[];
+  products: Product[];
+  sales: Sale[];
+  purchases: Purchase[];
+  returns: Return[];
 }
 
 type Action =
-    | { type: 'SET_STATE'; payload: AppState }
-    | { type: 'ADD_CUSTOMER'; payload: Customer }
-    | { type: 'UPDATE_CUSTOMER'; payload: Customer }
-    | { type: 'ADD_SUPPLIER'; payload: Supplier }
-    | { type: 'UPDATE_SUPPLIER'; payload: Supplier }
-    | { type: 'ADD_PRODUCT'; payload: Product } // Adds or updates stock
-    | { type: 'UPDATE_PRODUCT'; payload: Product } // Edits product details
-    | { type: 'UPDATE_PRODUCT_STOCK'; payload: { productId: string; change: number } }
-    | { type: 'ADD_SALE'; payload: Sale }
-    | { type: 'DELETE_SALE'; payload: string } // saleId
-    | { type: 'ADD_PAYMENT_TO_SALE'; payload: { saleId: string; payment: Payment } }
-    | { type: 'ADD_PURCHASE'; payload: Purchase }
-    | { type: 'DELETE_PURCHASE'; payload: string } // purchaseId
-    | { type: 'ADD_PAYMENT_TO_PURCHASE'; payload: { purchaseId: string; payment: Payment } }
-    | { type: 'ADD_RETURN'; payload: Return };
+  | { type: 'SET_STATE'; payload: AppState }
+  | { type: 'ADD_CUSTOMER'; payload: Customer }
+  | { type: 'UPDATE_CUSTOMER'; payload: Customer }
+  | { type: 'ADD_SUPPLIER'; payload: Supplier }
+  | { type: 'UPDATE_SUPPLIER'; payload: Supplier }
+  | { type: 'ADD_PRODUCT'; payload: Product }
+  | { type: 'UPDATE_PRODUCT'; payload: Product }
+  | { type: 'UPDATE_PRODUCT_STOCK'; payload: { productId: string; change: number } }
+  | { type: 'ADD_SALE'; payload: Sale }
+  | { type: 'DELETE_SALE'; payload: string } // saleId
+  | { type: 'ADD_PURCHASE'; payload: Purchase }
+  | { type: 'DELETE_PURCHASE'; payload: string } // purchaseId
+  | { type: 'ADD_RETURN'; payload: Return }
+  | { type: 'ADD_PAYMENT_TO_SALE'; payload: { saleId: string; payment: Payment } }
+  | { type: 'ADD_PAYMENT_TO_PURCHASE'; payload: { purchaseId: string; payment: Payment } };
 
 const initialState: AppState = {
-    customers: [],
-    suppliers: [],
-    products: [],
-    sales: [],
-    purchases: [],
-    returns: [],
+  customers: [],
+  suppliers: [],
+  products: [],
+  sales: [],
+  purchases: [],
+  returns: [],
 };
 
 const appReducer = (state: AppState, action: Action): AppState => {
-    switch (action.type) {
-        case 'SET_STATE':
-            return action.payload;
-
-        case 'ADD_CUSTOMER':
-            return { ...state, customers: [...state.customers, action.payload] };
-
-        case 'UPDATE_CUSTOMER':
+  switch (action.type) {
+    case 'SET_STATE':
+        return action.payload;
+    case 'ADD_CUSTOMER':
+      return { ...state, customers: [...state.customers, action.payload] };
+    case 'UPDATE_CUSTOMER':
+      return { ...state, customers: state.customers.map(c => c.id === action.payload.id ? action.payload : c) };
+    case 'ADD_SUPPLIER':
+      return { ...state, suppliers: [...state.suppliers, action.payload] };
+    case 'UPDATE_SUPPLIER':
+      return { ...state, suppliers: state.suppliers.map(s => s.id === action.payload.id ? action.payload : s) };
+    case 'ADD_PRODUCT':
+        const existingProduct = state.products.find(p => p.id === action.payload.id);
+        if (existingProduct) {
             return {
                 ...state,
-                customers: state.customers.map(c => c.id === action.payload.id ? action.payload : c),
-            };
-
-        case 'ADD_SUPPLIER':
-            return { ...state, suppliers: [...state.suppliers, action.payload] };
-
-        case 'UPDATE_SUPPLIER':
-            return {
-                ...state,
-                suppliers: state.suppliers.map(s => s.id === action.payload.id ? action.payload : s),
-            };
-
-        case 'ADD_PRODUCT': { // Used for purchases, adds or updates stock
-            const existingProductIndex = state.products.findIndex(p => p.id === action.payload.id);
-            if (existingProductIndex > -1) {
-                const updatedProducts = [...state.products];
-                const existingProduct = updatedProducts[existingProductIndex];
-                existingProduct.quantity += action.payload.quantity;
-                // Optionally update prices if they've changed on re-purchase
-                existingProduct.purchasePrice = action.payload.purchasePrice;
-                existingProduct.salePrice = action.payload.salePrice;
-                existingProduct.gstPercent = action.payload.gstPercent;
-                return { ...state, products: updatedProducts };
-            }
-            return { ...state, products: [...state.products, action.payload] };
-        }
-        
-        case 'UPDATE_PRODUCT': // Used for editing product details from Products page
-             return {
-                ...state,
-                products: state.products.map(p => p.id === action.payload.id ? { ...p, ...action.payload } : p),
-            };
-
-        case 'UPDATE_PRODUCT_STOCK': {
-            return {
-                ...state,
-                products: state.products.map(p => p.id === action.payload.productId ? { ...p, quantity: p.quantity + action.payload.change } : p),
+                products: state.products.map(p => p.id === action.payload.id ? { ...p, quantity: p.quantity + action.payload.quantity, purchasePrice: action.payload.purchasePrice, salePrice: action.payload.salePrice } : p)
             };
         }
-
-        case 'ADD_SALE': {
-            const newProducts = [...state.products];
-            action.payload.items.forEach(item => {
-                const productIndex = newProducts.findIndex(p => p.id === item.productId);
-                if (productIndex !== -1) {
-                    newProducts[productIndex].quantity -= item.quantity;
-                }
-            });
-            return { ...state, sales: [...state.sales, action.payload], products: newProducts };
+        return { ...state, products: [...state.products, action.payload] };
+    case 'UPDATE_PRODUCT':
+        return { ...state, products: state.products.map(p => p.id === action.payload.id ? action.payload : p) };
+    case 'UPDATE_PRODUCT_STOCK':
+        return {
+            ...state,
+            products: state.products.map(p => p.id === action.payload.productId ? { ...p, quantity: p.quantity + action.payload.change } : p)
         }
+    case 'ADD_SALE':
+      return { ...state, sales: [...state.sales, action.payload] };
+    case 'DELETE_SALE': {
+      const saleToDelete = state.sales.find(s => s.id === action.payload);
+      if (!saleToDelete) return state;
 
-        case 'DELETE_SALE': {
-            const saleToDelete = state.sales.find(s => s.id === action.payload);
-            if (!saleToDelete) return state;
+      const stockChanges = new Map<string, number>();
+      saleToDelete.items.forEach(item => {
+        const currentChange = stockChanges.get(item.productId) || 0;
+        stockChanges.set(item.productId, currentChange + item.quantity); // Add stock back
+      });
 
-            const newProducts = [...state.products];
-            saleToDelete.items.forEach(item => {
-                const productIndex = newProducts.findIndex(p => p.id === item.productId);
-                if (productIndex !== -1) {
-                    newProducts[productIndex].quantity += item.quantity;
-                }
-            });
+      let updatedProducts = state.products;
+      stockChanges.forEach((change, productId) => {
+        updatedProducts = updatedProducts.map(p =>
+          p.id === productId ? { ...p, quantity: p.quantity + change } : p
+        );
+      });
 
-            return {
-                ...state,
-                sales: state.sales.filter(s => s.id !== action.payload),
-                products: newProducts,
-            };
-        }
-
-        case 'ADD_PAYMENT_TO_SALE':
-            return {
-                ...state,
-                sales: state.sales.map(s => s.id === action.payload.saleId ? { ...s, payments: [...(s.payments || []), action.payload.payment] } : s),
-            };
-
-        case 'ADD_PURCHASE': {
-            // Logic for adding products is handled separately in the UI, then calling ADD_PRODUCT
-            // This just adds the purchase record
-             return { ...state, purchases: [...state.purchases, action.payload] };
-        }
-
-        case 'DELETE_PURCHASE': {
-            const purchaseToDelete = state.purchases.find(p => p.id === action.payload);
-            if (!purchaseToDelete) return state;
-
-            const newProducts = [...state.products];
-            purchaseToDelete.items.forEach(item => {
-                const productIndex = newProducts.findIndex(p => p.id === item.productId);
-                if (productIndex !== -1) {
-                    newProducts[productIndex].quantity -= item.quantity;
-                }
-            });
-            return {
-                ...state,
-                purchases: state.purchases.filter(p => p.id !== action.payload),
-                products: newProducts,
-            };
-        }
-        
-        case 'ADD_PAYMENT_TO_PURCHASE':
-            return {
-                ...state,
-                purchases: state.purchases.map(p => p.id === action.payload.purchaseId ? { ...p, payments: [...(p.payments || []), action.payload.payment] } : p),
-            };
-            
-        case 'ADD_RETURN': {
-            const newState = { ...state, returns: [...state.returns, action.payload] };
-            if (action.payload.type === 'CUSTOMER') {
-                // Add stock back
-                action.payload.items.forEach(item => {
-                    const productIndex = newState.products.findIndex(p => p.id === item.productId);
-                    if (productIndex !== -1) {
-                        newState.products[productIndex].quantity += item.quantity;
-                    }
-                });
-                // Add a credit payment to the original sale if amount > 0
-                const saleIndex = newState.sales.findIndex(s => s.id === action.payload.referenceId);
-                if (saleIndex > -1 && action.payload.amount > 0) {
-                    const creditPayment: Payment = {
-                        id: `PAY-RET-${Date.now()}`,
-                        amount: action.payload.amount,
-                        method: 'RETURN_CREDIT',
-                        date: action.payload.returnDate,
-                    };
-                    newState.sales[saleIndex].payments.push(creditPayment);
-                }
-            } else { // SUPPLIER
-                // Remove stock
-                action.payload.items.forEach(item => {
-                    const productIndex = newState.products.findIndex(p => p.id === item.productId);
-                    if (productIndex !== -1) {
-                        newState.products[productIndex].quantity -= item.quantity;
-                    }
-                });
-                 // Add a credit payment to the original purchase if amount > 0
-                const purchaseIndex = newState.purchases.findIndex(p => p.id === action.payload.referenceId);
-                if (purchaseIndex > -1 && action.payload.amount > 0) {
-                     const creditPayment: Payment = {
-                        id: `PAY-RET-${Date.now()}`,
-                        amount: action.payload.amount,
-                        method: 'RETURN_CREDIT',
-                        date: action.payload.returnDate,
-                    };
-                    newState.purchases[purchaseIndex].payments.push(creditPayment);
-                }
-            }
-            return newState;
-        }
-
-        default:
-            return state;
+      return {
+        ...state,
+        sales: state.sales.filter(s => s.id !== action.payload),
+        products: updatedProducts,
+      };
     }
+    case 'ADD_PURCHASE':
+      return { ...state, purchases: [...state.purchases, action.payload] };
+    case 'DELETE_PURCHASE': {
+      const purchaseToDelete = state.purchases.find(p => p.id === action.payload);
+      if (!purchaseToDelete) return state;
+
+      const stockChanges = new Map<string, number>();
+      purchaseToDelete.items.forEach(item => {
+        const currentChange = stockChanges.get(item.productId) || 0;
+        stockChanges.set(item.productId, currentChange - item.quantity); // Subtract stock
+      });
+      
+      let updatedProducts = state.products;
+      stockChanges.forEach((change, productId) => {
+        updatedProducts = updatedProducts.map(p =>
+          p.id === productId ? { ...p, quantity: Math.max(0, p.quantity + change) } : p
+        );
+      });
+      
+      return {
+        ...state,
+        purchases: state.purchases.filter(p => p.id !== action.payload),
+        products: updatedProducts,
+      };
+    }
+    case 'ADD_RETURN': {
+      const returnPayload = action.payload;
+      const updatedProducts = state.products.map(product => {
+        const itemReturned = returnPayload.items.find(item => item.productId.trim().toLowerCase() === product.id.trim().toLowerCase());
+        if (itemReturned) {
+          const quantityChange = returnPayload.type === 'CUSTOMER' ? itemReturned.quantity : -itemReturned.quantity;
+          return { ...product, quantity: product.quantity + quantityChange };
+        }
+        return product;
+      });
+      const creditPayment: Payment = {
+        id: `PAY-RET-${returnPayload.id}`,
+        amount: returnPayload.amount,
+        date: returnPayload.returnDate,
+        method: 'RETURN_CREDIT',
+      };
+      let updatedSales = state.sales;
+      let updatedPurchases = state.purchases;
+      if (returnPayload.type === 'CUSTOMER') {
+        updatedSales = state.sales.map(sale =>
+          sale.id === returnPayload.referenceId
+            ? { ...sale, payments: [...(sale.payments || []), creditPayment] }
+            : sale
+        );
+      } else {
+        updatedPurchases = state.purchases.map(purchase =>
+          purchase.id === returnPayload.referenceId
+            ? { ...purchase, payments: [...(purchase.payments || []), creditPayment] }
+            : purchase
+        );
+      }
+      return {
+        ...state,
+        products: updatedProducts,
+        sales: updatedSales,
+        purchases: updatedPurchases,
+        returns: [...state.returns, returnPayload],
+      };
+    }
+    case 'ADD_PAYMENT_TO_SALE':
+      return {
+        ...state,
+        sales: state.sales.map(sale =>
+          sale.id === action.payload.saleId
+            ? { ...sale, payments: [...(sale.payments || []), action.payload.payment] }
+            : sale
+        ),
+      };
+    case 'ADD_PAYMENT_TO_PURCHASE':
+      return {
+        ...state,
+        purchases: state.purchases.map(purchase =>
+          purchase.id === action.payload.purchaseId
+            ? { ...purchase, payments: [...(purchase.payments || []), action.payload.payment] }
+            : purchase
+        ),
+      };
+    default:
+      return state;
+  }
 };
 
-const AppContext = createContext<{ state: AppState; dispatch: Dispatch<Action> }>({
-    state: initialState,
-    dispatch: () => null,
+const AppContext = createContext<{ state: AppState; dispatch: React.Dispatch<Action> }>({
+  state: initialState,
+  dispatch: () => null,
 });
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [state, dispatch] = useReducer(appReducer, initialState, (initial) => {
-        try {
-            const localData = localStorage.getItem('bhavaniSareesState');
-            return localData ? JSON.parse(localData) : initial;
-        } catch (error) {
-            console.error("Could not parse state from localStorage", error);
-            return initial;
-        }
-    });
+  const [state, dispatch] = useReducer(appReducer, initialState);
 
-    useEffect(() => {
+  useEffect(() => {
+    try {
+        const storedState = localStorage.getItem('bhavaniSareesState');
+        if (storedState) {
+            const parsedState = JSON.parse(storedState);
+            const validatedState: AppState = {
+                customers: Array.isArray(parsedState.customers) ? parsedState.customers : [],
+                suppliers: Array.isArray(parsedState.suppliers) ? parsedState.suppliers : [],
+                products: Array.isArray(parsedState.products) ? parsedState.products : [],
+                sales: (Array.isArray(parsedState.sales) ? parsedState.sales : []).map((s: any) => ({ ...s, payments: s.payments || [] })),
+                purchases: (Array.isArray(parsedState.purchases) ? parsedState.purchases : []).map((p: any) => ({ ...p, payments: p.payments || [] })),
+                returns: Array.isArray(parsedState.returns) ? parsedState.returns : [],
+            };
+            dispatch({ type: 'SET_STATE', payload: validatedState });
+        }
+    } catch (error) {
+        console.error("Could not load or parse state from localStorage, using initial state.", error);
+        localStorage.removeItem('bhavaniSareesState');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (state !== initialState) {
         try {
             localStorage.setItem('bhavaniSareesState', JSON.stringify(state));
         } catch (error) {
             console.error("Could not save state to localStorage", error);
         }
-    }, [state]);
+    }
+  }, [state]);
 
-    return (
-        <AppContext.Provider value={{ state, dispatch }}>
-            {children}
-        </AppContext.Provider>
-    );
+  return <AppContext.Provider value={{ state, dispatch }}>{children}</AppContext.Provider>;
 };
 
 export const useAppContext = () => useContext(AppContext);
