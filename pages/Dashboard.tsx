@@ -209,7 +209,7 @@ const Dashboard: React.FC = () => {
                         <select
                             value={selectedMonth}
                             onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                            className="w-full p-2 border rounded-lg"
+                            className="w-full p-2 border rounded-lg custom-select"
                         >
                             {monthNames.map((month, index) => (
                                 <option key={month} value={index}>{month}</option>
@@ -218,7 +218,7 @@ const Dashboard: React.FC = () => {
                         <select
                             value={selectedYear}
                             onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                            className="w-full p-2 border rounded-lg"
+                            className="w-full p-2 border rounded-lg custom-select"
                         >
                             {availableYears.map(year => (
                                 <option key={year} value={year}>{year}</option>

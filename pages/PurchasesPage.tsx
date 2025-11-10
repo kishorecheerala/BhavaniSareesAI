@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Upload, IndianRupee, Edit, Save, X, Trash2, Download, QrCode, Package } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, Upload, IndianRupee, Edit, Save, X, Trash2, Download, QrCode, Package, Info, CheckCircle, XCircle } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Supplier, Product, Purchase, PurchaseItem, Payment } from '../types';
 import Card from '../components/Card';
@@ -25,6 +25,9 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editedSupplier, setEditedSupplier] = useState<Supplier | null>(null);
     const [isScanning, setIsScanning] = useState(false);
+    const [importStatus, setImportStatus] = useState<{ type: 'info' | 'success' | 'error', message: string } | null>(null);
+    const [fileToImport, setFileToImport] = useState<File | null>(null);
+    const [itemsForReview, setItemsForReview] = useState<PurchaseItem[] | null>(null);
 
     const [newSupplier, setNewSupplier] = useState<Omit<Supplier, 'id'>>({ name: '', phone: '', location: '' });
     
@@ -47,16 +50,19 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         if (view === 'add_supplier') {
             formIsDirty = !!(newSupplier.name || newSupplier.phone || newSupplier.location);
         } else if (view === 'add_purchase') {
-            formIsDirty = !!supplierId || items.length > 0 || !!paymentAmount;
+            formIsDirty = !!supplierId || items.length > 0 || !!paymentAmount || !!itemsForReview;
         } else if (selectedSupplier) {
             formIsDirty = isEditing;
+        }
+        if (fileToImport) {
+            formIsDirty = true;
         }
         setIsDirty(formIsDirty);
 
         return () => {
             setIsDirty(false);
         };
-    }, [view, newSupplier, supplierId, items, paymentAmount, isEditing, selectedSupplier, setIsDirty]);
+    }, [view, newSupplier, supplierId, items, paymentAmount, isEditing, selectedSupplier, fileToImport, itemsForReview, setIsDirty]);
 
     useEffect(() => {
         if (selectedSupplier) {
@@ -69,6 +75,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         setIsEditing(false);
     }, [selectedSupplier, state.suppliers, state.purchases]);
 
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleAddSupplier = () => {
         if (!newSupplier.name || !newSupplier.phone || !newSupplier.location) {
@@ -220,7 +227,16 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
 
     const handleProductScanned = (decodedText: string) => {
         setNewItem(prev => ({ ...prev, productId: decodedText }));
-        alert(`Scanned code: ${decodedText}. Please fill the remaining details.`);
+        const existingProduct = state.products.find(p => p.id.toLowerCase() === decodedText.toLowerCase());
+        if (existingProduct) {
+            setNewItem(prev => ({
+                ...prev,
+                productName: existingProduct.name,
+                price: existingProduct.purchasePrice.toString(),
+                saleValue: existingProduct.salePrice.toString(),
+                gstPercent: existingProduct.gstPercent.toString(),
+            }));
+        }
     };
 
     const handleAddPaymentToPurchase = () => {
@@ -274,50 +290,230 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         URL.revokeObjectURL(url);
     };
     
-    const fileInputRef = React.useRef<HTMLInputElement>(null);
+    const processImport = async () => {
+        if (!fileToImport) return;
+        const file = fileToImport;
+        setImportStatus(null);
+        setFileToImport(null);
+
+        try {
+            setImportStatus({ type: 'info', message: 'Reading and parsing file...' });
+
+            const text = await file.text();
+            
+            const cleanedText = text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text;
+            const rows = cleanedText.trim().split(/\r?\n/).filter(row => row.trim() !== '');
+            
+            if (rows.length < 2) {
+                throw new Error("CSV file must have a header and at least one data row.");
+            }
+
+            const header = rows[0].trim().split(',').map(h => h.trim().replace(/"/g, ''));
+            const expectedHeader = ['Saree Code/ID', 'Saree Name', 'Quantity', 'Purchase Price', 'Sale Price', 'GST %'];
+
+            if (header.length !== expectedHeader.length || !header.every((h, i) => h.toLowerCase() === expectedHeader[i].toLowerCase())) {
+                throw new Error(`Invalid CSV header. Expected: "${expectedHeader.join(', ')}". Found: "${header.join(', ')}"`);
+            }
+
+            const itemsToAdd: PurchaseItem[] = [];
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i].trim().split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(cell => cell.trim().replace(/^"|"$/g, ''));
+                if (row.length !== expectedHeader.length) {
+                    throw new Error(`Row ${i + 1} has an incorrect number of columns. Expected ${expectedHeader.length}, found ${row.length}.`);
+                }
+
+                const [id, name, quantity, purchasePrice, salePrice, gstPercent] = row;
+
+                const quantityNum = parseInt(quantity, 10);
+                const purchasePriceNum = parseFloat(purchasePrice);
+                const salePriceNum = parseFloat(salePrice);
+                const gstPercentNum = parseFloat(gstPercent);
+
+                if (!id || !name || isNaN(quantityNum) || isNaN(purchasePriceNum) || isNaN(salePriceNum) || isNaN(gstPercentNum) || quantityNum < 0) {
+                    throw new Error(`Row ${i + 1} contains invalid or missing data. Please check all fields. [ID: ${id}, Name: ${name}, Qty: ${quantity}, etc.]`);
+                }
+
+                itemsToAdd.push({ 
+                    productId: id, 
+                    productName: name, 
+                    quantity: quantityNum, 
+                    price: purchasePriceNum, 
+                    saleValue: salePriceNum, 
+                    gstPercent: gstPercentNum 
+                });
+            }
+            
+            if (itemsToAdd.length === 0) {
+                setImportStatus({ type: 'info', message: 'No valid product rows found in the file to import.' });
+                return;
+            }
+            
+            setItemsForReview(itemsToAdd);
+            setImportStatus({ type: 'success', message: `Loaded ${itemsToAdd.length} items from CSV. Please review and confirm below.` });
+
+        } catch (error) {
+            console.error("Import failed:", error);
+            const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+            setImportStatus({ type: 'error', message: `Import failed: ${errorMessage}` });
+        } finally {
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        }
+    };
+
+    const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setImportStatus(null);
+        setFileToImport(null);
+        const file = event.target.files?.[0];
+        if (file) {
+            setFileToImport(file);
+        } else if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+
+    const cancelImport = () => {
+        setImportStatus({ type: 'info', message: 'Import cancelled by user.' });
+        setFileToImport(null);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+    
+    const ImportReviewModal = () => {
+        if (!itemsForReview) return null;
+
+        const handleReviewItemChange = (index: number, field: keyof PurchaseItem | 'saleValue', value: string) => {
+            const updatedItems = [...itemsForReview];
+            const itemToUpdate = { ...updatedItems[index] };
+            
+            const numValue = parseFloat(value);
+            if (!isNaN(numValue)) {
+                 (itemToUpdate as any)[field] = numValue;
+            } else {
+                 (itemToUpdate as any)[field] = value;
+            }
+    
+            updatedItems[index] = itemToUpdate;
+            setItemsForReview(updatedItems);
+        };
+    
+        const handleRemoveReviewItem = (index: number) => {
+            setItemsForReview(itemsForReview.filter((_, i) => i !== index));
+        };
+    
+        const handleConfirmImport = () => {
+            setItems(prevItems => [...prevItems, ...itemsForReview]);
+            setItemsForReview(null);
+            setImportStatus({ type: 'success', message: `${itemsForReview.length} items successfully added to the purchase list.` });
+        };
+    
+        const handleCancelReview = () => {
+            setItemsForReview(null);
+            setImportStatus({ type: 'info', message: 'Import review cancelled.' });
+        };
+
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+                <Card title="Review Imported Stock" className="w-full max-w-3xl flex flex-col" style={{maxHeight: '90vh'}}>
+                    <p className="text-sm text-gray-600 mb-4">Verify the details below. You can edit any field or remove items before adding them to the purchase.</p>
+                    <div className="flex-grow overflow-y-auto space-y-3 pr-2">
+                        {itemsForReview.map((item, index) => (
+                            <div key={index} className="p-3 bg-gray-50 rounded-lg border relative">
+                                <button onClick={() => handleRemoveReviewItem(index)} className="absolute top-2 right-2 p-1 text-red-500 hover:bg-red-100 rounded-full">
+                                    <Trash2 size={16} />
+                                </button>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+                                    <div>
+                                        <label className="text-xs font-medium">Saree Code/ID</label>
+                                        <input type="text" value={item.productId} onChange={e => handleReviewItemChange(index, 'productId', e.target.value)} className="w-full p-1 border rounded text-sm"/>
+                                    </div>
+                                     <div>
+                                        <label className="text-xs font-medium">Saree Name</label>
+                                        <input type="text" value={item.productName} onChange={e => handleReviewItemChange(index, 'productName', e.target.value)} className="w-full p-1 border rounded text-sm"/>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label className="text-xs font-medium">Quantity</label>
+                                            <input type="number" value={item.quantity} onChange={e => handleReviewItemChange(index, 'quantity', e.target.value)} className="w-full p-1 border rounded text-sm"/>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-medium">GST %</label>
+                                            <input type="number" value={item.gstPercent} onChange={e => handleReviewItemChange(index, 'gstPercent', e.target.value)} className="w-full p-1 border rounded text-sm"/>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label className="text-xs font-medium">Purchase Price</label>
+                                            <input type="number" value={item.price} onChange={e => handleReviewItemChange(index, 'price', e.target.value)} className="w-full p-1 border rounded text-sm"/>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-medium">Sale Price</label>
+                                            <input type="number" value={item.saleValue} onChange={e => handleReviewItemChange(index, 'saleValue', e.target.value)} className="w-full p-1 border rounded text-sm"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="flex gap-2 pt-4 mt-4 border-t">
+                        <Button onClick={handleConfirmImport} className="w-full" disabled={itemsForReview.length === 0}>
+                           Confirm & Add to Purchase
+                        </Button>
+                        <Button onClick={handleCancelReview} variant="secondary" className="w-full">
+                            Cancel
+                        </Button>
+                    </div>
+                </Card>
+            </div>
+        )
+    };
     
      const QRScannerModal: React.FC = () => {
-        const [scanStatus, setScanStatus] = useState<string>("Requesting camera permissions...");
+        const [scanStatus, setScanStatus] = useState<string>("Click 'Start Scanning' to activate camera.");
+        const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
-        useEffect(() => {
-            const html5QrCode = new Html5Qrcode("qr-reader-purchase");
+        const startScan = () => {
+            if (!html5QrCodeRef.current) return;
+            setScanStatus("Requesting camera permissions...");
 
             const qrCodeSuccessCallback = (decodedText: string) => {
-                html5QrCode.stop().then(() => {
-                    setIsScanning(false);
-                    handleProductScanned(decodedText);
-                }).catch(err => {
-                    console.error("Failed to stop scanning.", err);
-                    setIsScanning(false);
-                    handleProductScanned(decodedText);
-                });
+                 if (html5QrCodeRef.current?.isScanning) {
+                    html5QrCodeRef.current.stop().then(() => {
+                        setIsScanning(false);
+                        handleProductScanned(decodedText);
+                    });
+                }
             };
             const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
-            html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback, undefined)
-                .then(() => {
-                    setScanStatus("Scanning for QR Code...");
-                })
+            html5QrCodeRef.current.start({ facingMode: "environment" }, config, qrCodeSuccessCallback, undefined)
+                .then(() => setScanStatus("Scanning for QR Code..."))
                 .catch(err => {
+                    setScanStatus(`Camera Permission Error. Please allow camera access for this site in your browser's settings.`);
                     console.error("Camera start failed.", err);
-                    setScanStatus(`Failed to start camera. Please grant camera permissions. Error: ${err}`);
                 });
+        };
 
+        useEffect(() => {
+            html5QrCodeRef.current = new Html5Qrcode("qr-reader-purchase");
             return () => {
-                 if (html5QrCode && html5QrCode.isScanning) {
-                    html5QrCode.stop().catch(err => {
-                        console.error("Failed to stop QR scanner on cleanup.", err);
-                    });
+                if (html5QrCodeRef.current?.isScanning) {
+                    html5QrCodeRef.current.stop().catch(err => console.error("Cleanup stop scan failed.", err));
                 }
             };
         }, []);
 
         return (
             <div className="fixed inset-0 bg-black bg-opacity-75 flex flex-col items-center justify-center z-50 p-4">
-                <Card title="Scan Product QR Code" className="w-full max-w-md">
-                    <div id="qr-reader-purchase" className="w-full"></div>
-                    {scanStatus && <p className="text-center text-sm mt-2 text-gray-600">{scanStatus}</p>}
-                    <Button onClick={() => setIsScanning(false)} variant="secondary" className="mt-4 w-full">Cancel Scan</Button>
+                <Card title="Scan Product QR Code" className="w-full max-w-md relative">
+                    <button onClick={() => setIsScanning(false)} className="absolute top-4 right-4 p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
+                        <X size={20}/>
+                     </button>
+                    <div id="qr-reader-purchase" className="w-full mt-4"></div>
+                    <p className="text-center text-sm my-2 text-gray-600">{scanStatus}</p>
+                    <Button onClick={startScan} className="w-full">Start Scanning</Button>
                 </Card>
             </div>
         );
@@ -335,7 +531,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                         <p>Invoice Total: <span className="font-bold">₹{purchase.totalAmount.toLocaleString('en-IN')}</span></p>
                         <p>Amount Due: <span className="font-bold text-red-600">₹{dueAmount.toLocaleString('en-IN')}</span></p>
                         <input type="number" placeholder="Amount" value={paymentDetails.amount} onChange={e => setPaymentDetails({ ...paymentDetails, amount: e.target.value })} className="w-full p-2 border rounded" autoFocus/>
-                        <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any })} className="w-full p-2 border rounded">
+                        <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any })} className="w-full p-2 border rounded custom-select">
                             <option value="CASH">Cash</option>
                             <option value="UPI">UPI</option>
                             <option value="CHEQUE">Cheque</option>
@@ -368,9 +564,11 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                      <div className="flex justify-between items-center mb-4">
                         <h2 className="text-lg font-bold text-primary">Supplier Details: {selectedSupplier.name}</h2>
                         {isEditing ? (
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 items-center">
                                 <Button onClick={handleUpdateSupplier} className="h-9 px-3"><Save size={16} /> Save</Button>
-                                <Button onClick={() => setIsEditing(false)} variant="secondary" className="h-9 px-3"><X size={16} /> Cancel</Button>
+                                <button onClick={() => setIsEditing(false)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
+                                    <X size={20}/>
+                                </button>
                             </div>
                         ) : (
                             <Button onClick={() => setIsEditing(true)}><Edit size={16}/> Edit</Button>
@@ -489,24 +687,57 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     const canRecordPayment = supplierId && items.length === 0 && parseFloat(paymentAmount || '0') > 0;
     const totalAmount = items.reduce((sum, i) => sum + (i.price * i.quantity), 0);
 
-    return (
-        <div className="space-y-4">
-             {isScanning && <QRScannerModal />}
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-                <h1 className="text-2xl font-bold text-primary">Purchases & Suppliers</h1>
-                <div className="flex flex-col sm:flex-row gap-2">
-                    <Button onClick={handleDownloadTemplate} variant="secondary" className="w-full sm:w-auto">
-                        <Download className="w-4 h-4 mr-2" />
-                        Download Template
-                    </Button>
-                    <input type="file" accept=".xlsx, .xls, .csv" ref={fileInputRef} className="hidden" onChange={(e) => alert("Feature coming soon!")} />
-                    <Button onClick={() => fileInputRef.current?.click()} variant="secondary" className="w-full sm:w-auto">
-                        <Upload className="w-4 h-4 mr-2" />
-                        Import Stock
-                    </Button>
+    const ImportStatusNotification = () => {
+        if (!importStatus) return null;
+
+        const baseClasses = "p-3 rounded-md text-sm flex items-start justify-between";
+        const variants = {
+            info: 'bg-blue-100 text-blue-800',
+            success: 'bg-green-100 text-green-800',
+            error: 'bg-red-100 text-red-800',
+        };
+        const icons = {
+            info: <Info className="w-5 h-5 mr-3 flex-shrink-0" />,
+            success: <CheckCircle className="w-5 h-5 mr-3 flex-shrink-0" />,
+            error: <XCircle className="w-5 h-5 mr-3 flex-shrink-0" />,
+        };
+
+        return (
+            <div className={`${baseClasses} ${variants[importStatus.type]}`}>
+                <div className="flex items-start">
+                    {icons[importStatus.type]}
+                    <span>{importStatus.message}</span>
+                </div>
+                <button onClick={() => setImportStatus(null)} className="font-bold text-lg leading-none ml-4">&times;</button>
+            </div>
+        );
+    };
+
+    const ConfirmationNotification: React.FC<{ file: File; onConfirm: () => void; onCancel: () => void; }> = ({ file, onConfirm, onCancel }) => {
+        return (
+            <div className="p-3 rounded-md text-sm flex flex-col items-start justify-between bg-amber-100 text-amber-800 space-y-3">
+                <div className="flex items-start">
+                    <Info className="w-5 h-5 mr-3 flex-shrink-0" />
+                    <span>
+                        Confirm import of file: <strong>{file.name}</strong>. This will add the items to the current purchase for review.
+                    </span>
+                </div>
+                <div className="flex gap-2 self-end w-full sm:w-auto">
+                    <Button onClick={onConfirm} variant="primary" className="py-1 px-3 text-sm flex-grow sm:flex-grow-0">Confirm</Button>
+                    <Button onClick={onCancel} variant="secondary" className="py-1 px-3 text-sm flex-grow sm:flex-grow-0">Cancel</Button>
                 </div>
             </div>
+        );
+    };
 
+    return (
+        <div className="space-y-4">
+            {isScanning && <QRScannerModal />}
+            {itemsForReview && <ImportReviewModal />}
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+                <h1 className="text-2xl font-bold text-primary">Purchases & Suppliers</h1>
+            </div>
+            
             <div className="flex flex-col sm:flex-row gap-2">
                 <Button className="w-full sm:w-auto" onClick={() => { setView('add_purchase'); setSelectedSupplier(null); }}><Plus className="w-4 h-4 mr-2" />Add Purchase/Payment</Button>
                 <Button className="w-full sm:w-auto" onClick={() => { setView('add_supplier'); setSelectedSupplier(null); }} variant="secondary"><Plus className="w-4 h-4 mr-2" />Add Supplier</Button>
@@ -570,7 +801,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                  <div className="space-y-4">
                      <Card>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
-                        <select value={supplierId} onChange={e => setSupplierId(e.target.value)} className="w-full p-2 border rounded">
+                        <select value={supplierId} onChange={e => setSupplierId(e.target.value)} className="w-full p-2 border rounded custom-select">
                             <option value="">Select Supplier</option>
                             {state.suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
@@ -587,7 +818,39 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                             </div>
                          ) }
                          <div className="pt-4 border-t space-y-3">
-                            <h3 className="font-semibold">Add New Item</h3>
+                            <h3 className="font-semibold">Add Items to Purchase</h3>
+                            <p className="text-sm text-gray-600">You can add items manually below, or import multiple items from a CSV file.</p>
+                            
+                            <ImportStatusNotification />
+                            {fileToImport && (
+                                <ConfirmationNotification
+                                    file={fileToImport}
+                                    onConfirm={processImport}
+                                    onCancel={cancelImport}
+                                />
+                            )}
+                            
+                            <input 
+                              type="file" 
+                              accept=".csv" 
+                              ref={fileInputRef} 
+                              className="hidden" 
+                              onChange={handleFileSelect}
+                            />
+                            <div className="flex flex-col sm:flex-row gap-2">
+                                <Button onClick={() => fileInputRef.current?.click()} variant="secondary" className="w-full" disabled={!supplierId}>
+                                    <Upload className="w-4 h-4 mr-2" />
+                                    Import from CSV
+                                </Button>
+                                <Button onClick={handleDownloadTemplate} variant="secondary" className="w-full">
+                                    <Download className="w-4 h-4 mr-2" />
+                                    Download Template
+                                </Button>
+                            </div>
+                             {!supplierId && <p className="text-xs text-red-500 text-center">Please select a supplier to enable CSV import.</p>}
+                        </div>
+                         <div className="pt-4 border-t space-y-3 mt-4">
+                            <h3 className="font-semibold">Add New Item Manually</h3>
                              <div className="flex flex-col sm:flex-row gap-2">
                                 <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full sm:w-auto flex-grow">
                                     <QrCode size={16} className="mr-2"/> Scan Saree Code/ID
@@ -612,7 +875,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Payment Method</label>
-                                <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as any)} className="w-full p-2 border rounded">
+                                <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as any)} className="w-full p-2 border rounded custom-select">
                                     <option value="CASH">Cash</option>
                                     <option value="UPI">UPI</option>
                                     <option value="CHEQUE">Cheque</option>

@@ -32,15 +32,21 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     const [isSelectingProduct, setIsSelectingProduct] = useState(false);
     const [productSearchTerm, setProductSearchTerm] = useState('');
     const [isScanning, setIsScanning] = useState(false);
+    
+    // State for the new "Add Customer" modal
+    const [isAddingCustomer, setIsAddingCustomer] = useState(false);
+    const [newCustomer, setNewCustomer] = useState<Omit<Customer, 'id'>>({ name: '', phone: '', address: '', area: '', reference: '' });
+
 
     useEffect(() => {
         const formIsDirty = !!customerId || items.length > 0 || discount !== '0' || !!paymentAmount;
-        setIsDirty(formIsDirty);
+        const newCustomerFormIsDirty = isAddingCustomer && (newCustomer.name || newCustomer.phone || newCustomer.address || newCustomer.area);
+        setIsDirty(formIsDirty || newCustomerFormIsDirty);
 
         return () => {
             setIsDirty(false);
         };
-    }, [customerId, items, discount, paymentAmount, setIsDirty]);
+    }, [customerId, items, discount, paymentAmount, isAddingCustomer, newCustomer, setIsDirty]);
 
     const resetForm = () => {
         setCustomerId('');
@@ -99,93 +105,116 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         
         const gstAmount = items.reduce((sum, item) => {
             const product = state.products.find(p => p.id === item.productId);
-            if (product && product.gstPercent > 0) {
-                const itemTotal = item.price * item.quantity;
-                const gst = itemTotal - (itemTotal / (1 + product.gstPercent / 100));
-                return sum + gst;
-            }
-            return sum;
+            const itemGstPercent = product ? product.gstPercent : 0;
+            const itemTotalWithGst = item.price * item.quantity;
+            const itemGst = itemTotalWithGst - (itemTotalWithGst / (1 + (itemGstPercent / 100)));
+            return sum + itemGst;
         }, 0);
 
         const totalAmount = subTotal - discountAmount;
         return { subTotal, discountAmount, gstAmount, totalAmount };
     }, [items, discount, state.products]);
 
+    const handleAddCustomer = () => {
+        if (newCustomer.name && newCustomer.phone && newCustomer.address && newCustomer.area) {
+            const customerWithId: Customer = { ...newCustomer, id: `CUST-${Date.now()}` };
+            dispatch({ type: 'ADD_CUSTOMER', payload: customerWithId });
+            setNewCustomer({ name: '', phone: '', address: '', area: '', reference: '' });
+            setIsAddingCustomer(false);
+            setCustomerId(customerWithId.id); // Automatically select the new customer
+            showToast("Customer added successfully!");
+        } else {
+            alert('Please fill all required fields.');
+        }
+    };
+
     const generateAndSharePDF = async (sale: Sale, customer: Customer) => {
       try {
         const doc = new jsPDF({
           orientation: 'p',
-          unit: 'px',
-          format: [280, 450] 
+          unit: 'mm',
+          format: [80, 297] 
         });
 
         doc.addFont('Times-Roman', 'Times', 'normal');
         doc.addFont('Times-Bold', 'Times', 'bold');
         doc.addFont('Times-Italic', 'Times', 'italic');
 
-        const centerX = doc.internal.pageSize.getWidth() / 2;
-        let y = 30;
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const centerX = pageWidth / 2;
+        const margin = 5;
+        const maxLineWidth = pageWidth - margin * 2;
+        let y = 10;
 
         doc.setFont('Times', 'italic');
-        doc.setFontSize(14);
+        doc.setFontSize(12);
         doc.setTextColor('#000000');
         doc.text('OM namo venkatesaya', centerX, y, { align: 'center' });
-        y += 20;
+        y += 7;
 
         doc.setFont('Times', 'bold');
-        doc.setFontSize(22);
+        doc.setFontSize(16);
         doc.setTextColor('#6a0dad');
         doc.text('Bhavani Sarees', centerX, y, { align: 'center' });
-        y += 25;
+        y += 10;
 
-        const leftColX = 20;
-        const rightColX = doc.internal.pageSize.getWidth() - 20;
+        doc.setDrawColor('#cccccc');
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 6;
 
         doc.setFont('Helvetica', 'normal');
-        doc.setFontSize(9);
+        doc.setFontSize(8);
         doc.setTextColor('#000000');
         
-        doc.setFont('Helvetica', 'bold');
-        doc.text('Billed To:', leftColX, y);
-        doc.setFont('Helvetica', 'normal');
-        doc.text(customer.name, leftColX, y + 10);
-        doc.text(customer.address, leftColX, y + 20);
-
-        doc.setFont('Helvetica', 'bold');
-        doc.text('Invoice Details:', rightColX, y, { align: 'right' });
-        doc.setFont('Helvetica', 'normal');
-        doc.text(sale.id, rightColX, y + 10, { align: 'right' });
-        doc.text(new Date(sale.date).toLocaleString(), rightColX, y + 20, { align: 'right' });
-        y += 40;
-
-        doc.setDrawColor('#6a0dad');
-        doc.line(leftColX, y, rightColX, y); 
-        y += 12;
-        doc.setFont('Helvetica', 'bold');
-        doc.text('Item', leftColX, y);
-        doc.text('Total', rightColX, y, { align: 'right' });
+        doc.text(`Invoice: ${sale.id}`, margin, y);
+        doc.text(`Date: ${new Date(sale.date).toLocaleString()}`, pageWidth - margin, y, { align: 'right' });
         y += 5;
+        
+        doc.setFont('Helvetica', 'bold');
+        doc.text('Billed To:', margin, y);
+        y += 4;
+        doc.setFont('Helvetica', 'normal');
+        doc.text(customer.name, margin, y);
+        y += 4;
+        doc.text(customer.address, margin, y);
+        y += 6;
+
+        doc.setDrawColor('#000000');
+        doc.line(margin, y, pageWidth - margin, y); 
+        y += 5;
+        doc.setFont('Helvetica', 'bold');
+        doc.text('Purchase Details', centerX, y, { align: 'center' });
+        y += 5;
+        doc.line(margin, y, pageWidth - margin, y); 
+        y += 5;
+
+        doc.setFont('Helvetica', 'bold');
+        doc.text('Item', margin, y);
+        doc.text('Total', pageWidth - margin, y, { align: 'right' });
+        y += 2;
         doc.setDrawColor('#cccccc');
-        doc.line(leftColX, y, rightColX, y); 
-        y += 15;
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 5;
         
         doc.setFont('Helvetica', 'normal');
         sale.items.forEach(item => {
             const itemTotal = item.price * item.quantity;
-            doc.setFontSize(10);
-            doc.text(item.productName, leftColX, y);
-            doc.text(`Rs. ${itemTotal.toLocaleString('en-IN')}`, rightColX, y, { align: 'right' });
-            y += 12;
-            doc.setFontSize(8);
+            doc.setFontSize(9);
+            const splitName = doc.splitTextToSize(item.productName, maxLineWidth - 20);
+            doc.text(splitName, margin, y);
+            doc.text(`Rs. ${itemTotal.toLocaleString('en-IN')}`, pageWidth - margin, y, { align: 'right' });
+            y += (splitName.length * 4);
+            doc.setFontSize(7);
             doc.setTextColor('#666666');
-            doc.text(`(x${item.quantity} @ Rs. ${item.price.toLocaleString('en-IN')})`, leftColX, y);
-            y += 15;
+            doc.text(`(x${item.quantity} @ Rs. ${item.price.toLocaleString('en-IN')})`, margin, y);
+            y += 6;
             doc.setTextColor('#000000');
         });
         
+        y -= 2;
         doc.setDrawColor('#cccccc');
-        doc.line(leftColX, y, rightColX, y); 
-        y += 15;
+        doc.line(margin, y, pageWidth - margin, y); 
+        y += 5;
 
         const paidAmountOnSale = sale.payments.reduce((sum, p) => sum + p.amount, 0);
         const dueAmountOnSale = calculations.totalAmount - paidAmountOnSale;
@@ -199,29 +228,24 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             { label: 'Due', value: dueAmountOnSale, bold: true },
         ];
         
+        const totalsX = pageWidth - margin;
         totals.forEach(({label, value, bold = false}) => {
             doc.setFont('Helvetica', bold ? 'bold' : 'normal');
-            doc.setFontSize(bold ? 11 : 9);
-            doc.text(label, doc.internal.pageSize.getWidth() - 90, y);
-            doc.text(`Rs. ${value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, rightColX, y, { align: 'right' });
-            y += (bold ? 16 : 13);
+            doc.setFontSize(bold ? 10 : 8);
+            doc.text(label, totalsX - 25, y, { align: 'right' });
+            doc.text(`Rs. ${value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, y, { align: 'right' });
+            y += (bold ? 5 : 4);
         });
 
         const pdfBlob = doc.output('blob');
         const pdfFile = new File([pdfBlob], `${sale.id}.pdf`, { type: 'application/pdf' });
         
-        const whatsAppText = `Thank you for your purchase from Bhavani Sarees!\n\n*Invoice Summary:*\nInvoice ID: ${sale.id}\nDate: ${new Date(sale.date).toLocaleString()}\n\n*Items:*\n${sale.items.map(i => `- ${i.productName} (x${i.quantity}) - Rs. ${(i.price * i.quantity).toLocaleString('en-IN')}`).join('\n')}\n\n*Total: Rs. ${sale.totalAmount.toLocaleString('en-IN')}*\nPaid: Rs. ${paidAmountOnSale.toLocaleString('en-IN')}\nDue: Rs. ${dueAmountOnSale.toLocaleString('en-IN')}\n\nHave a blessed day!`;
+        const whatsAppText = `Thank you for your purchase from Bhavani Sarees!\n\n*Invoice Summary:*\nInvoice ID: ${sale.id}\nDate: ${new Date(sale.date).toLocaleString()}\n\n*Items:*\n${sale.items.map(i => `- ${i.productName} (x${i.quantity}) - Rs. ${(i.price * i.quantity).toLocaleString('en-IN')}`).join('\n')}\n\nSubtotal: Rs. ${calculations.subTotal.toLocaleString('en-IN')}\nGST: Rs. ${calculations.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\nDiscount: Rs. ${calculations.discountAmount.toLocaleString('en-IN')}\n*Total: Rs. ${sale.totalAmount.toLocaleString('en-IN')}*\nPaid: Rs. ${paidAmountOnSale.toLocaleString('en-IN')}\nDue: Rs. ${dueAmountOnSale.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\nHave a blessed day!`;
         
-        try {
-            await navigator.clipboard.writeText(whatsAppText);
-            showToast('Invoice summary copied to clipboard!');
-        } catch(err) {
-            console.warn('Could not copy text to clipboard.');
-        }
-
         if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
           await navigator.share({
             title: `Bhavani Sarees Invoice ${sale.id}`,
+            text: whatsAppText,
             files: [pdfFile],
           });
         } else {
@@ -337,13 +361,32 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         resetForm();
     };
 
+    const AddCustomerModal = () => (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <Card title="Add New Customer" className="w-full max-w-md">
+                <div className="space-y-4">
+                    <input type="text" placeholder="Name" value={newCustomer.name} onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })} className="w-full p-2 border rounded" autoFocus />
+                    <input type="text" placeholder="Phone" value={newCustomer.phone} onChange={e => setNewCustomer({ ...newCustomer, phone: e.target.value })} className="w-full p-2 border rounded" />
+                    <input type="text" placeholder="Address" value={newCustomer.address} onChange={e => setNewCustomer({ ...newCustomer, address: e.target.value })} className="w-full p-2 border rounded" />
+                    <input type="text" placeholder="Area/Location" value={newCustomer.area} onChange={e => setNewCustomer({ ...newCustomer, area: e.target.value })} className="w-full p-2 border rounded" />
+                    <input type="text" placeholder="Reference (Optional)" value={newCustomer.reference} onChange={e => setNewCustomer({ ...newCustomer, reference: e.target.value })} className="w-full p-2 border rounded" />
+                    <div className="flex gap-2">
+                        <Button onClick={handleAddCustomer} className="w-full">Save Customer</Button>
+                        <Button onClick={() => { setIsAddingCustomer(false); setNewCustomer({ name: '', phone: '', address: '', area: '', reference: '' }); }} variant="secondary" className="w-full">Cancel</Button>
+                    </div>
+                </div>
+            </Card>
+        </div>
+    );
 
     const ProductSearchModal = () => (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <Card className="w-full max-w-lg">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-bold">Select Product</h2>
-            <Button onClick={() => setIsSelectingProduct(false)} variant="secondary" className="p-2 h-8 w-8"><X size={16}/></Button>
+            <button onClick={() => setIsSelectingProduct(false)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
+              <X size={20}/>
+            </button>
           </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
@@ -377,47 +420,49 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     );
     
      const QRScannerModal: React.FC = () => {
-        const [scanStatus, setScanStatus] = useState<string>("Requesting camera permissions...");
+        const [scanStatus, setScanStatus] = useState<string>("Click 'Start Scanning' to activate camera.");
+        const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
-        useEffect(() => {
-            const html5QrCode = new Html5Qrcode("qr-reader-sales");
+        const startScan = () => {
+            if (!html5QrCodeRef.current) return;
+            setScanStatus("Requesting camera permissions...");
+
             const qrCodeSuccessCallback = (decodedText: string) => {
-                html5QrCode.stop().then(() => {
-                    setIsScanning(false);
-                    handleProductScanned(decodedText);
-                }).catch(err => {
-                    console.error("Failed to stop scanning.", err);
-                    setIsScanning(false);
-                    handleProductScanned(decodedText);
-                });
+                if (html5QrCodeRef.current?.isScanning) {
+                    html5QrCodeRef.current.stop().then(() => {
+                        setIsScanning(false);
+                        handleProductScanned(decodedText);
+                    });
+                }
             };
             const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
-            Html5Qrcode.getCameras().then(cameras => {
-                if (cameras && cameras.length) {
-                    html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback, undefined)
-                        .then(() => setScanStatus("Scanning for QR Code..."))
-                        .catch(err => setScanStatus(`Camera Error: ${err}. Please grant permissions.`));
-                } else {
-                    setScanStatus("No cameras found on this device.");
-                }
-            }).catch(err => {
-                setScanStatus(`Camera Permission Error: ${err}. Please allow camera access in your browser settings.`);
-            });
+            html5QrCodeRef.current.start({ facingMode: "environment" }, config, qrCodeSuccessCallback, undefined)
+                .then(() => setScanStatus("Scanning for QR Code..."))
+                .catch(err => {
+                    setScanStatus(`Camera Permission Error. Please allow camera access for this site in your browser's settings.`);
+                    console.error("Camera start failed.", err);
+                });
+        };
 
+        useEffect(() => {
+            html5QrCodeRef.current = new Html5Qrcode("qr-reader-sales");
             return () => {
-                if (html5QrCode && html5QrCode.isScanning) {
-                    html5QrCode.stop().catch(err => console.error("Cleanup stop scan failed.", err));
+                if (html5QrCodeRef.current?.isScanning) {
+                    html5QrCodeRef.current.stop().catch(err => console.error("Cleanup stop scan failed.", err));
                 }
             };
         }, []);
 
         return (
             <div className="fixed inset-0 bg-black bg-opacity-75 flex flex-col items-center justify-center z-50 p-4">
-                <Card title="Scan Product QR Code" className="w-full max-w-md">
-                    <div id="qr-reader-sales" className="w-full"></div>
-                    {scanStatus && <p className="text-center text-sm mt-2 text-gray-600">{scanStatus}</p>}
-                    <Button onClick={() => setIsScanning(false)} variant="secondary" className="mt-4 w-full">Cancel Scan</Button>
+                <Card title="Scan Product QR Code" className="w-full max-w-md relative">
+                     <button onClick={() => setIsScanning(false)} className="absolute top-4 right-4 p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
+                        <X size={20}/>
+                     </button>
+                    <div id="qr-reader-sales" className="w-full mt-4"></div>
+                    <p className="text-center text-sm my-2 text-gray-600">{scanStatus}</p>
+                    <Button onClick={startScan} className="w-full">Start Scanning</Button>
                 </Card>
             </div>
         );
@@ -428,16 +473,22 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
 
     return (
         <div className="space-y-4">
+            {isAddingCustomer && <AddCustomerModal />}
             {isSelectingProduct && <ProductSearchModal />}
             {isScanning && <QRScannerModal />}
             <h1 className="text-2xl font-bold text-primary">New Sale / Payment</h1>
             
             <Card>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
-                <select value={customerId} onChange={e => setCustomerId(e.target.value)} className="w-full p-2 border rounded">
-                    <option value="">Select a Customer</option>
-                    {state.customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.area}</option>)}
-                </select>
+                <div className="flex gap-2 items-center">
+                    <select value={customerId} onChange={e => setCustomerId(e.target.value)} className="w-full p-2 border rounded custom-select">
+                        <option value="">Select a Customer</option>
+                        {state.customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.area}</option>)}
+                    </select>
+                    <Button onClick={() => setIsAddingCustomer(true)} variant="secondary" className="flex-shrink-0">
+                        <Plus size={16}/> New Customer
+                    </Button>
+                </div>
             </Card>
 
             <Card title="Sale Items">
@@ -481,7 +532,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                                 <span>Discount:</span>
                                 <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} className="w-28 p-1 border rounded text-right" />
                             </div>
-                             <div className="flex justify-between text-gray-600 text-xs">
+                             <div className="flex justify-between text-gray-600">
                                 <span>GST Included:</span>
                                 <span>₹{calculations.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                             </div>
@@ -502,7 +553,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Payment Method</label>
-                            <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as any)} className="w-full p-2 border rounded">
+                            <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as any)} className="w-full p-2 border rounded custom-select">
                                 <option value="CASH">Cash</option>
                                 <option value="UPI">UPI</option>
                                 <option value="CHEQUE">Cheque</option>

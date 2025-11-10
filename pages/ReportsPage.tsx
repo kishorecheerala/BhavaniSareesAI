@@ -156,7 +156,7 @@ const ReportsPage: React.FC = () => {
                                 id="areaFilter"
                                 value={selectedArea}
                                 onChange={(e) => setSelectedArea(e.target.value)}
-                                className="w-full p-2 pl-10 border rounded-lg appearance-none"
+                                className="w-full p-2 pl-10 border rounded-lg appearance-none custom-select"
                             >
                                 <option value="">All Areas</option>
                                 {uniqueAreas.map(area => <option key={area} value={area}>{area}</option>)}

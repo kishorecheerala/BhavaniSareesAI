@@ -138,7 +138,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Method</label>
-                            <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any })} className="w-full p-2 border rounded">
+                            <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any })} className="w-full p-2 border rounded custom-select">
                                 <option value="CASH">Cash</option>
                                 <option value="UPI">UPI</option>
                                 <option value="CHEQUE">Cheque</option>
@@ -179,9 +179,11 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-lg font-bold text-primary">Customer Details: {selectedCustomer.name}</h2>
                         {isEditing ? (
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 items-center">
                                 <Button onClick={handleUpdateCustomer} className="h-9 px-3"><Save size={16} /> Save</Button>
-                                <Button onClick={() => setIsEditing(false)} variant="secondary" className="h-9 px-3"><X size={16} /> Cancel</Button>
+                                <button onClick={() => setIsEditing(false)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
+                                    <X size={20}/>
+                                </button>
                             </div>
                         ) : (
                             <Button onClick={() => setIsEditing(true)}><Edit size={16}/> Edit</Button>

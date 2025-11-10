@@ -142,7 +142,7 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700">{activeTab === 'CUSTOMER' ? 'Customer' : 'Supplier'}</label>
-                        <select value={partyId} onChange={e => { setPartyId(e.target.value); setReferenceId(''); setItemsToReturn([]); }} className="w-full p-2 border rounded">
+                        <select value={partyId} onChange={e => { setPartyId(e.target.value); setReferenceId(''); setItemsToReturn([]); }} className="w-full p-2 border rounded custom-select">
                             <option value="">Select {activeTab === 'CUSTOMER' ? 'Customer' : 'Supplier'}</option>
                             {partyList.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                         </select>
@@ -151,7 +151,7 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                     {partyId && (
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Original Invoice</label>
-                            <select value={referenceId} onChange={e => { setReferenceId(e.target.value); setItemsToReturn([]); }} className="w-full p-2 border rounded">
+                            <select value={referenceId} onChange={e => { setReferenceId(e.target.value); setItemsToReturn([]); }} className="w-full p-2 border rounded custom-select">
                                 <option value="">Select Invoice</option>
                                 {invoiceList.map(inv => <option key={inv.id} value={inv.id}>{inv.id} - {new Date(inv.date).toLocaleDateString()}</option>)}
                             </select>

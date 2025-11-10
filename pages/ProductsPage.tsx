@@ -93,9 +93,11 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-lg font-bold text-primary">Product Details</h2>
                         {isEditing ? (
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 items-center">
                                 <Button onClick={handleUpdateProduct} className="h-9 px-3"><Save size={16} /> Save</Button>
-                                <Button onClick={() => setIsEditing(false)} variant="secondary" className="h-9 px-3"><X size={16} /> Cancel</Button>
+                                <button onClick={() => setIsEditing(false)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
+                                    <X size={20}/>
+                                </button>
                             </div>
                         ) : (
                             <Button onClick={() => setIsEditing(true)}><Edit size={16}/> Edit Details</Button>
