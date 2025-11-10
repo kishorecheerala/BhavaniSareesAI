@@ -616,7 +616,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                     </Button>
                     <input 
                       type="file" 
-                      accept=".csv" 
+                      accept=".csv, text/csv, application/vnd.ms-excel"
                       ref={fileInputRef} 
                       className="hidden" 
                       onChange={handleFileImport}
