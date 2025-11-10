@@ -1,111 +1,127 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes } from 'lucide-react';
-
+import React, { useState, useEffect } from 'react';
 import { AppProvider } from './context/AppContext';
 import Dashboard from './pages/Dashboard';
 import CustomersPage from './pages/CustomersPage';
 import SalesPage from './pages/SalesPage';
 import PurchasesPage from './pages/PurchasesPage';
+import ProductsPage from './pages/ProductsPage';
 import ReportsPage from './pages/ReportsPage';
 import ReturnsPage from './pages/ReturnsPage';
-import ProductsPage from './pages/ProductsPage';
+import { Home, Users, ShoppingCart, Package, Archive, FileText, Undo2, Menu, X } from 'lucide-react';
 
-type Page = 'DASHBOARD' | 'CUSTOMERS' | 'SALES' | 'PURCHASES' | 'REPORTS' | 'RETURNS' | 'PRODUCTS';
+type Page = 'dashboard' | 'customers' | 'sales' | 'purchases' | 'products' | 'returns' | 'reports';
 
 const App: React.FC = () => {
-  const [currentPage, _setCurrentPage] = useState<Page>('DASHBOARD');
-  const [isDirty, setIsDirty] = useState(false);
-  const currentPageRef = useRef(currentPage);
-  currentPageRef.current = currentPage;
+    const [currentPage, setCurrentPage] = useState<Page>('dashboard');
+    const [isDirty, setIsDirty] = useState(false);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const setCurrentPage = (page: Page) => {
-    if (page === currentPageRef.current) {
-        return;
-    }
-
-    if (isDirty) {
-      if (window.confirm('You have unsaved changes. Are you sure you want to leave this page?')) {
-        setIsDirty(false); 
-        _setCurrentPage(page);
-      }
-    } else {
-      _setCurrentPage(page);
-    }
-  };
-
-  useEffect(() => {
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (isDirty) {
-        event.preventDefault();
-        event.returnValue = '';
-      }
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (isDirty) {
+                e.preventDefault();
+                e.returnValue = ''; // Required for Chrome
+            }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [isDirty]);
+    
+    const navigate = (page: Page) => {
+        if (isDirty && !window.confirm('You have unsaved changes. Are you sure you want to leave?')) {
+            return;
+        }
+        setCurrentPage(page);
+        setIsDirty(false); // Reset dirty state on successful navigation
+        setIsMenuOpen(false); // Close menu on navigation
     };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+
+    const renderPage = () => {
+        switch (currentPage) {
+            case 'dashboard':
+                return <Dashboard />;
+            case 'customers':
+                return <CustomersPage setIsDirty={setIsDirty} />;
+            case 'sales':
+                return <SalesPage setIsDirty={setIsDirty} navigate={navigate} />;
+            case 'purchases':
+                return <PurchasesPage setIsDirty={setIsDirty} />;
+            case 'products':
+                return <ProductsPage setIsDirty={setIsDirty} />;
+            case 'returns':
+                return <ReturnsPage setIsDirty={setIsDirty} />;
+            case 'reports':
+                return <ReportsPage />;
+            default:
+                return <Dashboard />;
+        }
     };
-  }, [isDirty]);
+    
+    const NavLink: React.FC<{ page: Page, icon: React.ReactNode, children: React.ReactNode }> = ({ page, icon, children }) => (
+        <button
+            onClick={() => navigate(page)}
+            className={`w-full text-left flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                currentPage === page ? 'bg-primary text-white font-semibold' : 'text-gray-600 hover:bg-purple-100'
+            }`}
+        >
+            {icon}
+            {children}
+        </button>
+    );
 
-
-  const renderPage = () => {
-    const commonProps = { setIsDirty };
-    switch (currentPage) {
-      case 'DASHBOARD':
-        return <Dashboard />;
-      case 'CUSTOMERS':
-        return <CustomersPage {...commonProps} />;
-      case 'SALES':
-        return <SalesPage {...commonProps} />;
-      case 'PURCHASES':
-        return <PurchasesPage {...commonProps} />;
-      case 'REPORTS':
-        return <ReportsPage />;
-      case 'RETURNS':
-        return <ReturnsPage {...commonProps} />;
-      case 'PRODUCTS':
-        return <ProductsPage {...commonProps} />;
-      default:
-        return <Dashboard />;
-    }
-  };
-  
-  const NavItem = ({ page, label, icon: Icon }: { page: Page; label: string; icon: React.ElementType }) => (
-    <button
-      onClick={() => setCurrentPage(page)}
-      className={`flex flex-col items-center justify-center w-full pt-2 pb-1 text-xs transition-colors duration-200 ${
-        currentPage === page ? 'text-white scale-105' : 'text-purple-200 hover:text-white'
-      }`}
-    >
-      <Icon className="w-6 h-6 mb-1" />
-      <span>{label}</span>
-    </button>
-  );
-
-  return (
-    <AppProvider>
-      <div className="flex flex-col h-screen font-sans text-text bg-background">
-        <header className="bg-primary text-white shadow-md p-4 flex items-center justify-center">
-            <h1 className="text-xl font-bold">Bhavani Sarees</h1>
-        </header>
-
-        <main className="flex-grow overflow-y-auto p-4 pb-20">
-          {renderPage()}
-        </main>
-
-        <nav className="fixed bottom-0 left-0 right-0 bg-primary shadow-lg z-50">
-          <div className="flex justify-around max-w-2xl mx-auto">
-            <NavItem page="DASHBOARD" label="Home" icon={Home} />
-            <NavItem page="CUSTOMERS" label="Customers" icon={Users} />
-            <NavItem page="SALES" label="Sales" icon={ShoppingCart} />
-            <NavItem page="PURCHASES" label="Purchases" icon={Package} />
-            <NavItem page="PRODUCTS" label="Products" icon={Boxes} />
-            <NavItem page="RETURNS" label="Returns" icon={Undo2} />
-            <NavItem page="REPORTS" label="Reports" icon={FileText} />
-          </div>
+    const sidebarContent = (
+         <nav className="flex flex-col gap-2 p-4">
+            <NavLink page="dashboard" icon={<Home size={20} />}>Dashboard</NavLink>
+            <NavLink page="sales" icon={<ShoppingCart size={20} />}>New Sale</NavLink>
+            <NavLink page="customers" icon={<Users size={20} />}>Customers</NavLink>
+            <NavLink page="purchases" icon={<Package size={20} />}>Purchases</NavLink>
+            <NavLink page="products" icon={<Archive size={20} />}>Products</NavLink>
+            <NavLink page="returns" icon={<Undo2 size={20} />}>Returns</NavLink>
+            <NavLink page="reports" icon={<FileText size={20} />}>Reports</NavLink>
         </nav>
-      </div>
-    </AppProvider>
-  );
+    );
+
+    return (
+        <AppProvider>
+            <div className="flex min-h-screen bg-gray-50">
+                {/* Desktop Sidebar */}
+                <aside className="hidden lg:block w-64 bg-white border-r flex-shrink-0">
+                    <div className="h-16 flex items-center justify-center border-b">
+                        <h1 className="text-xl font-bold text-primary">Bhavani Sarees</h1>
+                    </div>
+                    {sidebarContent}
+                </aside>
+
+                 {/* Mobile Menu */}
+                <div className={`fixed inset-0 z-40 lg:hidden transition-transform transform ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                   <div className="absolute inset-0 bg-black/50" onClick={() => setIsMenuOpen(false)}></div>
+                   <aside className="relative w-64 bg-white h-full">
+                       <div className="h-16 flex items-center justify-between border-b px-4">
+                           <h1 className="text-xl font-bold text-primary">Bhavani Sarees</h1>
+                           <button onClick={() => setIsMenuOpen(false)} className="p-2">
+                               <X />
+                           </button>
+                       </div>
+                       {sidebarContent}
+                   </aside>
+                </div>
+
+                <div className="flex-1 flex flex-col">
+                     <header className="lg:hidden h-16 bg-white border-b flex items-center px-4">
+                        <button onClick={() => setIsMenuOpen(true)} className="p-2">
+                            <Menu />
+                        </button>
+                        <h1 className="text-lg font-bold text-primary ml-4 capitalize">{currentPage}</h1>
+                    </header>
+                    <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+                        {renderPage()}
+                    </main>
+                </div>
+            </div>
+        </AppProvider>
+    );
 };
 
 export default App;
