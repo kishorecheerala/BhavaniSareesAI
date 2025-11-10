@@ -229,9 +229,9 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                                             </p>
                                         </div>
                                       </div>
-                                      <Button onClick={() => handleDeleteSale(sale.id)} variant="danger" className="ml-4 flex-shrink-0 p-2 h-8 w-8">
+                                      <button onClick={() => handleDeleteSale(sale.id)} className="ml-4 flex-shrink-0 p-2 rounded-full text-red-500 hover:bg-red-100 transition-colors">
                                           <Trash2 size={16} />
-                                      </Button>
+                                      </button>
                                     </div>
                                     <div className="pl-4 mt-2 border-l-2 border-purple-200 space-y-3">
                                         <div>
