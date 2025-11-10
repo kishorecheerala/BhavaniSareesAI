@@ -97,13 +97,10 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         const subTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
         const discountAmount = parseFloat(discount) || 0;
         
-        // This is a simplified GST calculation assuming price is inclusive.
-        // For exclusive price, the calculation would be different.
         const gstAmount = items.reduce((sum, item) => {
             const product = state.products.find(p => p.id === item.productId);
             if (product && product.gstPercent > 0) {
                 const itemTotal = item.price * item.quantity;
-                // Price is inclusive of GST, so we extract it.
                 const gst = itemTotal - (itemTotal / (1 + product.gstPercent / 100));
                 return sum + gst;
             }
@@ -119,10 +116,9 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         const doc = new jsPDF({
           orientation: 'p',
           unit: 'px',
-          format: [280, 450] // Cute little receipt format
+          format: [280, 450] 
         });
 
-        // Add Fonts
         doc.addFont('Times-Roman', 'Times', 'normal');
         doc.addFont('Times-Bold', 'Times', 'bold');
         doc.addFont('Times-Italic', 'Times', 'italic');
@@ -130,7 +126,6 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         const centerX = doc.internal.pageSize.getWidth() / 2;
         let y = 30;
 
-        // --- Header ---
         doc.setFont('Times', 'italic');
         doc.setFontSize(14);
         doc.setTextColor('#000000');
@@ -143,15 +138,13 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         doc.text('Bhavani Sarees', centerX, y, { align: 'center' });
         y += 25;
 
-        // --- Invoice Details ---
-        doc.setFont('Helvetica', 'normal');
-        doc.setFontSize(9);
-        doc.setTextColor('#333333');
-        
-        // Two-column layout for details
         const leftColX = 20;
         const rightColX = doc.internal.pageSize.getWidth() - 20;
 
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor('#000000');
+        
         doc.setFont('Helvetica', 'bold');
         doc.text('Billed To:', leftColX, y);
         doc.setFont('Helvetica', 'normal');
@@ -165,19 +158,17 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         doc.text(new Date(sale.date).toLocaleString(), rightColX, y + 20, { align: 'right' });
         y += 40;
 
-        // --- Items Table Header ---
         doc.setDrawColor('#6a0dad');
-        doc.line(leftColX, y, rightColX, y); // Top border
+        doc.line(leftColX, y, rightColX, y); 
         y += 12;
         doc.setFont('Helvetica', 'bold');
         doc.text('Item', leftColX, y);
         doc.text('Total', rightColX, y, { align: 'right' });
         y += 5;
         doc.setDrawColor('#cccccc');
-        doc.line(leftColX, y, rightColX, y); // Bottom border
+        doc.line(leftColX, y, rightColX, y); 
         y += 15;
         
-        // --- Items List ---
         doc.setFont('Helvetica', 'normal');
         sale.items.forEach(item => {
             const itemTotal = item.price * item.quantity;
@@ -189,21 +180,23 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             doc.setTextColor('#666666');
             doc.text(`(x${item.quantity} @ Rs. ${item.price.toLocaleString('en-IN')})`, leftColX, y);
             y += 15;
-            doc.setTextColor('#333333');
+            doc.setTextColor('#000000');
         });
         
         doc.setDrawColor('#cccccc');
-        doc.line(leftColX, y, rightColX, y); // Separator line
+        doc.line(leftColX, y, rightColX, y); 
         y += 15;
 
-        // --- Totals Section ---
+        const paidAmountOnSale = sale.payments.reduce((sum, p) => sum + p.amount, 0);
+        const dueAmountOnSale = calculations.totalAmount - paidAmountOnSale;
+
         const totals = [
             { label: 'Subtotal', value: calculations.subTotal },
             { label: 'GST', value: calculations.gstAmount },
             { label: 'Discount', value: -calculations.discountAmount },
             { label: 'Total', value: calculations.totalAmount, bold: true },
-            { label: 'Paid', value: sale.payments.reduce((sum, p) => sum + p.amount, 0) },
-            { label: 'Due', value: calculations.totalAmount - sale.payments.reduce((sum, p) => sum + p.amount, 0), bold: true },
+            { label: 'Paid', value: paidAmountOnSale },
+            { label: 'Due', value: dueAmountOnSale, bold: true },
         ];
         
         totals.forEach(({label, value, bold = false}) => {
@@ -217,9 +210,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         const pdfBlob = doc.output('blob');
         const pdfFile = new File([pdfBlob], `${sale.id}.pdf`, { type: 'application/pdf' });
         
-        const paidAmount = sale.payments.reduce((s,p) => s+p.amount,0);
-        const dueAmount = sale.totalAmount - paidAmount;
-        const whatsAppText = `Thank you for your purchase from Bhavani Sarees!\n\n*Invoice Summary:*\nInvoice ID: ${sale.id}\nDate: ${new Date(sale.date).toLocaleString()}\n\n*Items:*\n${sale.items.map(i => `- ${i.productName} (x${i.quantity}) - Rs. ${(i.price * i.quantity).toLocaleString('en-IN')}`).join('\n')}\n\n*Total: Rs. ${sale.totalAmount.toLocaleString('en-IN')}*\nPaid: Rs. ${paidAmount.toLocaleString('en-IN')}\nDue: Rs. ${dueAmount.toLocaleString('en-IN')}\n\nHave a blessed day!`;
+        const whatsAppText = `Thank you for your purchase from Bhavani Sarees!\n\n*Invoice Summary:*\nInvoice ID: ${sale.id}\nDate: ${new Date(sale.date).toLocaleString()}\n\n*Items:*\n${sale.items.map(i => `- ${i.productName} (x${i.quantity}) - Rs. ${(i.price * i.quantity).toLocaleString('en-IN')}`).join('\n')}\n\n*Total: Rs. ${sale.totalAmount.toLocaleString('en-IN')}*\nPaid: Rs. ${paidAmountOnSale.toLocaleString('en-IN')}\nDue: Rs. ${dueAmountOnSale.toLocaleString('en-IN')}\n\nHave a blessed day!`;
         
         try {
             await navigator.clipboard.writeText(whatsAppText);
@@ -481,17 +472,30 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             {(items.length > 0 || customerId) && (
                 <Card title={items.length > 0 ? 'Billing & Payment' : 'Record Standalone Payment'}>
                     {items.length > 0 && (
-                        <div className="mb-4 pb-4 border-b space-y-2 text-right">
-                            <p>Subtotal: ₹{calculations.subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
-                            <div className="flex justify-end items-center gap-2">
-                                <label>Discount:</label>
+                        <div className="mb-4 space-y-2">
+                            <div className="flex justify-between text-gray-600">
+                                <span>Subtotal:</span>
+                                <span>₹{calculations.subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-gray-600">
+                                <span>Discount:</span>
                                 <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} className="w-28 p-1 border rounded text-right" />
                             </div>
-                            <p className="text-xs text-gray-500">(GST of ₹{calculations.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })} included)</p>
-                            <p className="text-lg font-bold">Total: ₹{calculations.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                             <div className="flex justify-between text-gray-600 text-xs">
+                                <span>GST Included:</span>
+                                <span>₹{calculations.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                             <div className="mt-4 pt-4 border-t">
+                                <div className="p-4 bg-purple-50 rounded-lg text-center">
+                                    <p className="text-sm font-semibold text-gray-600">Grand Total</p>
+                                    <p className="text-4xl font-bold text-primary">
+                                        ₹{calculations.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     )}
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Amount Paid</label>
                             <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} placeholder={items.length > 0 ? `Total is ₹${calculations.totalAmount.toLocaleString('en-IN')}` : 'Enter amount to pay dues'} className="w-full p-2 border rounded" />
