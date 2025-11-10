@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Edit, Save, X, Package, IndianRupee, Percent, PackageCheck } from 'lucide-react';
+import { Search, Edit, Save, X, Package, IndianRupee, Percent, PackageCheck, Trash2 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Product } from '../types';
 import Card from '../components/Card';
@@ -53,6 +53,24 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
             }
         }
     };
+    
+    const handleDeleteProduct = (productId: string) => {
+        const isUsedInSale = state.sales.some(s => s.items.some(i => i.productId === productId));
+        const isUsedInPurchase = state.purchases.some(p => p.items.some(i => i.productId === productId));
+        const isUsedInReturn = state.returns.some(r => r.items.some(i => i.productId === productId));
+
+        if (isUsedInSale || isUsedInPurchase || isUsedInReturn) {
+            alert("This product cannot be deleted because it is part of existing sales, purchases, or return records.");
+            return;
+        }
+
+        if (window.confirm("Are you sure you want to permanently delete this product? This action cannot be undone.")) {
+            dispatch({ type: 'DELETE_PRODUCT', payload: productId });
+            setSelectedProduct(null); // Go back to the list view
+            alert("Product deleted successfully.");
+        }
+    };
+
 
     const handleStockAdjustment = () => {
         if (!selectedProduct || newQuantity === '' || isNaN(parseInt(newQuantity))) {
@@ -90,18 +108,23 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                 <Button onClick={() => setSelectedProduct(null)}>&larr; Back to Products List</Button>
                 
                 <Card>
-                    <div className="flex justify-between items-center mb-4">
+                    <div className="flex justify-between items-start mb-4">
                         <h2 className="text-lg font-bold text-primary">Product Details</h2>
-                        {isEditing ? (
-                            <div className="flex gap-2 items-center">
-                                <Button onClick={handleUpdateProduct} className="h-9 px-3"><Save size={16} /> Save</Button>
-                                <button onClick={() => setIsEditing(false)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
-                                    <X size={20}/>
-                                </button>
-                            </div>
-                        ) : (
-                            <Button onClick={() => setIsEditing(true)}><Edit size={16}/> Edit Details</Button>
-                        )}
+                        <div className="flex gap-2 items-center">
+                            {isEditing ? (
+                                <>
+                                    <Button onClick={handleUpdateProduct} className="h-9 px-3"><Save size={16} /> Save</Button>
+                                    <button onClick={() => setIsEditing(false)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
+                                        <X size={20}/>
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                  <Button onClick={() => setIsEditing(true)}><Edit size={16}/> Edit</Button>
+                                  <Button onClick={() => handleDeleteProduct(selectedProduct.id)} variant="danger"><Trash2 size={16}/> Delete</Button>
+                                </>
+                            )}
+                        </div>
                     </div>
                      {isEditing ? (
                         <div className="space-y-3">

@@ -93,6 +93,13 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
         resetForm();
     };
 
+    const handleDeleteReturn = (returnId: string) => {
+        if (window.confirm('Are you sure you want to delete this return? This will revert the stock changes and remove the credit from the invoice.')) {
+            dispatch({ type: 'DELETE_RETURN', payload: returnId });
+            alert('Return record deleted successfully.');
+        }
+    };
+
     const partyList = activeTab === 'CUSTOMER' ? state.customers : state.suppliers;
     const invoiceList = useMemo(() => {
         if (!partyId) return [];
@@ -238,8 +245,11 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                                             <p className="text-xs text-gray-500">Date: {new Date(ret.returnDate).toLocaleDateString()}</p>
                                             <p className="text-xs text-gray-500">Ref Invoice: {ret.referenceId}</p>
                                         </div>
-                                        <div className="text-right">
+                                        <div className="text-right flex items-start gap-2">
                                             <p className="font-bold text-lg text-primary">₹{ret.amount.toLocaleString('en-IN')}</p>
+                                            <button onClick={() => handleDeleteReturn(ret.id)} className="p-2 rounded-full text-red-500 hover:bg-red-100 transition-colors">
+                                                <Trash2 size={16} />
+                                            </button>
                                         </div>
                                     </div>
                                     <div className="mt-2 pt-2 border-t">

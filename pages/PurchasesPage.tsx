@@ -21,6 +21,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     const { state, dispatch } = useAppContext();
     const [view, setView] = useState<'list' | 'add_supplier' | 'add_purchase'>('list');
     const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+    const [purchaseToEdit, setPurchaseToEdit] = useState<Purchase | null>(null);
 
     const [isEditing, setIsEditing] = useState(false);
     const [editedSupplier, setEditedSupplier] = useState<Supplier | null>(null);
@@ -54,7 +55,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         } else if (selectedSupplier) {
             formIsDirty = isEditing;
         }
-        if (fileToImport) {
+        if (fileToImport || purchaseToEdit) {
             formIsDirty = true;
         }
         setIsDirty(formIsDirty);
@@ -62,7 +63,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         return () => {
             setIsDirty(false);
         };
-    }, [view, newSupplier, supplierId, items, paymentAmount, isEditing, selectedSupplier, fileToImport, itemsForReview, setIsDirty]);
+    }, [view, newSupplier, supplierId, items, paymentAmount, isEditing, selectedSupplier, fileToImport, itemsForReview, purchaseToEdit, setIsDirty]);
 
     useEffect(() => {
         if (selectedSupplier) {
@@ -74,6 +75,18 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         }
         setIsEditing(false);
     }, [selectedSupplier, state.suppliers, state.purchases]);
+    
+    useEffect(() => {
+        if (purchaseToEdit) {
+            setSupplierId(purchaseToEdit.supplierId);
+            setItems(purchaseToEdit.items);
+            const mainPayment = purchaseToEdit.payments.find(p => p.method !== 'RETURN_CREDIT');
+            setPaymentAmount(mainPayment ? mainPayment.amount.toString() : '');
+            setPaymentMethod(mainPayment ? mainPayment.method : 'CASH');
+            setPaymentDate(mainPayment ? getLocalDateString(new Date(mainPayment.date)) : getLocalDateString());
+            setView('add_purchase');
+        }
+    }, [purchaseToEdit]);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -98,6 +111,20 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             }
         }
     };
+    
+    const handleDeleteSupplier = (supplierId: string) => {
+        const hasPurchases = state.purchases.some(p => p.supplierId === supplierId);
+        if (hasPurchases) {
+            alert("This supplier cannot be deleted because they have existing purchase records. Please delete their purchases first.");
+            return;
+        }
+        if (window.confirm("Are you sure you want to delete this supplier? This action cannot be undone.")) {
+            dispatch({ type: 'DELETE_SUPPLIER', payload: supplierId });
+            setSelectedSupplier(null);
+            alert("Supplier deleted successfully.");
+        }
+    };
+
 
     const handleDeletePurchase = (purchaseId: string) => {
         if (window.confirm('Are you sure you want to delete this purchase? This action cannot be undone and will remove the items from your stock.')) {
@@ -122,47 +149,68 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         setPaymentMethod('CASH');
         setPaymentDate(getLocalDateString());
         setNewItem({ productId: '', productName: '', quantity: '1', price: '', gstPercent: '5', saleValue: '' });
+        setPurchaseToEdit(null);
         setView('list');
     };
 
-    const handleAddPurchase = () => {
+    const handleAddOrUpdatePurchase = () => {
         if (!supplierId || items.length === 0) {
             alert("Please select a supplier and add at least one item.");
             return;
         }
         const totalAmount = items.reduce((sum, i) => sum + (i.price * i.quantity), 0);
         
-        const payments: Payment[] = [];
         const paidAmount = parseFloat(paymentAmount || '0');
+        if (paidAmount > totalAmount + 0.01) {
+            alert(`Paid amount (₹${paidAmount}) cannot be greater than the total amount (₹${totalAmount}).`);
+            return;
+        }
+
+        const newPayments: Payment[] = [];
         if (paidAmount > 0) {
-             if (paidAmount > totalAmount) {
-                alert(`Paid amount (₹${paidAmount}) cannot be greater than the total amount (₹${totalAmount}).`);
-                return;
-            }
-            payments.push({
+            newPayments.push({
                 id: `PAY-P-${Date.now()}`,
                 amount: paidAmount,
                 method: paymentMethod,
                 date: new Date(paymentDate).toISOString(),
             });
         }
-        
-        const newPurchase: Purchase = {
-            id: `PUR-${Date.now()}`,
-            supplierId,
-            items,
-            totalAmount,
-            date: new Date().toISOString(),
-            payments
-        };
-        dispatch({ type: 'ADD_PURCHASE', payload: newPurchase });
+        // Preserve any return credits
+        if (purchaseToEdit) {
+            const returnCredits = purchaseToEdit.payments.filter(p => p.method === 'RETURN_CREDIT');
+            newPayments.push(...returnCredits);
+        }
 
-        items.forEach(item => {
-            const product: Product = { id: item.productId, name: item.productName, quantity: item.quantity, purchasePrice: item.price, salePrice: item.saleValue, gstPercent: item.gstPercent };
-            dispatch({ type: 'ADD_PRODUCT', payload: product });
-        });
+        if (purchaseToEdit) {
+            // Update existing purchase
+            const updatedPurchase: Purchase = {
+                ...purchaseToEdit,
+                supplierId,
+                items,
+                totalAmount,
+                payments: newPayments
+            };
+            dispatch({ type: 'UPDATE_PURCHASE', payload: { oldPurchase: purchaseToEdit, newPurchase: updatedPurchase } });
+            // Stock is handled in the reducer
+            alert("Purchase updated successfully!");
+        } else {
+            // Add new purchase
+            const newPurchase: Purchase = {
+                id: `PUR-${Date.now()}`,
+                supplierId,
+                items,
+                totalAmount,
+                date: new Date().toISOString(),
+                payments: newPayments
+            };
+            dispatch({ type: 'ADD_PURCHASE', payload: newPurchase });
+            items.forEach(item => {
+                const product: Product = { id: item.productId, name: item.productName, quantity: item.quantity, purchasePrice: item.price, salePrice: item.saleValue, gstPercent: item.gstPercent };
+                dispatch({ type: 'ADD_PRODUCT', payload: product });
+            });
+            alert("Purchase added successfully!");
+        }
         
-        alert("Purchase added successfully!");
         resetPurchaseForm();
     };
 
@@ -561,18 +609,23 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                 {paymentModalState.isOpen && <PaymentModal />}
                 <Button onClick={() => setSelectedSupplier(null)}>&larr; Back to Purchases</Button>
                 <Card>
-                     <div className="flex justify-between items-center mb-4">
+                     <div className="flex justify-between items-start mb-4">
                         <h2 className="text-lg font-bold text-primary">Supplier Details: {selectedSupplier.name}</h2>
-                        {isEditing ? (
-                            <div className="flex gap-2 items-center">
-                                <Button onClick={handleUpdateSupplier} className="h-9 px-3"><Save size={16} /> Save</Button>
-                                <button onClick={() => setIsEditing(false)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
-                                    <X size={20}/>
-                                </button>
-                            </div>
-                        ) : (
-                            <Button onClick={() => setIsEditing(true)}><Edit size={16}/> Edit</Button>
-                        )}
+                        <div className="flex gap-2 items-center">
+                          {isEditing ? (
+                              <>
+                                  <Button onClick={handleUpdateSupplier} className="h-9 px-3"><Save size={16} /> Save</Button>
+                                  <button onClick={() => setIsEditing(false)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
+                                      <X size={20}/>
+                                  </button>
+                              </>
+                          ) : (
+                              <>
+                                <Button onClick={() => setIsEditing(true)}><Edit size={16}/> Edit</Button>
+                                <Button onClick={() => handleDeleteSupplier(selectedSupplier.id)} variant="danger"><Trash2 size={16}/> Delete</Button>
+                              </>
+                          )}
+                        </div>
                     </div>
                     {isEditing ? (
                         <div className="space-y-3">
@@ -592,7 +645,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                     {supplierPurchases.length > 0 ? (
                         <div className="space-y-4">
                             {supplierPurchases.slice().reverse().map(purchase => {
-                                const amountPaid = purchase.payments.reduce((sum, p) => sum + p.amount, 0);
+                                const amountPaid = (purchase.payments || []).reduce((sum, p) => sum + p.amount, 0);
                                 const dueAmount = purchase.totalAmount - amountPaid;
                                 const isPaid = dueAmount <= 0.01;
                                 return (
@@ -611,9 +664,14 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                             </p>
                                         </div>
                                       </div>
-                                       <button onClick={() => handleDeletePurchase(purchase.id)} className="ml-4 flex-shrink-0 p-2 rounded-full text-red-500 hover:bg-red-100 transition-colors">
-                                          <Trash2 size={16} />
-                                      </button>
+                                       <div className="flex items-center ml-4 flex-shrink-0">
+                                            <button onClick={() => setPurchaseToEdit(purchase)} className="p-2 rounded-full text-blue-500 hover:bg-blue-100 transition-colors">
+                                                <Edit size={16} />
+                                            </button>
+                                            <button onClick={() => handleDeletePurchase(purchase.id)} className="p-2 rounded-full text-red-500 hover:bg-red-100 transition-colors">
+                                                <Trash2 size={16} />
+                                            </button>
+                                       </div>
                                     </div>
                                     <div className="pl-4 mt-2 border-l-2 border-purple-200 space-y-3">
                                         <div>
@@ -626,7 +684,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                                 ))}
                                             </ul>
                                         </div>
-                                        {purchase.payments.length > 0 && (
+                                        {(purchase.payments || []).length > 0 && (
                                             <div>
                                                 <h4 className="font-semibold text-sm text-gray-700 mb-1">Payments Made:</h4>
                                                  <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
@@ -739,7 +797,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             </div>
             
             <div className="flex flex-col sm:flex-row gap-2">
-                <Button className="w-full sm:w-auto" onClick={() => { setView('add_purchase'); setSelectedSupplier(null); }}><Plus className="w-4 h-4 mr-2" />Add Purchase/Payment</Button>
+                <Button className="w-full sm:w-auto" onClick={() => { setView('add_purchase'); setSelectedSupplier(null); resetPurchaseForm(); }}><Plus className="w-4 h-4 mr-2" />Add Purchase/Payment</Button>
                 <Button className="w-full sm:w-auto" onClick={() => { setView('add_supplier'); setSelectedSupplier(null); }} variant="secondary"><Plus className="w-4 h-4 mr-2" />Add Supplier</Button>
             </div>
             
@@ -750,7 +808,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                             {state.suppliers.map(supplier => {
                                 const supplierPurchases = state.purchases.filter(p => p.supplierId === supplier.id);
                                 const totalPurchase = supplierPurchases.reduce((sum, p) => sum + p.totalAmount, 0);
-                                const totalPaid = supplierPurchases.reduce((sum, p) => sum + p.payments.reduce((pSum, payment) => pSum + payment.amount, 0), 0);
+                                const totalPaid = supplierPurchases.reduce((sum, p) => sum + (p.payments || []).reduce((pSum, payment) => pSum + payment.amount, 0), 0);
                                 const totalDue = totalPurchase - totalPaid;
 
                                 return (
@@ -769,7 +827,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                                     <Package size={14} />
                                                     <span className="font-semibold">₹{totalPurchase.toLocaleString('en-IN')}</span>
                                                 </div>
-                                                 <div className={`flex items-center justify-end gap-1 ${totalDue > 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                                                 <div className={`flex items-center justify-end gap-1 ${totalDue > 0.01 ? 'text-red-600' : 'text-gray-600'}`}>
                                                     <IndianRupee size={14} />
                                                     <span className="font-semibold">₹{totalDue.toLocaleString('en-IN')}</span>
                                                 </div>
@@ -895,7 +953,9 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                     
                     <div className="space-y-2">
                         {canCompletePurchase ? (
-                            <Button onClick={handleAddPurchase} className="w-full">Complete Purchase</Button>
+                            <Button onClick={handleAddOrUpdatePurchase} className="w-full">
+                                {purchaseToEdit ? 'Update Purchase' : 'Complete Purchase'}
+                            </Button>
                         ) : canRecordPayment ? (
                             <Button onClick={handleRecordStandalonePayment} className="w-full">
                                 <IndianRupee className="w-4 h-4 mr-2" />
@@ -906,7 +966,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                 {supplierId ? 'Add items or enter payment amount' : 'Select a supplier to begin'}
                             </Button>
                         )}
-                        <Button onClick={() => { setView('list'); setSelectedSupplier(null); }} variant="secondary" className="w-full">Cancel</Button>
+                        <Button onClick={resetPurchaseForm} variant="secondary" className="w-full">Cancel</Button>
                     </div>
 
                 </div>
