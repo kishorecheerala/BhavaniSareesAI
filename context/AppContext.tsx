@@ -20,22 +20,16 @@ type Action =
   | { type: 'SET_STATE'; payload: Omit<AppState, 'toast'> }
   | { type: 'ADD_CUSTOMER'; payload: Customer }
   | { type: 'UPDATE_CUSTOMER'; payload: Customer }
-  | { type: 'DELETE_CUSTOMER'; payload: string } // customerId
   | { type: 'ADD_SUPPLIER'; payload: Supplier }
   | { type: 'UPDATE_SUPPLIER'; payload: Supplier }
-  | { type: 'DELETE_SUPPLIER'; payload: string } // supplierId
   | { type: 'ADD_PRODUCT'; payload: Product }
   | { type: 'UPDATE_PRODUCT'; payload: Product }
-  | { type: 'DELETE_PRODUCT'; payload: string } // productId
   | { type: 'UPDATE_PRODUCT_STOCK'; payload: { productId: string; change: number } }
   | { type: 'ADD_SALE'; payload: Sale }
-  | { type: 'UPDATE_SALE'; payload: { oldSale: Sale, newSale: Sale } }
   | { type: 'DELETE_SALE'; payload: string } // saleId
   | { type: 'ADD_PURCHASE'; payload: Purchase }
-  | { type: 'UPDATE_PURCHASE'; payload: { oldPurchase: Purchase, newPurchase: Purchase } }
   | { type: 'DELETE_PURCHASE'; payload: string } // purchaseId
   | { type: 'ADD_RETURN'; payload: Return }
-  | { type: 'DELETE_RETURN'; payload: string } // returnId
   | { type: 'ADD_PAYMENT_TO_SALE'; payload: { saleId: string; payment: Payment } }
   | { type: 'ADD_PAYMENT_TO_PURCHASE'; payload: { purchaseId: string; payment: Payment } }
   | { type: 'SHOW_TOAST'; payload: string }
@@ -60,14 +54,10 @@ const appReducer = (state: AppState, action: Action): AppState => {
       return { ...state, customers: [...state.customers, action.payload] };
     case 'UPDATE_CUSTOMER':
       return { ...state, customers: state.customers.map(c => c.id === action.payload.id ? action.payload : c) };
-    case 'DELETE_CUSTOMER':
-      return { ...state, customers: state.customers.filter(c => c.id !== action.payload) };
     case 'ADD_SUPPLIER':
       return { ...state, suppliers: [...state.suppliers, action.payload] };
     case 'UPDATE_SUPPLIER':
       return { ...state, suppliers: state.suppliers.map(s => s.id === action.payload.id ? action.payload : s) };
-    case 'DELETE_SUPPLIER':
-      return { ...state, suppliers: state.suppliers.filter(s => s.id !== action.payload) };
     case 'ADD_PRODUCT':
         const existingProduct = state.products.find(p => p.id === action.payload.id);
         if (existingProduct) {
@@ -79,8 +69,6 @@ const appReducer = (state: AppState, action: Action): AppState => {
         return { ...state, products: [...state.products, action.payload] };
     case 'UPDATE_PRODUCT':
         return { ...state, products: state.products.map(p => p.id === action.payload.id ? action.payload : p) };
-    case 'DELETE_PRODUCT':
-      return { ...state, products: state.products.filter(p => p.id !== action.payload) };
     case 'UPDATE_PRODUCT_STOCK':
         return {
             ...state,
@@ -88,33 +76,6 @@ const appReducer = (state: AppState, action: Action): AppState => {
         }
     case 'ADD_SALE':
       return { ...state, sales: [...state.sales, action.payload] };
-    case 'UPDATE_SALE': {
-        const { oldSale, newSale } = action.payload;
-        const stockChanges = new Map<string, number>();
-
-        // Add back old stock
-        oldSale.items.forEach(item => {
-            stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) + item.quantity);
-        });
-
-        // Remove new stock
-        newSale.items.forEach(item => {
-            stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) - item.quantity);
-        });
-        
-        const updatedProducts = state.products.map(product => {
-            if (stockChanges.has(product.id)) {
-                return { ...product, quantity: product.quantity + (stockChanges.get(product.id) || 0) };
-            }
-            return product;
-        });
-
-        return {
-            ...state,
-            sales: state.sales.map(s => s.id === newSale.id ? newSale : s),
-            products: updatedProducts
-        };
-    }
     case 'DELETE_SALE': {
       const saleToDelete = state.sales.find(s => s.id === action.payload);
       if (!saleToDelete) return state;
@@ -140,33 +101,6 @@ const appReducer = (state: AppState, action: Action): AppState => {
     }
     case 'ADD_PURCHASE':
       return { ...state, purchases: [...state.purchases, action.payload] };
-    case 'UPDATE_PURCHASE': {
-        const { oldPurchase, newPurchase } = action.payload;
-        const stockChanges = new Map<string, number>();
-
-        // Revert stock from old purchase items
-        oldPurchase.items.forEach(item => {
-            stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) - item.quantity);
-        });
-
-        // Add stock from new purchase items
-        newPurchase.items.forEach(item => {
-            stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) + item.quantity);
-        });
-
-        const updatedProducts = state.products.map(product => {
-            if (stockChanges.has(product.id)) {
-                return { ...product, quantity: product.quantity + (stockChanges.get(product.id) || 0) };
-            }
-            return product;
-        });
-
-        return {
-            ...state,
-            purchases: state.purchases.map(p => p.id === newPurchase.id ? newPurchase : p),
-            products: updatedProducts
-        };
-    }
     case 'DELETE_PURCHASE': {
       const purchaseToDelete = state.purchases.find(p => p.id === action.payload);
       if (!purchaseToDelete) return state;
@@ -227,46 +161,6 @@ const appReducer = (state: AppState, action: Action): AppState => {
         sales: updatedSales,
         purchases: updatedPurchases,
         returns: [...state.returns, returnPayload],
-      };
-    }
-    case 'DELETE_RETURN': {
-      const returnToDelete = state.returns.find(r => r.id === action.payload);
-      if (!returnToDelete) return state;
-
-      // Revert stock changes
-      const updatedProducts = state.products.map(product => {
-        const itemReturned = returnToDelete.items.find(item => item.productId === product.id);
-        if (itemReturned) {
-          const quantityChange = returnToDelete.type === 'CUSTOMER' ? -itemReturned.quantity : +itemReturned.quantity;
-          return { ...product, quantity: product.quantity + quantityChange };
-        }
-        return product;
-      });
-
-      // Remove credit payment from sale/purchase
-      let updatedSales = state.sales;
-      let updatedPurchases = state.purchases;
-      const paymentIdToRemove = `PAY-RET-${returnToDelete.id}`;
-      if (returnToDelete.type === 'CUSTOMER') {
-        updatedSales = state.sales.map(sale =>
-          sale.id === returnToDelete.referenceId
-            ? { ...sale, payments: (sale.payments || []).filter(p => p.id !== paymentIdToRemove) }
-            : sale
-        );
-      } else {
-        updatedPurchases = state.purchases.map(purchase =>
-          purchase.id === returnToDelete.referenceId
-            ? { ...purchase, payments: (purchase.payments || []).filter(p => p.id !== paymentIdToRemove) }
-            : purchase
-        );
-      }
-      
-      return {
-        ...state,
-        products: updatedProducts,
-        sales: updatedSales,
-        purchases: updatedPurchases,
-        returns: state.returns.filter(r => r.id !== action.payload)
       };
     }
     case 'ADD_PAYMENT_TO_SALE':

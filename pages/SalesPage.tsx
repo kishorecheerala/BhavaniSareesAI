@@ -167,7 +167,8 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         doc.setTextColor('#000000');
         
         doc.text(`Invoice: ${sale.id}`, margin, y);
-        doc.text(`Date: ${new Date(sale.date).toLocaleString()}`, pageWidth - margin, y, { align: 'right' });
+        y += 4;
+        doc.text(`Date: ${new Date(sale.date).toLocaleString()}`, margin, y);
         y += 5;
         
         doc.setFont('Helvetica', 'bold');
@@ -243,6 +244,14 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         const whatsAppText = `Thank you for your purchase from Bhavani Sarees!\n\n*Invoice Summary:*\nInvoice ID: ${sale.id}\nDate: ${new Date(sale.date).toLocaleString()}\n\n*Items:*\n${sale.items.map(i => `- ${i.productName} (x${i.quantity}) - Rs. ${(i.price * i.quantity).toLocaleString('en-IN')}`).join('\n')}\n\nSubtotal: Rs. ${calculations.subTotal.toLocaleString('en-IN')}\nGST: Rs. ${calculations.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\nDiscount: Rs. ${calculations.discountAmount.toLocaleString('en-IN')}\n*Total: Rs. ${sale.totalAmount.toLocaleString('en-IN')}*\nPaid: Rs. ${paidAmountOnSale.toLocaleString('en-IN')}\nDue: Rs. ${dueAmountOnSale.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\nHave a blessed day!`;
         
         if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
+          try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              await navigator.clipboard.writeText(whatsAppText);
+              showToast('Invoice text copied to clipboard!');
+            }
+          } catch (err) {
+            console.warn('Could not copy text to clipboard:', err);
+          }
           await navigator.share({
             title: `Bhavani Sarees Invoice ${sale.id}`,
             text: whatsAppText,

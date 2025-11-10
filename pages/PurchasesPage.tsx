@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Upload, IndianRupee, Edit, Save, X, Trash2, Download, QrCode, Package, Info, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Upload, IndianRupee, Edit, Save, X, Trash2, Download, QrCode, Package } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Supplier, Product, Purchase, PurchaseItem, Payment } from '../types';
 import Card from '../components/Card';
@@ -21,14 +21,10 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     const { state, dispatch } = useAppContext();
     const [view, setView] = useState<'list' | 'add_supplier' | 'add_purchase'>('list');
     const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
-    const [purchaseToEdit, setPurchaseToEdit] = useState<Purchase | null>(null);
 
     const [isEditing, setIsEditing] = useState(false);
     const [editedSupplier, setEditedSupplier] = useState<Supplier | null>(null);
     const [isScanning, setIsScanning] = useState(false);
-    const [importStatus, setImportStatus] = useState<{ type: 'info' | 'success' | 'error', message: string } | null>(null);
-    const [fileToImport, setFileToImport] = useState<File | null>(null);
-    const [itemsForReview, setItemsForReview] = useState<PurchaseItem[] | null>(null);
 
     const [newSupplier, setNewSupplier] = useState<Omit<Supplier, 'id'>>({ name: '', phone: '', location: '' });
     
@@ -51,19 +47,16 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         if (view === 'add_supplier') {
             formIsDirty = !!(newSupplier.name || newSupplier.phone || newSupplier.location);
         } else if (view === 'add_purchase') {
-            formIsDirty = !!supplierId || items.length > 0 || !!paymentAmount || !!itemsForReview;
+            formIsDirty = !!supplierId || items.length > 0 || !!paymentAmount;
         } else if (selectedSupplier) {
             formIsDirty = isEditing;
-        }
-        if (fileToImport || purchaseToEdit) {
-            formIsDirty = true;
         }
         setIsDirty(formIsDirty);
 
         return () => {
             setIsDirty(false);
         };
-    }, [view, newSupplier, supplierId, items, paymentAmount, isEditing, selectedSupplier, fileToImport, itemsForReview, purchaseToEdit, setIsDirty]);
+    }, [view, newSupplier, supplierId, items, paymentAmount, isEditing, selectedSupplier, setIsDirty]);
 
     useEffect(() => {
         if (selectedSupplier) {
@@ -75,20 +68,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         }
         setIsEditing(false);
     }, [selectedSupplier, state.suppliers, state.purchases]);
-    
-    useEffect(() => {
-        if (purchaseToEdit) {
-            setSupplierId(purchaseToEdit.supplierId);
-            setItems(purchaseToEdit.items);
-            const mainPayment = purchaseToEdit.payments.find(p => p.method !== 'RETURN_CREDIT');
-            setPaymentAmount(mainPayment ? mainPayment.amount.toString() : '');
-            setPaymentMethod(mainPayment ? mainPayment.method : 'CASH');
-            setPaymentDate(mainPayment ? getLocalDateString(new Date(mainPayment.date)) : getLocalDateString());
-            setView('add_purchase');
-        }
-    }, [purchaseToEdit]);
 
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleAddSupplier = () => {
         if (!newSupplier.name || !newSupplier.phone || !newSupplier.location) {
@@ -111,20 +91,6 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             }
         }
     };
-    
-    const handleDeleteSupplier = (supplierId: string) => {
-        const hasPurchases = state.purchases.some(p => p.supplierId === supplierId);
-        if (hasPurchases) {
-            alert("This supplier cannot be deleted because they have existing purchase records. Please delete their purchases first.");
-            return;
-        }
-        if (window.confirm("Are you sure you want to delete this supplier? This action cannot be undone.")) {
-            dispatch({ type: 'DELETE_SUPPLIER', payload: supplierId });
-            setSelectedSupplier(null);
-            alert("Supplier deleted successfully.");
-        }
-    };
-
 
     const handleDeletePurchase = (purchaseId: string) => {
         if (window.confirm('Are you sure you want to delete this purchase? This action cannot be undone and will remove the items from your stock.')) {
@@ -142,79 +108,54 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         setNewItem({ productId: '', productName: '', quantity: '1', price: '', gstPercent: '5', saleValue: '' });
     }
 
-    const clearPurchaseFormFields = () => {
+    const resetPurchaseForm = () => {
         setSupplierId('');
         setItems([]);
         setPaymentAmount('');
         setPaymentMethod('CASH');
         setPaymentDate(getLocalDateString());
         setNewItem({ productId: '', productName: '', quantity: '1', price: '', gstPercent: '5', saleValue: '' });
-        setPurchaseToEdit(null);
-    };
-
-    const resetPurchaseForm = () => {
-        clearPurchaseFormFields();
         setView('list');
     };
 
-    const handleAddOrUpdatePurchase = () => {
+    const handleAddPurchase = () => {
         if (!supplierId || items.length === 0) {
             alert("Please select a supplier and add at least one item.");
             return;
         }
         const totalAmount = items.reduce((sum, i) => sum + (i.price * i.quantity), 0);
         
+        const payments: Payment[] = [];
         const paidAmount = parseFloat(paymentAmount || '0');
-        if (paidAmount > totalAmount + 0.01) {
-            alert(`Paid amount (₹${paidAmount}) cannot be greater than the total amount (₹${totalAmount}).`);
-            return;
-        }
-
-        const newPayments: Payment[] = [];
         if (paidAmount > 0) {
-            newPayments.push({
+             if (paidAmount > totalAmount) {
+                alert(`Paid amount (₹${paidAmount}) cannot be greater than the total amount (₹${totalAmount}).`);
+                return;
+            }
+            payments.push({
                 id: `PAY-P-${Date.now()}`,
                 amount: paidAmount,
                 method: paymentMethod,
                 date: new Date(paymentDate).toISOString(),
             });
         }
-        // Preserve any return credits
-        if (purchaseToEdit) {
-            const returnCredits = purchaseToEdit.payments.filter(p => p.method === 'RETURN_CREDIT');
-            newPayments.push(...returnCredits);
-        }
-
-        if (purchaseToEdit) {
-            // Update existing purchase
-            const updatedPurchase: Purchase = {
-                ...purchaseToEdit,
-                supplierId,
-                items,
-                totalAmount,
-                payments: newPayments
-            };
-            dispatch({ type: 'UPDATE_PURCHASE', payload: { oldPurchase: purchaseToEdit, newPurchase: updatedPurchase } });
-            // Stock is handled in the reducer
-            alert("Purchase updated successfully!");
-        } else {
-            // Add new purchase
-            const newPurchase: Purchase = {
-                id: `PUR-${Date.now()}`,
-                supplierId,
-                items,
-                totalAmount,
-                date: new Date().toISOString(),
-                payments: newPayments
-            };
-            dispatch({ type: 'ADD_PURCHASE', payload: newPurchase });
-            items.forEach(item => {
-                const product: Product = { id: item.productId, name: item.productName, quantity: item.quantity, purchasePrice: item.price, salePrice: item.saleValue, gstPercent: item.gstPercent };
-                dispatch({ type: 'ADD_PRODUCT', payload: product });
-            });
-            alert("Purchase added successfully!");
-        }
         
+        const newPurchase: Purchase = {
+            id: `PUR-${Date.now()}`,
+            supplierId,
+            items,
+            totalAmount,
+            date: new Date().toISOString(),
+            payments
+        };
+        dispatch({ type: 'ADD_PURCHASE', payload: newPurchase });
+
+        items.forEach(item => {
+            const product: Product = { id: item.productId, name: item.productName, quantity: item.quantity, purchasePrice: item.price, salePrice: item.saleValue, gstPercent: item.gstPercent };
+            dispatch({ type: 'ADD_PRODUCT', payload: product });
+        });
+        
+        alert("Purchase added successfully!");
         resetPurchaseForm();
     };
 
@@ -342,20 +283,35 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         URL.revokeObjectURL(url);
     };
     
-    const processImport = async () => {
-        if (!fileToImport) return;
-        const file = fileToImport;
-        setImportStatus(null);
-        setFileToImport(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        // Persist the target to clear the value in the finally block.
+        const target = event.target;
 
         try {
-            setImportStatus({ type: 'info', message: 'Reading and parsing file...' });
+            if (!file) {
+                return;
+            }
 
-            const text = await file.text();
-            
-            const cleanedText = text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text;
+            if (!window.confirm("Are you sure you want to import this stock file? This will add to existing stock quantities and update product prices.")) {
+                return;
+            }
+
+            const text = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    if (typeof reader.result === 'string') resolve(reader.result);
+                    else reject(new Error("Could not read file content as text."));
+                };
+                reader.onerror = () => reject(new Error("An error occurred while reading the file."));
+                reader.readAsText(file);
+            });
+
+            // Handle BOM (Byte Order Mark) from Excel
+            let cleanedText = text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text;
             const rows = cleanedText.trim().split(/\r?\n/).filter(row => row.trim() !== '');
-            
             if (rows.length < 2) {
                 throw new Error("CSV file must have a header and at least one data row.");
             }
@@ -367,11 +323,14 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                 throw new Error(`Invalid CSV header. Expected: "${expectedHeader.join(', ')}". Found: "${header.join(', ')}"`);
             }
 
-            const itemsToAdd: PurchaseItem[] = [];
+            let productsToAdd: Product[] = [];
+            let addedCount = 0;
+            let updatedCount = 0;
+
             for (let i = 1; i < rows.length; i++) {
                 const row = rows[i].trim().split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(cell => cell.trim().replace(/^"|"$/g, ''));
                 if (row.length !== expectedHeader.length) {
-                    throw new Error(`Row ${i + 1} has an incorrect number of columns. Expected ${expectedHeader.length}, found ${row.length}.`);
+                    throw new Error(`Row ${i + 1} has an incorrect number of columns. Import aborted.`);
                 }
 
                 const [id, name, quantity, purchasePrice, salePrice, gstPercent] = row;
@@ -381,145 +340,35 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                 const salePriceNum = parseFloat(salePrice);
                 const gstPercentNum = parseFloat(gstPercent);
 
-                if (!id || !name || isNaN(quantityNum) || isNaN(purchasePriceNum) || isNaN(salePriceNum) || isNaN(gstPercentNum) || quantityNum < 0) {
-                    throw new Error(`Row ${i + 1} contains invalid or missing data. Please check all fields. [ID: ${id}, Name: ${name}, Qty: ${quantity}, etc.]`);
+                if (!id || !name || isNaN(quantityNum) || isNaN(purchasePriceNum) || isNaN(salePriceNum) || isNaN(gstPercentNum)) {
+                    throw new Error(`Row ${i + 1} contains invalid or missing data. Please check all fields. Import aborted.`);
                 }
 
-                itemsToAdd.push({ 
-                    productId: id, 
-                    productName: name, 
-                    quantity: quantityNum, 
-                    price: purchasePriceNum, 
-                    saleValue: salePriceNum, 
-                    gstPercent: gstPercentNum 
-                });
+                const product: Product = { id, name, quantity: quantityNum, purchasePrice: purchasePriceNum, salePrice: salePriceNum, gstPercent: gstPercentNum };
+                productsToAdd.push(product);
             }
             
-            if (itemsToAdd.length === 0) {
-                setImportStatus({ type: 'info', message: 'No valid product rows found in the file to import.' });
-                return;
-            }
+            productsToAdd.forEach(product => {
+                const existingProduct = state.products.find(p => p.id.trim().toLowerCase() === product.id.trim().toLowerCase());
+                if(existingProduct) {
+                    updatedCount++;
+                } else {
+                    addedCount++;
+                }
+                dispatch({ type: 'ADD_PRODUCT', payload: product });
+            });
             
-            setItemsForReview(itemsToAdd);
-            setImportStatus({ type: 'success', message: `Loaded ${itemsToAdd.length} items from CSV. Please review and confirm below.` });
+            alert(`Import successful! ${addedCount} products added. ${updatedCount} products updated.`);
 
         } catch (error) {
             console.error("Import failed:", error);
-            const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-            setImportStatus({ type: 'error', message: `Import failed: ${errorMessage}` });
+            alert(`Import failed: ${(error as Error).message}`);
         } finally {
-            if (fileInputRef.current) {
-                fileInputRef.current.value = '';
+            // CRITICAL: Always clear the file input value to allow re-selecting the same file.
+            if (target) {
+                target.value = '';
             }
         }
-    };
-
-    const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-        setImportStatus(null);
-        setFileToImport(null);
-        const file = event.target.files?.[0];
-        if (file) {
-            setFileToImport(file);
-        } else if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-        }
-    };
-
-    const cancelImport = () => {
-        setImportStatus({ type: 'info', message: 'Import cancelled by user.' });
-        setFileToImport(null);
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-        }
-    };
-    
-    const ImportReviewModal = () => {
-        if (!itemsForReview) return null;
-
-        const handleReviewItemChange = (index: number, field: keyof PurchaseItem | 'saleValue', value: string) => {
-            const updatedItems = [...itemsForReview];
-            const itemToUpdate = { ...updatedItems[index] };
-            
-            const numValue = parseFloat(value);
-            if (!isNaN(numValue)) {
-                 (itemToUpdate as any)[field] = numValue;
-            } else {
-                 (itemToUpdate as any)[field] = value;
-            }
-    
-            updatedItems[index] = itemToUpdate;
-            setItemsForReview(updatedItems);
-        };
-    
-        const handleRemoveReviewItem = (index: number) => {
-            setItemsForReview(itemsForReview.filter((_, i) => i !== index));
-        };
-    
-        const handleConfirmImport = () => {
-            setItems(prevItems => [...prevItems, ...itemsForReview]);
-            setItemsForReview(null);
-            setImportStatus({ type: 'success', message: `${itemsForReview.length} items successfully added to the purchase list.` });
-        };
-    
-        const handleCancelReview = () => {
-            setItemsForReview(null);
-            setImportStatus({ type: 'info', message: 'Import review cancelled.' });
-        };
-
-        return (
-            <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-                <Card title="Review Imported Stock" className="w-full max-w-3xl flex flex-col" style={{maxHeight: '90vh'}}>
-                    <p className="text-sm text-gray-600 mb-4">Verify the details below. You can edit any field or remove items before adding them to the purchase.</p>
-                    <div className="flex-grow overflow-y-auto space-y-3 pr-2">
-                        {itemsForReview.map((item, index) => (
-                            <div key={index} className="p-3 bg-gray-50 rounded-lg border relative">
-                                <button onClick={() => handleRemoveReviewItem(index)} className="absolute top-2 right-2 p-1 text-red-500 hover:bg-red-100 rounded-full">
-                                    <Trash2 size={16} />
-                                </button>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
-                                    <div>
-                                        <label className="text-xs font-medium">Saree Code/ID</label>
-                                        <input type="text" value={item.productId} onChange={e => handleReviewItemChange(index, 'productId', e.target.value)} className="w-full p-1 border rounded text-sm"/>
-                                    </div>
-                                     <div>
-                                        <label className="text-xs font-medium">Saree Name</label>
-                                        <input type="text" value={item.productName} onChange={e => handleReviewItemChange(index, 'productName', e.target.value)} className="w-full p-1 border rounded text-sm"/>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div>
-                                            <label className="text-xs font-medium">Quantity</label>
-                                            <input type="number" value={item.quantity} onChange={e => handleReviewItemChange(index, 'quantity', e.target.value)} className="w-full p-1 border rounded text-sm"/>
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-medium">GST %</label>
-                                            <input type="number" value={item.gstPercent} onChange={e => handleReviewItemChange(index, 'gstPercent', e.target.value)} className="w-full p-1 border rounded text-sm"/>
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div>
-                                            <label className="text-xs font-medium">Purchase Price</label>
-                                            <input type="number" value={item.price} onChange={e => handleReviewItemChange(index, 'price', e.target.value)} className="w-full p-1 border rounded text-sm"/>
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-medium">Sale Price</label>
-                                            <input type="number" value={item.saleValue} onChange={e => handleReviewItemChange(index, 'saleValue', e.target.value)} className="w-full p-1 border rounded text-sm"/>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="flex gap-2 pt-4 mt-4 border-t">
-                        <Button onClick={handleConfirmImport} className="w-full" disabled={itemsForReview.length === 0}>
-                           Confirm & Add to Purchase
-                        </Button>
-                        <Button onClick={handleCancelReview} variant="secondary" className="w-full">
-                            Cancel
-                        </Button>
-                    </div>
-                </Card>
-            </div>
-        )
     };
     
      const QRScannerModal: React.FC = () => {
@@ -613,23 +462,18 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                 {paymentModalState.isOpen && <PaymentModal />}
                 <Button onClick={() => setSelectedSupplier(null)}>&larr; Back to Purchases</Button>
                 <Card>
-                     <div className="flex justify-between items-start mb-4">
+                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-lg font-bold text-primary">Supplier Details: {selectedSupplier.name}</h2>
-                        <div className="flex gap-2 items-center">
-                          {isEditing ? (
-                              <>
-                                  <Button onClick={handleUpdateSupplier} className="h-9 px-3"><Save size={16} /> Save</Button>
-                                  <button onClick={() => setIsEditing(false)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
-                                      <X size={20}/>
-                                  </button>
-                              </>
-                          ) : (
-                              <>
-                                <Button onClick={() => setIsEditing(true)}><Edit size={16}/> Edit</Button>
-                                <Button onClick={() => handleDeleteSupplier(selectedSupplier.id)} variant="danger"><Trash2 size={16}/> Delete</Button>
-                              </>
-                          )}
-                        </div>
+                        {isEditing ? (
+                            <div className="flex gap-2 items-center">
+                                <Button onClick={handleUpdateSupplier} className="h-9 px-3"><Save size={16} /> Save</Button>
+                                <button onClick={() => setIsEditing(false)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
+                                    <X size={20}/>
+                                </button>
+                            </div>
+                        ) : (
+                            <Button onClick={() => setIsEditing(true)}><Edit size={16}/> Edit</Button>
+                        )}
                     </div>
                     {isEditing ? (
                         <div className="space-y-3">
@@ -649,7 +493,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                     {supplierPurchases.length > 0 ? (
                         <div className="space-y-4">
                             {supplierPurchases.slice().reverse().map(purchase => {
-                                const amountPaid = (purchase.payments || []).reduce((sum, p) => sum + p.amount, 0);
+                                const amountPaid = purchase.payments.reduce((sum, p) => sum + p.amount, 0);
                                 const dueAmount = purchase.totalAmount - amountPaid;
                                 const isPaid = dueAmount <= 0.01;
                                 return (
@@ -668,14 +512,9 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                             </p>
                                         </div>
                                       </div>
-                                       <div className="flex items-center ml-4 flex-shrink-0">
-                                            <button onClick={() => setPurchaseToEdit(purchase)} className="p-2 rounded-full text-blue-500 hover:bg-blue-100 transition-colors">
-                                                <Edit size={16} />
-                                            </button>
-                                            <button onClick={() => handleDeletePurchase(purchase.id)} className="p-2 rounded-full text-red-500 hover:bg-red-100 transition-colors">
-                                                <Trash2 size={16} />
-                                            </button>
-                                       </div>
+                                       <button onClick={() => handleDeletePurchase(purchase.id)} className="ml-4 flex-shrink-0 p-2 rounded-full text-red-500 hover:bg-red-100 transition-colors">
+                                          <Trash2 size={16} />
+                                      </button>
                                     </div>
                                     <div className="pl-4 mt-2 border-l-2 border-purple-200 space-y-3">
                                         <div>
@@ -688,7 +527,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                                 ))}
                                             </ul>
                                         </div>
-                                        {(purchase.payments || []).length > 0 && (
+                                        {purchase.payments.length > 0 && (
                                             <div>
                                                 <h4 className="font-semibold text-sm text-gray-700 mb-1">Payments Made:</h4>
                                                  <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
@@ -749,59 +588,32 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     const canRecordPayment = supplierId && items.length === 0 && parseFloat(paymentAmount || '0') > 0;
     const totalAmount = items.reduce((sum, i) => sum + (i.price * i.quantity), 0);
 
-    const ImportStatusNotification = () => {
-        if (!importStatus) return null;
-
-        const baseClasses = "p-3 rounded-md text-sm flex items-start justify-between";
-        const variants = {
-            info: 'bg-blue-100 text-blue-800',
-            success: 'bg-green-100 text-green-800',
-            error: 'bg-red-100 text-red-800',
-        };
-        const icons = {
-            info: <Info className="w-5 h-5 mr-3 flex-shrink-0" />,
-            success: <CheckCircle className="w-5 h-5 mr-3 flex-shrink-0" />,
-            error: <XCircle className="w-5 h-5 mr-3 flex-shrink-0" />,
-        };
-
-        return (
-            <div className={`${baseClasses} ${variants[importStatus.type]}`}>
-                <div className="flex items-start">
-                    {icons[importStatus.type]}
-                    <span>{importStatus.message}</span>
-                </div>
-                <button onClick={() => setImportStatus(null)} className="font-bold text-lg leading-none ml-4">&times;</button>
-            </div>
-        );
-    };
-
-    const ConfirmationNotification: React.FC<{ file: File; onConfirm: () => void; onCancel: () => void; }> = ({ file, onConfirm, onCancel }) => {
-        return (
-            <div className="p-3 rounded-md text-sm flex flex-col items-start justify-between bg-amber-100 text-amber-800 space-y-3">
-                <div className="flex items-start">
-                    <Info className="w-5 h-5 mr-3 flex-shrink-0" />
-                    <span>
-                        Confirm import of file: <strong>{file.name}</strong>. This will add the items to the current purchase for review.
-                    </span>
-                </div>
-                <div className="flex gap-2 self-end w-full sm:w-auto">
-                    <Button onClick={onConfirm} variant="primary" className="py-1 px-3 text-sm flex-grow sm:flex-grow-0">Confirm</Button>
-                    <Button onClick={onCancel} variant="secondary" className="py-1 px-3 text-sm flex-grow sm:flex-grow-0">Cancel</Button>
-                </div>
-            </div>
-        );
-    };
-
     return (
         <div className="space-y-4">
-            {isScanning && <QRScannerModal />}
-            {itemsForReview && <ImportReviewModal />}
+             {isScanning && <QRScannerModal />}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                 <h1 className="text-2xl font-bold text-primary">Purchases & Suppliers</h1>
+                <div className="flex flex-col sm:flex-row gap-2">
+                    <Button onClick={handleDownloadTemplate} variant="secondary" className="w-full sm:w-auto">
+                        <Download className="w-4 h-4 mr-2" />
+                        Download Template
+                    </Button>
+                    <input 
+                      type="file" 
+                      accept=".csv" 
+                      ref={fileInputRef} 
+                      className="hidden" 
+                      onChange={handleFileImport}
+                    />
+                    <Button onClick={() => fileInputRef.current?.click()} variant="secondary" className="w-full sm:w-auto">
+                        <Upload className="w-4 h-4 mr-2" />
+                        Import Stock
+                    </Button>
+                </div>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-2">
-                <Button className="w-full sm:w-auto" onClick={() => { setView('add_purchase'); setSelectedSupplier(null); clearPurchaseFormFields(); }}><Plus className="w-4 h-4 mr-2" />Add Purchase/Payment</Button>
+                <Button className="w-full sm:w-auto" onClick={() => { setView('add_purchase'); setSelectedSupplier(null); }}><Plus className="w-4 h-4 mr-2" />Add Purchase/Payment</Button>
                 <Button className="w-full sm:w-auto" onClick={() => { setView('add_supplier'); setSelectedSupplier(null); }} variant="secondary"><Plus className="w-4 h-4 mr-2" />Add Supplier</Button>
             </div>
             
@@ -812,7 +624,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                             {state.suppliers.map(supplier => {
                                 const supplierPurchases = state.purchases.filter(p => p.supplierId === supplier.id);
                                 const totalPurchase = supplierPurchases.reduce((sum, p) => sum + p.totalAmount, 0);
-                                const totalPaid = supplierPurchases.reduce((sum, p) => sum + (p.payments || []).reduce((pSum, payment) => pSum + payment.amount, 0), 0);
+                                const totalPaid = supplierPurchases.reduce((sum, p) => sum + p.payments.reduce((pSum, payment) => pSum + payment.amount, 0), 0);
                                 const totalDue = totalPurchase - totalPaid;
 
                                 return (
@@ -831,7 +643,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                                     <Package size={14} />
                                                     <span className="font-semibold">₹{totalPurchase.toLocaleString('en-IN')}</span>
                                                 </div>
-                                                 <div className={`flex items-center justify-end gap-1 ${totalDue > 0.01 ? 'text-red-600' : 'text-gray-600'}`}>
+                                                 <div className={`flex items-center justify-end gap-1 ${totalDue > 0 ? 'text-red-600' : 'text-gray-600'}`}>
                                                     <IndianRupee size={14} />
                                                     <span className="font-semibold">₹{totalDue.toLocaleString('en-IN')}</span>
                                                 </div>
@@ -880,69 +692,19 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                             </div>
                          ) }
                          <div className="pt-4 border-t space-y-3">
-                            <h3 className="font-semibold">Add Items to Purchase</h3>
-                            <p className="text-sm text-gray-600">You can add items manually below, or import multiple items from a CSV file.</p>
-                            
-                            <ImportStatusNotification />
-                            {fileToImport && (
-                                <ConfirmationNotification
-                                    file={fileToImport}
-                                    onConfirm={processImport}
-                                    onCancel={cancelImport}
-                                />
-                            )}
-                            
-                            <input 
-                              type="file" 
-                              accept=".csv" 
-                              ref={fileInputRef} 
-                              className="hidden" 
-                              onChange={handleFileSelect}
-                            />
-                            <div className="flex flex-col sm:flex-row gap-2">
-                                <Button onClick={() => fileInputRef.current?.click()} variant="secondary" className="w-full" disabled={!supplierId}>
-                                    <Upload className="w-4 h-4 mr-2" />
-                                    Import from CSV
-                                </Button>
-                                <Button onClick={handleDownloadTemplate} variant="secondary" className="w-full">
-                                    <Download className="w-4 h-4 mr-2" />
-                                    Download Template
-                                </Button>
-                            </div>
-                             {!supplierId && <p className="text-xs text-red-500 text-center">Please select a supplier to enable CSV import.</p>}
-                        </div>
-                         <div className="pt-4 border-t space-y-4 mt-4">
-                            <h3 className="font-semibold">Add New Item Manually</h3>
-                             <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
-                                <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full sm:w-auto">
+                            <h3 className="font-semibold">Add New Item</h3>
+                             <div className="flex flex-col sm:flex-row gap-2">
+                                <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full sm:w-auto flex-grow">
                                     <QrCode size={16} className="mr-2"/> Scan Saree Code/ID
                                 </Button>
-                                <div className="flex-grow w-full">
-                                    <label htmlFor="productId" className="block text-sm font-medium text-gray-700">Saree Code/ID</label>
-                                    <input id="productId" type="text" placeholder="Enter code manually" value={newItem.productId} onChange={e => setNewItem({...newItem, productId: e.target.value})} className="w-full p-2 border rounded" />
-                                </div>
+                                <input type="text" placeholder="Or Enter Manually" value={newItem.productId} onChange={e => setNewItem({...newItem, productId: e.target.value})} className="w-full sm:w-auto flex-grow p-2 border rounded" />
                             </div>
-                            <div>
-                                <label htmlFor="productName" className="block text-sm font-medium text-gray-700">Saree Name</label>
-                                <input id="productName" type="text" placeholder="e.g., Kanchipuram Silk" value={newItem.productName} onChange={e => setNewItem({...newItem, productName: e.target.value})} className="w-full p-2 border rounded" />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">Quantity</label>
-                                    <input id="quantity" type="number" placeholder="e.g., 10" value={newItem.quantity} onChange={e => setNewItem({...newItem, quantity: e.target.value})} className="w-full p-2 border rounded" />
-                                </div>
-                                <div>
-                                    <label htmlFor="purchasePrice" className="block text-sm font-medium text-gray-700">Purchase Price</label>
-                                    <input id="purchasePrice" type="number" placeholder="e.g., 5000" value={newItem.price} onChange={e => setNewItem({...newItem, price: e.target.value})} className="w-full p-2 border rounded" />
-                                </div>
-                                <div>
-                                    <label htmlFor="gstPercent" className="block text-sm font-medium text-gray-700">GST %</label>
-                                    <input id="gstPercent" type="number" placeholder="e.g., 5" value={newItem.gstPercent} onChange={e => setNewItem({...newItem, gstPercent: e.target.value})} className="w-full p-2 border rounded" />
-                                </div>
-                                <div>
-                                    <label htmlFor="salePrice" className="block text-sm font-medium text-gray-700">Sale Price</label>
-                                    <input id="salePrice" type="number" placeholder="e.g., 12000" value={newItem.saleValue} onChange={e => setNewItem({...newItem, saleValue: e.target.value})} className="w-full p-2 border rounded" />
-                                </div>
+                            <input type="text" placeholder="Saree Name" value={newItem.productName} onChange={e => setNewItem({...newItem, productName: e.target.value})} className="w-full p-2 border rounded" />
+                            <div className="grid grid-cols-2 gap-2">
+                                <input type="number" placeholder="Quantity" value={newItem.quantity} onChange={e => setNewItem({...newItem, quantity: e.target.value})} className="w-full p-2 border rounded" />
+                                <input type="number" placeholder="Purchase Price" value={newItem.price} onChange={e => setNewItem({...newItem, price: e.target.value})} className="w-full p-2 border rounded" />
+                                <input type="number" placeholder="GST %" value={newItem.gstPercent} onChange={e => setNewItem({...newItem, gstPercent: e.target.value})} className="w-full p-2 border rounded" />
+                                <input type="number" placeholder="Sale Price" value={newItem.saleValue} onChange={e => setNewItem({...newItem, saleValue: e.target.value})} className="w-full p-2 border rounded" />
                             </div>
                             <Button onClick={handleAddItem} className="w-full"><Plus className="mr-2" size={16}/>Add Item to Purchase</Button>
                          </div>
@@ -975,9 +737,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                     
                     <div className="space-y-2">
                         {canCompletePurchase ? (
-                            <Button onClick={handleAddOrUpdatePurchase} className="w-full">
-                                {purchaseToEdit ? 'Update Purchase' : 'Complete Purchase'}
-                            </Button>
+                            <Button onClick={handleAddPurchase} className="w-full">Complete Purchase</Button>
                         ) : canRecordPayment ? (
                             <Button onClick={handleRecordStandalonePayment} className="w-full">
                                 <IndianRupee className="w-4 h-4 mr-2" />
@@ -988,7 +748,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                 {supplierId ? 'Add items or enter payment amount' : 'Select a supplier to begin'}
                             </Button>
                         )}
-                        <Button onClick={resetPurchaseForm} variant="secondary" className="w-full">Cancel</Button>
+                        <Button onClick={() => { setView('list'); setSelectedSupplier(null); }} variant="secondary" className="w-full">Cancel</Button>
                     </div>
 
                 </div>
