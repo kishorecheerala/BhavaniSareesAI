@@ -44,6 +44,8 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     });
     
     const [confirmModalState, setConfirmModalState] = useState<{ isOpen: boolean, purchaseIdToDelete: string | null }>({ isOpen: false, purchaseIdToDelete: null });
+    
+    const purchaseCsvInputRef = useRef<HTMLInputElement>(null);
 
      useEffect(() => {
         let formIsDirty = false;
@@ -115,6 +117,16 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         setItems([...items, { ...newItem, quantity: parseInt(newItem.quantity), price: parseFloat(newItem.price), gstPercent: parseFloat(newItem.gstPercent), saleValue: parseFloat(newItem.saleValue) }]);
         setNewItem({ productId: '', productName: '', quantity: '1', price: '', gstPercent: '5', saleValue: '' });
     }
+    
+    const handleItemUpdate = (index: number, updatedItem: PurchaseItem) => {
+        const newItems = [...items];
+        newItems[index] = updatedItem;
+        setItems(newItems);
+    };
+
+    const handleRemoveItem = (index: number) => {
+        setItems(items.filter((_, i) => i !== index));
+    };
 
     const resetPurchaseForm = () => {
         setSupplierId('');
@@ -376,6 +388,72 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             if (target) {
                 target.value = '';
             }
+        }
+    };
+    
+    const handlePurchaseCSVImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        const target = event.target;
+
+        try {
+            if (!file) return;
+
+            if (items.length > 0 && !window.confirm("This will replace any items you've already added to this purchase. Continue?")) {
+                return;
+            }
+
+            const text = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    if (typeof reader.result === 'string') resolve(reader.result);
+                    else reject(new Error("Could not read file."));
+                };
+                reader.onerror = () => reject(new Error("Error reading file."));
+                reader.readAsText(file);
+            });
+
+            let cleanedText = text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text;
+            const rows = cleanedText.trim().split(/\r?\n/).filter(row => row.trim() !== '');
+            if (rows.length < 2) throw new Error("CSV must have a header and at least one data row.");
+
+            const header = rows[0].trim().split(',').map(h => h.trim().replace(/"/g, ''));
+            const expectedHeader = ['Saree Code/ID', 'Saree Name', 'Quantity', 'Purchase Price', 'Sale Price', 'GST %'];
+            if (header.length !== expectedHeader.length || !header.every((h, i) => h.toLowerCase() === expectedHeader[i].toLowerCase())) {
+                 throw new Error(`Invalid CSV header. Expected: "${expectedHeader.join(', ')}"`);
+            }
+
+            const importedItems: PurchaseItem[] = [];
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i].trim().split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(cell => cell.trim().replace(/^"|"$/g, ''));
+                if (row.length !== expectedHeader.length) throw new Error(`Row ${i + 1} has an incorrect number of columns.`);
+
+                const [id, name, quantity, purchasePrice, salePrice, gstPercent] = row;
+                const quantityNum = parseInt(quantity, 10);
+                const purchasePriceNum = parseFloat(purchasePrice);
+                const salePriceNum = parseFloat(salePrice);
+                const gstPercentNum = parseFloat(gstPercent);
+
+                if (!id || !name || isNaN(quantityNum) || isNaN(purchasePriceNum) || isNaN(salePriceNum) || isNaN(gstPercentNum)) {
+                    throw new Error(`Row ${i + 1} contains invalid or missing data.`);
+                }
+
+                importedItems.push({
+                    productId: id,
+                    productName: name,
+                    quantity: quantityNum,
+                    price: purchasePriceNum,
+                    saleValue: salePriceNum,
+                    gstPercent: gstPercentNum,
+                });
+            }
+            setItems(importedItems);
+            showToast(`${importedItems.length} items loaded from CSV successfully.`);
+
+        } catch (error) {
+            console.error("Purchase Import failed:", error);
+            alert(`Import failed: ${(error as Error).message}`);
+        } finally {
+            if (target) target.value = '';
         }
     };
     
@@ -696,19 +774,61 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                             {state.suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
                     </Card>
-                     <Card title="Purchase Items">
+                    <Card>
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+                            <h2 className="text-lg font-bold text-primary mb-2 sm:mb-0">Purchase Items</h2>
+                            {supplierId && (
+                                <>
+                                    <input
+                                        type="file"
+                                        accept=".csv, text/csv, application/vnd.ms-excel"
+                                        ref={purchaseCsvInputRef}
+                                        className="hidden"
+                                        onChange={handlePurchaseCSVImport}
+                                    />
+                                    <Button onClick={() => purchaseCsvInputRef.current?.click()} variant="secondary">
+                                        <Upload className="w-4 h-4 mr-2" />
+                                        Import Items from CSV
+                                    </Button>
+                                </>
+                            )}
+                        </div>
+
                          {items.length > 0 && (
-                            <div className="space-y-2 mb-4">
+                            <div className="space-y-3 mb-4 max-h-80 overflow-y-auto p-2 bg-gray-50 rounded">
                                 {items.map((item, index) => (
-                                    <div key={index} className="p-2 bg-gray-100 rounded text-sm flex justify-between">
-                                        <span>{item.productName} (x{item.quantity})</span>
-                                        <span>@ ₹{item.price.toLocaleString('en-IN')}</span>
+                                    <div key={index} className="p-3 bg-white rounded-lg border grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
+                                        <div className="col-span-2 sm:col-span-4">
+                                            <p className="font-semibold">{item.productName}</p>
+                                            <p className="text-xs text-gray-500">Code: {item.productId}</p>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-700">Qty</label>
+                                            <input type="number" value={item.quantity} onChange={(e) => handleItemUpdate(index, { ...item, quantity: parseInt(e.target.value) || 0 })} className="w-full p-1 border rounded" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-700">Purchase Price</label>
+                                            <input type="number" value={item.price} onChange={(e) => handleItemUpdate(index, { ...item, price: parseFloat(e.target.value) || 0 })} className="w-full p-1 border rounded" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-700">Sale Price</label>
+                                            <input type="number" value={item.saleValue} onChange={(e) => handleItemUpdate(index, { ...item, saleValue: parseFloat(e.target.value) || 0 })} className="w-full p-1 border rounded" />
+                                        </div>
+                                        <div className="flex items-end gap-2 col-span-2 sm:col-span-1">
+                                            <div className="flex-grow">
+                                                <label className="block text-xs font-medium text-gray-700">GST %</label>
+                                                <input type="number" value={item.gstPercent} onChange={(e) => handleItemUpdate(index, { ...item, gstPercent: parseFloat(e.target.value) || 0 })} className="w-full p-1 border rounded" />
+                                            </div>
+                                            <Button variant="danger" onClick={() => handleRemoveItem(index)} className="p-2 h-8 w-8 flex-shrink-0">
+                                                <Trash2 size={14} />
+                                            </Button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
                          ) }
                          <div className="pt-4 border-t space-y-3">
-                            <h3 className="font-semibold">Add New Item</h3>
+                            <h3 className="font-semibold">Add New Item Manually</h3>
                              <div>
                                 <label className="block text-sm font-medium text-gray-700">Saree Code/ID</label>
                                 <div className="flex flex-col sm:flex-row gap-2 mt-1">
