@@ -5,6 +5,7 @@ import { Supplier, Product, Purchase, PurchaseItem, Payment } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { Html5Qrcode } from 'html5-qrcode';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -18,7 +19,7 @@ interface PurchasesPageProps {
 }
 
 const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
-    const { state, dispatch } = useAppContext();
+    const { state, dispatch, showToast } = useAppContext();
     const [view, setView] = useState<'list' | 'add_supplier' | 'add_purchase'>('list');
     const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
 
@@ -42,6 +43,8 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         date: getLocalDateString()
     });
     
+    const [confirmModalState, setConfirmModalState] = useState<{ isOpen: boolean, purchaseIdToDelete: string | null }>({ isOpen: false, purchaseIdToDelete: null });
+
      useEffect(() => {
         let formIsDirty = false;
         if (view === 'add_supplier') {
@@ -78,7 +81,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         dispatch({ type: 'ADD_SUPPLIER', payload: { ...newSupplier, id: `SUP-${Date.now()}` } });
         setNewSupplier({ name: '', phone: '', location: '' });
         setView('list');
-        alert("Supplier added successfully!");
+        showToast("Supplier added successfully!");
     };
     
     const handleUpdateSupplier = () => {
@@ -87,15 +90,20 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                 dispatch({ type: 'UPDATE_SUPPLIER', payload: editedSupplier });
                 setSelectedSupplier(editedSupplier);
                 setIsEditing(false);
-                alert("Supplier details updated successfully.");
+                showToast("Supplier details updated successfully.");
             }
         }
     };
 
     const handleDeletePurchase = (purchaseId: string) => {
-        if (window.confirm('Are you sure you want to delete this purchase? This action cannot be undone and will remove the items from your stock.')) {
-            dispatch({ type: 'DELETE_PURCHASE', payload: purchaseId });
-            alert('Purchase deleted successfully.');
+        setConfirmModalState({ isOpen: true, purchaseIdToDelete: purchaseId });
+    };
+
+    const confirmDeletePurchase = () => {
+        if (confirmModalState.purchaseIdToDelete) {
+            dispatch({ type: 'DELETE_PURCHASE', payload: confirmModalState.purchaseIdToDelete });
+            showToast('Purchase deleted successfully.');
+            setConfirmModalState({ isOpen: false, purchaseIdToDelete: null });
         }
     };
 
@@ -155,7 +163,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             dispatch({ type: 'ADD_PRODUCT', payload: product });
         });
         
-        alert("Purchase added successfully!");
+        showToast("Purchase added successfully!");
         resetPurchaseForm();
     };
 
@@ -214,7 +222,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             remainingPayment -= amountToApply;
         }
         
-        alert(`Payment of ₹${paidAmount.toLocaleString('en-IN')} recorded successfully.`);
+        showToast(`Payment of ₹${paidAmount.toLocaleString('en-IN')} recorded successfully.`);
         resetPurchaseForm();
     };
 
@@ -358,7 +366,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                 dispatch({ type: 'ADD_PRODUCT', payload: product });
             });
             
-            alert(`Import successful! ${addedCount} products added. ${updatedCount} products updated.`);
+            showToast(`Import successful! ${addedCount} products added. ${updatedCount} products updated.`);
 
         } catch (error) {
             console.error("Import failed:", error);
@@ -459,6 +467,14 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         };
         return (
             <div className="space-y-4">
+                <ConfirmationModal
+                    isOpen={confirmModalState.isOpen}
+                    onClose={() => setConfirmModalState({ isOpen: false, purchaseIdToDelete: null })}
+                    onConfirm={confirmDeletePurchase}
+                    title="Confirm Purchase Deletion"
+                >
+                    Are you sure you want to delete this purchase? This action cannot be undone and will remove the items from your stock.
+                </ConfirmationModal>
                 {paymentModalState.isOpen && <PaymentModal />}
                 <Button onClick={() => setSelectedSupplier(null)}>&larr; Back to Purchases</Button>
                 <Card>
@@ -512,7 +528,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                             </p>
                                         </div>
                                       </div>
-                                       <button onClick={() => handleDeletePurchase(purchase.id)} className="ml-4 flex-shrink-0 p-2 rounded-full text-red-500 hover:bg-red-100 transition-colors">
+                                       <button onClick={(e) => { e.stopPropagation(); handleDeletePurchase(purchase.id); }} className="ml-4 flex-shrink-0 p-2 rounded-full text-red-500 hover:bg-red-100 transition-colors">
                                           <Trash2 size={16} />
                                       </button>
                                     </div>
@@ -693,18 +709,36 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                          ) }
                          <div className="pt-4 border-t space-y-3">
                             <h3 className="font-semibold">Add New Item</h3>
-                             <div className="flex flex-col sm:flex-row gap-2">
-                                <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full sm:w-auto flex-grow">
-                                    <QrCode size={16} className="mr-2"/> Scan Saree Code/ID
-                                </Button>
-                                <input type="text" placeholder="Or Enter Manually" value={newItem.productId} onChange={e => setNewItem({...newItem, productId: e.target.value})} className="w-full sm:w-auto flex-grow p-2 border rounded" />
+                             <div>
+                                <label className="block text-sm font-medium text-gray-700">Saree Code/ID</label>
+                                <div className="flex flex-col sm:flex-row gap-2 mt-1">
+                                    <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full sm:w-auto flex-grow">
+                                        <QrCode size={16} className="mr-2"/> Scan Saree Code/ID
+                                    </Button>
+                                    <input type="text" placeholder="Or Enter Manually" value={newItem.productId} onChange={e => setNewItem({...newItem, productId: e.target.value})} className="w-full sm:w-auto flex-grow p-2 border rounded" />
+                                </div>
                             </div>
-                            <input type="text" placeholder="Saree Name" value={newItem.productName} onChange={e => setNewItem({...newItem, productName: e.target.value})} className="w-full p-2 border rounded" />
-                            <div className="grid grid-cols-2 gap-2">
-                                <input type="number" placeholder="Quantity" value={newItem.quantity} onChange={e => setNewItem({...newItem, quantity: e.target.value})} className="w-full p-2 border rounded" />
-                                <input type="number" placeholder="Purchase Price" value={newItem.price} onChange={e => setNewItem({...newItem, price: e.target.value})} className="w-full p-2 border rounded" />
-                                <input type="number" placeholder="GST %" value={newItem.gstPercent} onChange={e => setNewItem({...newItem, gstPercent: e.target.value})} className="w-full p-2 border rounded" />
-                                <input type="number" placeholder="Sale Price" value={newItem.saleValue} onChange={e => setNewItem({...newItem, saleValue: e.target.value})} className="w-full p-2 border rounded" />
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Saree Name</label>
+                                <input type="text" placeholder="Saree Name" value={newItem.productName} onChange={e => setNewItem({...newItem, productName: e.target.value})} className="w-full p-2 border rounded mt-1" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Quantity</label>
+                                    <input type="number" placeholder="Quantity" value={newItem.quantity} onChange={e => setNewItem({...newItem, quantity: e.target.value})} className="w-full p-2 border rounded mt-1" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Purchase Price</label>
+                                    <input type="number" placeholder="Purchase Price" value={newItem.price} onChange={e => setNewItem({...newItem, price: e.target.value})} className="w-full p-2 border rounded mt-1" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">GST %</label>
+                                    <input type="number" placeholder="GST %" value={newItem.gstPercent} onChange={e => setNewItem({...newItem, gstPercent: e.target.value})} className="w-full p-2 border rounded mt-1" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Sale Price</label>
+                                    <input type="number" placeholder="Sale Price" value={newItem.saleValue} onChange={e => setNewItem({...newItem, saleValue: e.target.value})} className="w-full p-2 border rounded mt-1" />
+                                </div>
                             </div>
                             <Button onClick={handleAddItem} className="w-full"><Plus className="mr-2" size={16}/>Add Item to Purchase</Button>
                          </div>

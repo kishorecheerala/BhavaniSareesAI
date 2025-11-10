@@ -40,7 +40,8 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
 
     useEffect(() => {
         const formIsDirty = !!customerId || items.length > 0 || discount !== '0' || !!paymentAmount;
-        const newCustomerFormIsDirty = isAddingCustomer && (newCustomer.name || newCustomer.phone || newCustomer.address || newCustomer.area);
+        // FIX: Coerce the potentially string result of the logical OR to a boolean using `!!`
+        const newCustomerFormIsDirty = isAddingCustomer && !!(newCustomer.name || newCustomer.phone || newCustomer.address || newCustomer.area);
         setIsDirty(formIsDirty || newCustomerFormIsDirty);
 
         return () => {

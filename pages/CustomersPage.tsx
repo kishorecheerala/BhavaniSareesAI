@@ -4,6 +4,7 @@ import { useAppContext } from '../context/AppContext';
 import { Customer, Payment, Sale } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -17,7 +18,7 @@ interface CustomersPageProps {
 }
 
 const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
-    const { state, dispatch } = useAppContext();
+    const { state, dispatch, showToast } = useAppContext();
     const [searchTerm, setSearchTerm] = useState('');
     const [isAdding, setIsAdding] = useState(false);
     const [newCustomer, setNewCustomer] = useState<Omit<Customer, 'id'>>({ name: '', phone: '', address: '', area: '', reference: '' });
@@ -33,8 +34,11 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
         date: getLocalDateString() 
     });
     
+    const [confirmModalState, setConfirmModalState] = useState<{ isOpen: boolean, saleIdToDelete: string | null }>({ isOpen: false, saleIdToDelete: null });
+
     useEffect(() => {
-        const formIsDirty = (isAdding && (newCustomer.name || newCustomer.phone || newCustomer.address || newCustomer.area)) || isEditing;
+        // FIX: Coerce the potentially string result of the logical OR to a boolean using `!!`
+        const formIsDirty = (isAdding && !!(newCustomer.name || newCustomer.phone || newCustomer.address || newCustomer.area)) || isEditing;
         setIsDirty(formIsDirty);
 
         return () => {
@@ -71,18 +75,22 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                 dispatch({ type: 'UPDATE_CUSTOMER', payload: editedCustomer });
                 setSelectedCustomer(editedCustomer);
                 setIsEditing(false);
-                alert("Customer details updated successfully.");
+                showToast("Customer details updated successfully.");
             }
         }
     };
 
     const handleDeleteSale = (saleId: string) => {
-        if (window.confirm('Are you sure you want to delete this sale? This action cannot be undone and will add the items back to stock.')) {
-            dispatch({ type: 'DELETE_SALE', payload: saleId });
-            alert('Sale deleted successfully.');
-        }
+        setConfirmModalState({ isOpen: true, saleIdToDelete: saleId });
     };
 
+    const confirmDeleteSale = () => {
+        if (confirmModalState.saleIdToDelete) {
+            dispatch({ type: 'DELETE_SALE', payload: confirmModalState.saleIdToDelete });
+            showToast('Sale deleted successfully.');
+            setConfirmModalState({ isOpen: false, saleIdToDelete: null });
+        }
+    };
 
     const handleAddPayment = () => {
         const sale = state.sales.find(s => s.id === paymentModalState.saleId);
@@ -173,6 +181,14 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
 
         return (
             <div className="space-y-4">
+                <ConfirmationModal
+                    isOpen={confirmModalState.isOpen}
+                    onClose={() => setConfirmModalState({ isOpen: false, saleIdToDelete: null })}
+                    onConfirm={confirmDeleteSale}
+                    title="Confirm Sale Deletion"
+                >
+                    Are you sure you want to delete this sale? This action cannot be undone and will add the items back to stock.
+                </ConfirmationModal>
                 {paymentModalState.isOpen && <PaymentModal />}
                 <Button onClick={() => setSelectedCustomer(null)}>&larr; Back to List</Button>
                 <Card>
@@ -231,7 +247,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                                             </p>
                                         </div>
                                       </div>
-                                      <button onClick={() => handleDeleteSale(sale.id)} className="ml-4 flex-shrink-0 p-2 rounded-full text-red-500 hover:bg-red-100 transition-colors">
+                                      <button onClick={(e) => { e.stopPropagation(); handleDeleteSale(sale.id); }} className="ml-4 flex-shrink-0 p-2 rounded-full text-red-500 hover:bg-red-100 transition-colors">
                                           <Trash2 size={16} />
                                       </button>
                                     </div>

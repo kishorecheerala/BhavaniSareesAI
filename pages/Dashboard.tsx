@@ -1,6 +1,7 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { IndianRupee, UserCheck, AlertTriangle, Download, Upload, ShoppingCart, Package, XCircle, CheckCircle, Info, Calendar } from 'lucide-react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { IndianRupee, UserCheck, AlertTriangle, Download, Upload, ShoppingCart, Package, XCircle, CheckCircle, Info, Calendar, ShieldCheck, ShieldAlert, ShieldX } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
+import * as db from '../utils/db';
 import Card from '../components/Card';
 import Button from '../components/Button';
 
@@ -8,6 +9,15 @@ const Dashboard: React.FC = () => {
     const { state, dispatch } = useAppContext();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [restoreStatus, setRestoreStatus] = useState<{ type: 'info' | 'success' | 'error', message: string } | null>(null);
+    const [lastBackupDate, setLastBackupDate] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchLastBackup = async () => {
+            const date = await db.getLastBackupDate();
+            setLastBackupDate(date);
+        };
+        fetchLastBackup();
+    }, [state.app_metadata]);
 
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -34,7 +44,6 @@ const Dashboard: React.FC = () => {
         if (!years.has(new Date().getFullYear())) {
             years.add(new Date().getFullYear());
         }
-        // FIX: Explicitly type the sort function parameters to resolve potential type inference issues.
         return Array.from(years).sort((a: number, b: number) => b - a);
     }, [state.sales]);
 
@@ -47,14 +56,15 @@ const Dashboard: React.FC = () => {
             .reduce((sum, sale) => sum + sale.totalAmount, 0);
     }, [state.sales, selectedMonth, selectedYear]);
 
-    const handleBackup = () => {
+    const handleBackup = async () => {
         try {
-            const data = localStorage.getItem('bhavaniSareesState');
-            if (!data || JSON.parse(data).customers.length === 0) {
-                alert('No data to backup.');
+            const data = await db.exportData();
+            if (!data.customers || data.customers.length === 0) {
+                 alert('No data to backup.');
                 return;
             }
-            const blob = new Blob([data], { type: 'application/json' });
+            const dataString = JSON.stringify(data, null, 2);
+            const blob = new Blob([dataString], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             const date = new Date().toISOString().slice(0, 10);
@@ -64,6 +74,10 @@ const Dashboard: React.FC = () => {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+            
+            await db.setLastBackupDate();
+            dispatch({ type: 'SET_LAST_BACKUP_DATE', payload: new Date().toISOString() });
+            
             alert('Backup successful! Save the downloaded file in a safe place.');
         } catch (error) {
             console.error('Backup failed:', error);
@@ -88,30 +102,32 @@ const Dashboard: React.FC = () => {
 
         const reader = new FileReader();
 
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             try {
-                setRestoreStatus({ type: 'info', message: 'File read. Validating data structure...' });
+                setRestoreStatus({ type: 'info', message: 'File read. Validating data...' });
                 const text = e.target?.result;
                 if (typeof text !== 'string') {
                     throw new Error("File content is not readable as text.");
                 }
                 
-                const parsedState = JSON.parse(text);
+                const parsedData = JSON.parse(text);
 
-                if (!parsedState || typeof parsedState !== 'object') {
+                if (!parsedData || typeof parsedData !== 'object') {
                     throw new Error("Backup file does not contain a valid object.");
                 }
 
+                setRestoreStatus({ type: 'info', message: 'Data validated. Importing to database...' });
+                await db.importData(parsedData);
+                
                 const validatedState = {
-                    customers: Array.isArray(parsedState.customers) ? parsedState.customers : [],
-                    suppliers: Array.isArray(parsedState.suppliers) ? parsedState.suppliers : [],
-                    products: Array.isArray(parsedState.products) ? parsedState.products : [],
-                    sales: Array.isArray(parsedState.sales) ? parsedState.sales : [],
-                    purchases: Array.isArray(parsedState.purchases) ? parsedState.purchases : [],
-                    returns: Array.isArray(parsedState.returns) ? parsedState.returns : [],
+                    customers: Array.isArray(parsedData.customers) ? parsedData.customers : [],
+                    suppliers: Array.isArray(parsedData.suppliers) ? parsedData.suppliers : [],
+                    products: Array.isArray(parsedData.products) ? parsedData.products : [],
+                    sales: Array.isArray(parsedData.sales) ? parsedData.sales : [],
+                    purchases: Array.isArray(parsedData.purchases) ? parsedData.purchases : [],
+                    returns: Array.isArray(parsedData.returns) ? parsedData.returns : [],
+                    app_metadata: Array.isArray(parsedData.app_metadata) ? parsedData.app_metadata : [],
                 };
-
-                setRestoreStatus({ type: 'info', message: 'Data validated. Applying update...' });
                 dispatch({ type: 'SET_STATE', payload: validatedState });
                 
                 setTimeout(() => {
@@ -148,6 +164,55 @@ const Dashboard: React.FC = () => {
         </Card>
     );
 
+    const BackupStatusCard = () => {
+        if (!lastBackupDate) {
+            return (
+                <Card className="border-l-4 border-red-500 bg-red-50">
+                    <div className="flex items-center">
+                        <ShieldX className="w-8 h-8 text-red-600 mr-4" />
+                        <div>
+                            <p className="font-bold text-red-800">No Backup Found</p>
+                            <p className="text-sm text-red-700">Please create a backup immediately to protect your data.</p>
+                        </div>
+                    </div>
+                </Card>
+            );
+        }
+
+        const now = new Date();
+        const backupDate = new Date(lastBackupDate);
+        const diffHours = (now.getTime() - backupDate.getTime()) / (1000 * 60 * 60);
+        const diffDays = Math.floor(diffHours / 24);
+
+        let status: 'safe' | 'warning' | 'overdue' = 'safe';
+        if (diffDays > 7) {
+            status = 'overdue';
+        } else if (diffDays > 2) {
+            status = 'warning';
+        }
+
+        const messages = {
+            safe: { icon: ShieldCheck, color: 'green', title: 'Data Backup is Up-to-Date', text: `Last backup was ${backupDate.toLocaleString()}.` },
+            warning: { icon: ShieldAlert, color: 'amber', title: 'Backup Recommended', text: `Your last backup was ${diffDays} days ago.` },
+            overdue: { icon: ShieldX, color: 'red', title: 'Backup Overdue', text: `Your last backup was over a week ago. Please back up now.` },
+        };
+
+        const current = messages[status];
+        const Icon = current.icon;
+
+        return (
+            <Card className={`border-l-4 border-${current.color}-500 bg-${current.color}-50`}>
+                <div className="flex items-center">
+                    <Icon className={`w-8 h-8 text-${current.color}-600 mr-4`} />
+                    <div>
+                        <p className={`font-bold text-${current.color}-800`}>{current.title}</p>
+                        <p className={`text-sm text-${current.color}-700`}>{current.text}</p>
+                    </div>
+                </div>
+            </Card>
+        );
+    };
+
     const StatusNotification = () => {
         if (!restoreStatus) return null;
 
@@ -179,6 +244,7 @@ const Dashboard: React.FC = () => {
     return (
         <div className="space-y-6">
             <h1 className="text-2xl font-bold text-primary">Dashboard</h1>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <MetricCard 
                     icon={ShoppingCart} 
@@ -242,26 +308,29 @@ const Dashboard: React.FC = () => {
             </div>
             
             <Card title="Backup & Restore">
-                <p className="text-sm text-gray-600 mb-4">
-                    Your data is stored only on this device. It's very important to back it up regularly.
-                </p>
-                <StatusNotification />
-                 <input
-                    type="file"
-                    accept=".json"
-                    className="hidden"
-                    ref={fileInputRef}
-                    onChange={handleFileSelect}
-                />
-                <div className="flex flex-col sm:flex-row gap-4">
-                    <Button onClick={handleBackup} className="w-full">
-                        <Download className="w-4 h-4 mr-2" />
-                        Backup Data
-                    </Button>
-                    <Button onClick={() => fileInputRef.current?.click()} variant="secondary" className="w-full">
-                        <Upload className="w-4 h-4 mr-2" />
-                        Restore Data
-                    </Button>
+                <div className="space-y-4">
+                    <BackupStatusCard />
+                    <p className="text-sm text-gray-600">
+                        Your data is stored on this device. Backup regularly to prevent data loss if you clear browser data or change devices.
+                    </p>
+                    <StatusNotification />
+                    <input
+                        type="file"
+                        accept=".json"
+                        className="hidden"
+                        ref={fileInputRef}
+                        onChange={handleFileSelect}
+                    />
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        <Button onClick={handleBackup} className="w-full">
+                            <Download className="w-4 h-4 mr-2" />
+                            Backup Data Now
+                        </Button>
+                        <Button onClick={() => fileInputRef.current?.click()} variant="secondary" className="w-full">
+                            <Upload className="w-4 h-4 mr-2" />
+                            Restore from Backup
+                        </Button>
+                    </div>
                 </div>
             </Card>
         </div>

@@ -1,18 +1,25 @@
-import React, { createContext, useReducer, useContext, useEffect, ReactNode } from 'react';
+import React, { createContext, useReducer, useContext, useEffect, ReactNode, useState } from 'react';
 import { Customer, Supplier, Product, Sale, Purchase, Return, Payment } from '../types';
+import * as db from '../utils/db';
 
 interface ToastState {
   message: string;
   show: boolean;
 }
 
-interface AppState {
+interface AppMetadata {
+    id: 'lastBackup';
+    date: string;
+}
+
+export interface AppState {
   customers: Customer[];
   suppliers: Supplier[];
   products: Product[];
   sales: Sale[];
   purchases: Purchase[];
   returns: Return[];
+  app_metadata: AppMetadata[];
   toast: ToastState;
 }
 
@@ -33,7 +40,8 @@ type Action =
   | { type: 'ADD_PAYMENT_TO_SALE'; payload: { saleId: string; payment: Payment } }
   | { type: 'ADD_PAYMENT_TO_PURCHASE'; payload: { purchaseId: string; payment: Payment } }
   | { type: 'SHOW_TOAST'; payload: string }
-  | { type: 'HIDE_TOAST' };
+  | { type: 'HIDE_TOAST' }
+  | { type: 'SET_LAST_BACKUP_DATE'; payload: string };
 
 
 const initialState: AppState = {
@@ -43,6 +51,7 @@ const initialState: AppState = {
   sales: [],
   purchases: [],
   returns: [],
+  app_metadata: [],
   toast: { message: '', show: false },
 };
 
@@ -185,6 +194,11 @@ const appReducer = (state: AppState, action: Action): AppState => {
         return { ...state, toast: { message: action.payload, show: true } };
     case 'HIDE_TOAST':
         return { ...state, toast: { ...state.toast, show: false } };
+    case 'SET_LAST_BACKUP_DATE':
+      return {
+        ...state,
+        app_metadata: [{ id: 'lastBackup', date: action.payload }]
+      };
     default:
       return state;
   }
@@ -204,38 +218,51 @@ const AppContext = createContext<AppContextType>({
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
+  const [isDbLoaded, setIsDbLoaded] = useState(false);
 
+  // Load initial data from IndexedDB
   useEffect(() => {
-    try {
-        const storedState = localStorage.getItem('bhavaniSareesState');
-        if (storedState) {
-            const parsedState = JSON.parse(storedState);
-            const validatedState: Omit<AppState, 'toast'> = {
-                customers: Array.isArray(parsedState.customers) ? parsedState.customers : [],
-                suppliers: Array.isArray(parsedState.suppliers) ? parsedState.suppliers : [],
-                products: Array.isArray(parsedState.products) ? parsedState.products : [],
-                sales: (Array.isArray(parsedState.sales) ? parsedState.sales : []).map((s: any) => ({ ...s, payments: s.payments || [] })),
-                purchases: (Array.isArray(parsedState.purchases) ? parsedState.purchases : []).map((p: any) => ({ ...p, payments: p.payments || [] })),
-                returns: Array.isArray(parsedState.returns) ? parsedState.returns : [],
-            };
-            dispatch({ type: 'SET_STATE', payload: validatedState });
-        }
-    } catch (error) {
-        console.error("Could not load or parse state from localStorage, using initial state.", error);
-        localStorage.removeItem('bhavaniSareesState');
-    }
+    const loadData = async () => {
+      try {
+        const [customers, suppliers, products, sales, purchases, returns, app_metadata] = await Promise.all([
+          db.getAll('customers'),
+          db.getAll('suppliers'),
+          db.getAll('products'),
+          db.getAll('sales'),
+          db.getAll('purchases'),
+          db.getAll('returns'),
+          db.getAll('app_metadata'),
+        ]);
+
+        const validatedState: Omit<AppState, 'toast'> = {
+            customers: Array.isArray(customers) ? customers : [],
+            suppliers: Array.isArray(suppliers) ? suppliers : [],
+            products: Array.isArray(products) ? products : [],
+            sales: (Array.isArray(sales) ? sales : []).map((s: any) => ({ ...s, payments: s.payments || [] })),
+            purchases: (Array.isArray(purchases) ? purchases : []).map((p: any) => ({ ...p, payments: p.payments || [] })),
+            returns: Array.isArray(returns) ? returns : [],
+            app_metadata: Array.isArray(app_metadata) ? app_metadata : [],
+        };
+        dispatch({ type: 'SET_STATE', payload: validatedState });
+      } catch (error) {
+        console.error("Could not load data from IndexedDB, using initial state.", error);
+      } finally {
+        setIsDbLoaded(true);
+      }
+    };
+
+    loadData();
   }, []);
+  
+  // Persist data slices to IndexedDB when they change
+  useEffect(() => { if (isDbLoaded) db.saveCollection('customers', state.customers); }, [state.customers, isDbLoaded]);
+  useEffect(() => { if (isDbLoaded) db.saveCollection('suppliers', state.suppliers); }, [state.suppliers, isDbLoaded]);
+  useEffect(() => { if (isDbLoaded) db.saveCollection('products', state.products); }, [state.products, isDbLoaded]);
+  useEffect(() => { if (isDbLoaded) db.saveCollection('sales', state.sales); }, [state.sales, isDbLoaded]);
+  useEffect(() => { if (isDbLoaded) db.saveCollection('purchases', state.purchases); }, [state.purchases, isDbLoaded]);
+  useEffect(() => { if (isDbLoaded) db.saveCollection('returns', state.returns); }, [state.returns, isDbLoaded]);
+  useEffect(() => { if (isDbLoaded) db.saveCollection('app_metadata', state.app_metadata); }, [state.app_metadata, isDbLoaded]);
 
-  useEffect(() => {
-    if (state !== initialState) {
-        try {
-            const stateToSave = { ...state, toast: undefined };
-            localStorage.setItem('bhavaniSareesState', JSON.stringify(stateToSave));
-        } catch (error) {
-            console.error("Could not save state to localStorage", error);
-        }
-    }
-  }, [state]);
 
   const showToast = (message: string) => {
     dispatch({ type: 'SHOW_TOAST', payload: message });
