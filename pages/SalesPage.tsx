@@ -5,7 +5,6 @@ import { Sale, SaleItem, Customer, Product, Payment } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { Html5Qrcode } from 'html5-qrcode';
 
 
@@ -98,11 +97,14 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         const subTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
         const discountAmount = parseFloat(discount) || 0;
         
+        // This is a simplified GST calculation assuming price is inclusive.
+        // For exclusive price, the calculation would be different.
         const gstAmount = items.reduce((sum, item) => {
             const product = state.products.find(p => p.id === item.productId);
             if (product && product.gstPercent > 0) {
                 const itemTotal = item.price * item.quantity;
-                const gst = (itemTotal * product.gstPercent) / (100 + product.gstPercent);
+                // Price is inclusive of GST, so we extract it.
+                const gst = itemTotal - (itemTotal / (1 + product.gstPercent / 100));
                 return sum + gst;
             }
             return sum;
@@ -117,87 +119,107 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         const doc = new jsPDF({
           orientation: 'p',
           unit: 'px',
-          format: [240, 400]
+          format: [280, 450] // Cute little receipt format
         });
 
-        // Add Fonts & Styles
+        // Add Fonts
         doc.addFont('Times-Roman', 'Times', 'normal');
         doc.addFont('Times-Bold', 'Times', 'bold');
         doc.addFont('Times-Italic', 'Times', 'italic');
 
-        // Header
-        doc.setFont('Times', 'italic');
-        doc.setFontSize(10);
-        doc.setTextColor('#000000');
-        doc.text('OM namo venkatesaya', doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
-        
-        doc.setFont('Times', 'bold');
-        doc.setFontSize(16);
-        doc.setTextColor('#6a0dad');
-        doc.text('Bhavani Sarees', doc.internal.pageSize.getWidth() / 2, 35, { align: 'center' });
-        
-        // Use a readable sans-serif for body
-        doc.setFont('Helvetica', 'normal');
+        const centerX = doc.internal.pageSize.getWidth() / 2;
+        let y = 30;
 
-        // Invoice Info & Billed To in two columns
-        const invoiceDate = new Date(sale.date);
-        doc.setFontSize(7);
+        // --- Header ---
+        doc.setFont('Times', 'italic');
+        doc.setFontSize(14);
+        doc.setTextColor('#000000');
+        doc.text('OM namo venkatesaya', centerX, y, { align: 'center' });
+        y += 20;
+
+        doc.setFont('Times', 'bold');
+        doc.setFontSize(22);
+        doc.setTextColor('#6a0dad');
+        doc.text('Bhavani Sarees', centerX, y, { align: 'center' });
+        y += 25;
+
+        // --- Invoice Details ---
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(9);
         doc.setTextColor('#333333');
         
-        doc.text('Billed To:', 15, 55);
+        // Two-column layout for details
+        const leftColX = 20;
+        const rightColX = doc.internal.pageSize.getWidth() - 20;
+
         doc.setFont('Helvetica', 'bold');
-        doc.text(customer.name.toUpperCase(), 15, 65);
+        doc.text('Billed To:', leftColX, y);
         doc.setFont('Helvetica', 'normal');
-        doc.text(customer.address, 15, 75);
+        doc.text(customer.name, leftColX, y + 10);
+        doc.text(customer.address, leftColX, y + 20);
 
-        const rightColX = doc.internal.pageSize.getWidth() - 15;
-        doc.text('Invoice Details:', rightColX, 55, { align: 'right' });
-        doc.text(sale.id, rightColX, 65, { align: 'right' });
-        doc.text(invoiceDate.toLocaleString(), rightColX, 75, { align: 'right' });
+        doc.setFont('Helvetica', 'bold');
+        doc.text('Invoice Details:', rightColX, y, { align: 'right' });
+        doc.setFont('Helvetica', 'normal');
+        doc.text(sale.id, rightColX, y + 10, { align: 'right' });
+        doc.text(new Date(sale.date).toLocaleString(), rightColX, y + 20, { align: 'right' });
+        y += 40;
 
-        // Table
-        autoTable(doc, {
-            startY: 90,
-            head: [['Item', 'Qty', 'Price', 'Total']],
-            body: sale.items.map(item => [
-                item.productName,
-                item.quantity,
-                `Rs. ${item.price.toLocaleString('en-IN')}`,
-                `Rs. ${(item.price * item.quantity).toLocaleString('en-IN')}`
-            ]),
-            theme: 'striped',
-            headStyles: { fillColor: '#6a0dad' },
-            styles: { fontSize: 8, cellPadding: 2 },
-            columnStyles: {
-                2: { halign: 'right' },
-                3: { halign: 'right' }
-            },
-            didDrawPage: (data) => {
-                // Totals Section
-                const finalY = (data.cursor?.y ?? 0) + 10;
-                const totals = [
-                    { label: 'Subtotal', value: calculations.subTotal },
-                    { label: 'GST', value: calculations.gstAmount },
-                    { label: 'Discount', value: -calculations.discountAmount },
-                    { label: 'Total', value: calculations.totalAmount, bold: true },
-                    { label: 'Paid', value: sale.payments.reduce((sum, p) => sum + p.amount, 0) },
-                    { label: 'Due', value: calculations.totalAmount - sale.payments.reduce((sum, p) => sum + p.amount, 0), bold: true },
-                ];
-                
-                let y = finalY;
-                totals.forEach(({label, value, bold = false}) => {
-                    doc.setFont('Helvetica', bold ? 'bold' : 'normal');
-                    doc.setFontSize(bold ? 9 : 8);
-                    doc.text(label, doc.internal.pageSize.getWidth() - 70, y, { align: 'right' });
-                    doc.text(`Rs. ${value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, doc.internal.pageSize.getWidth() - 15, y, { align: 'right' });
-                    y += (bold ? 13 : 11);
-                });
-            }
+        // --- Items Table Header ---
+        doc.setDrawColor('#6a0dad');
+        doc.line(leftColX, y, rightColX, y); // Top border
+        y += 12;
+        doc.setFont('Helvetica', 'bold');
+        doc.text('Item', leftColX, y);
+        doc.text('Total', rightColX, y, { align: 'right' });
+        y += 5;
+        doc.setDrawColor('#cccccc');
+        doc.line(leftColX, y, rightColX, y); // Bottom border
+        y += 15;
+        
+        // --- Items List ---
+        doc.setFont('Helvetica', 'normal');
+        sale.items.forEach(item => {
+            const itemTotal = item.price * item.quantity;
+            doc.setFontSize(10);
+            doc.text(item.productName, leftColX, y);
+            doc.text(`Rs. ${itemTotal.toLocaleString('en-IN')}`, rightColX, y, { align: 'right' });
+            y += 12;
+            doc.setFontSize(8);
+            doc.setTextColor('#666666');
+            doc.text(`(x${item.quantity} @ Rs. ${item.price.toLocaleString('en-IN')})`, leftColX, y);
+            y += 15;
+            doc.setTextColor('#333333');
+        });
+        
+        doc.setDrawColor('#cccccc');
+        doc.line(leftColX, y, rightColX, y); // Separator line
+        y += 15;
+
+        // --- Totals Section ---
+        const totals = [
+            { label: 'Subtotal', value: calculations.subTotal },
+            { label: 'GST', value: calculations.gstAmount },
+            { label: 'Discount', value: -calculations.discountAmount },
+            { label: 'Total', value: calculations.totalAmount, bold: true },
+            { label: 'Paid', value: sale.payments.reduce((sum, p) => sum + p.amount, 0) },
+            { label: 'Due', value: calculations.totalAmount - sale.payments.reduce((sum, p) => sum + p.amount, 0), bold: true },
+        ];
+        
+        totals.forEach(({label, value, bold = false}) => {
+            doc.setFont('Helvetica', bold ? 'bold' : 'normal');
+            doc.setFontSize(bold ? 11 : 9);
+            doc.text(label, doc.internal.pageSize.getWidth() - 90, y);
+            doc.text(`Rs. ${value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, rightColX, y, { align: 'right' });
+            y += (bold ? 16 : 13);
         });
 
         const pdfBlob = doc.output('blob');
         const pdfFile = new File([pdfBlob], `${sale.id}.pdf`, { type: 'application/pdf' });
-        const whatsAppText = `Thank you for your purchase from Bhavani Sarees!\n\n*Invoice Summary:*\nInvoice ID: ${sale.id}\nDate: ${new Date(sale.date).toLocaleString()}\n\n*Items:*\n${sale.items.map(i => `- ${i.productName} (x${i.quantity}) - Rs. ${(i.price * i.quantity).toLocaleString('en-IN')}`).join('\n')}\n\n*Total: Rs. ${sale.totalAmount.toLocaleString('en-IN')}*\nPaid: Rs. ${sale.payments.reduce((s,p) => s+p.amount,0).toLocaleString('en-IN')}\nDue: Rs. {(sale.totalAmount - sale.payments.reduce((s,p) => s+p.amount,0)).toLocaleString('en-IN')}\n\nHave a blessed day!`;
+        
+        const paidAmount = sale.payments.reduce((s,p) => s+p.amount,0);
+        const dueAmount = sale.totalAmount - paidAmount;
+        const whatsAppText = `Thank you for your purchase from Bhavani Sarees!\n\n*Invoice Summary:*\nInvoice ID: ${sale.id}\nDate: ${new Date(sale.date).toLocaleString()}\n\n*Items:*\n${sale.items.map(i => `- ${i.productName} (x${i.quantity}) - Rs. ${(i.price * i.quantity).toLocaleString('en-IN')}`).join('\n')}\n\n*Total: Rs. ${sale.totalAmount.toLocaleString('en-IN')}*\nPaid: Rs. ${paidAmount.toLocaleString('en-IN')}\nDue: Rs. ${dueAmount.toLocaleString('en-IN')}\n\nHave a blessed day!`;
         
         try {
             await navigator.clipboard.writeText(whatsAppText);
