@@ -142,7 +142,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         setNewItem({ productId: '', productName: '', quantity: '1', price: '', gstPercent: '5', saleValue: '' });
     }
 
-    const resetPurchaseForm = () => {
+    const clearPurchaseFormFields = () => {
         setSupplierId('');
         setItems([]);
         setPaymentAmount('');
@@ -150,6 +150,10 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         setPaymentDate(getLocalDateString());
         setNewItem({ productId: '', productName: '', quantity: '1', price: '', gstPercent: '5', saleValue: '' });
         setPurchaseToEdit(null);
+    };
+
+    const resetPurchaseForm = () => {
+        clearPurchaseFormFields();
         setView('list');
     };
 
@@ -797,7 +801,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             </div>
             
             <div className="flex flex-col sm:flex-row gap-2">
-                <Button className="w-full sm:w-auto" onClick={() => { setView('add_purchase'); setSelectedSupplier(null); resetPurchaseForm(); }}><Plus className="w-4 h-4 mr-2" />Add Purchase/Payment</Button>
+                <Button className="w-full sm:w-auto" onClick={() => { setView('add_purchase'); setSelectedSupplier(null); clearPurchaseFormFields(); }}><Plus className="w-4 h-4 mr-2" />Add Purchase/Payment</Button>
                 <Button className="w-full sm:w-auto" onClick={() => { setView('add_supplier'); setSelectedSupplier(null); }} variant="secondary"><Plus className="w-4 h-4 mr-2" />Add Supplier</Button>
             </div>
             
