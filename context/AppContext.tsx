@@ -1,6 +1,11 @@
 import React, { createContext, useReducer, useContext, useEffect, ReactNode } from 'react';
 import { Customer, Supplier, Product, Sale, Purchase, Return, Payment } from '../types';
 
+interface ToastState {
+  message: string;
+  show: boolean;
+}
+
 interface AppState {
   customers: Customer[];
   suppliers: Supplier[];
@@ -8,10 +13,11 @@ interface AppState {
   sales: Sale[];
   purchases: Purchase[];
   returns: Return[];
+  toast: ToastState;
 }
 
 type Action =
-  | { type: 'SET_STATE'; payload: AppState }
+  | { type: 'SET_STATE'; payload: Omit<AppState, 'toast'> }
   | { type: 'ADD_CUSTOMER'; payload: Customer }
   | { type: 'UPDATE_CUSTOMER'; payload: Customer }
   | { type: 'ADD_SUPPLIER'; payload: Supplier }
@@ -25,7 +31,10 @@ type Action =
   | { type: 'DELETE_PURCHASE'; payload: string } // purchaseId
   | { type: 'ADD_RETURN'; payload: Return }
   | { type: 'ADD_PAYMENT_TO_SALE'; payload: { saleId: string; payment: Payment } }
-  | { type: 'ADD_PAYMENT_TO_PURCHASE'; payload: { purchaseId: string; payment: Payment } };
+  | { type: 'ADD_PAYMENT_TO_PURCHASE'; payload: { purchaseId: string; payment: Payment } }
+  | { type: 'SHOW_TOAST'; payload: string }
+  | { type: 'HIDE_TOAST' };
+
 
 const initialState: AppState = {
   customers: [],
@@ -34,12 +43,13 @@ const initialState: AppState = {
   sales: [],
   purchases: [],
   returns: [],
+  toast: { message: '', show: false },
 };
 
 const appReducer = (state: AppState, action: Action): AppState => {
   switch (action.type) {
     case 'SET_STATE':
-        return action.payload;
+        return { ...state, ...action.payload };
     case 'ADD_CUSTOMER':
       return { ...state, customers: [...state.customers, action.payload] };
     case 'UPDATE_CUSTOMER':
@@ -171,14 +181,25 @@ const appReducer = (state: AppState, action: Action): AppState => {
             : purchase
         ),
       };
+    case 'SHOW_TOAST':
+        return { ...state, toast: { message: action.payload, show: true } };
+    case 'HIDE_TOAST':
+        return { ...state, toast: { ...state.toast, show: false } };
     default:
       return state;
   }
 };
 
-const AppContext = createContext<{ state: AppState; dispatch: React.Dispatch<Action> }>({
+interface AppContextType {
+    state: AppState;
+    dispatch: React.Dispatch<Action>;
+    showToast: (message: string) => void;
+}
+
+const AppContext = createContext<AppContextType>({
   state: initialState,
   dispatch: () => null,
+  showToast: () => null,
 });
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -189,7 +210,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const storedState = localStorage.getItem('bhavaniSareesState');
         if (storedState) {
             const parsedState = JSON.parse(storedState);
-            const validatedState: AppState = {
+            const validatedState: Omit<AppState, 'toast'> = {
                 customers: Array.isArray(parsedState.customers) ? parsedState.customers : [],
                 suppliers: Array.isArray(parsedState.suppliers) ? parsedState.suppliers : [],
                 products: Array.isArray(parsedState.products) ? parsedState.products : [],
@@ -208,14 +229,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     if (state !== initialState) {
         try {
-            localStorage.setItem('bhavaniSareesState', JSON.stringify(state));
+            const stateToSave = { ...state, toast: undefined };
+            localStorage.setItem('bhavaniSareesState', JSON.stringify(stateToSave));
         } catch (error) {
             console.error("Could not save state to localStorage", error);
         }
     }
   }, [state]);
 
-  return <AppContext.Provider value={{ state, dispatch }}>{children}</AppContext.Provider>;
+  const showToast = (message: string) => {
+    dispatch({ type: 'SHOW_TOAST', payload: message });
+    setTimeout(() => {
+        dispatch({ type: 'HIDE_TOAST' });
+    }, 3000);
+  };
+
+  return <AppContext.Provider value={{ state, dispatch, showToast }}>{children}</AppContext.Provider>;
 };
 
 export const useAppContext = () => useContext(AppContext);

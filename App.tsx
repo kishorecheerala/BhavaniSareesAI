@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes } from 'lucide-react';
 
-import { AppProvider } from './context/AppContext';
+import { AppProvider, useAppContext } from './context/AppContext';
 import Dashboard from './pages/Dashboard';
 import CustomersPage from './pages/CustomersPage';
 import SalesPage from './pages/SalesPage';
@@ -12,7 +12,19 @@ import ProductsPage from './pages/ProductsPage';
 
 type Page = 'DASHBOARD' | 'CUSTOMERS' | 'SALES' | 'PURCHASES' | 'REPORTS' | 'RETURNS' | 'PRODUCTS';
 
-const App: React.FC = () => {
+const Toast = () => {
+    const { state, dispatch } = useAppContext();
+
+    if (!state.toast.show) return null;
+
+    return (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded-full shadow-lg z-50 animate-fade-in-out">
+            {state.toast.message}
+        </div>
+    );
+};
+
+const MainApp: React.FC = () => {
   const [currentPage, _setCurrentPage] = useState<Page>('DASHBOARD');
   const [isDirty, setIsDirty] = useState(false);
   const currentPageRef = useRef(currentPage);
@@ -82,30 +94,36 @@ const App: React.FC = () => {
   );
 
   return (
-    <AppProvider>
-      <div className="flex flex-col h-screen font-sans text-text bg-background">
-        <header className="bg-primary text-white shadow-md p-4 flex items-center justify-center">
-            <h1 className="text-xl font-bold">Bhavani Sarees</h1>
-        </header>
+    <div className="flex flex-col h-screen font-sans text-text bg-background">
+      <Toast />
+      <header className="bg-primary text-white shadow-md p-4 flex items-center justify-center">
+          <h1 className="text-xl font-bold">Bhavani Sarees</h1>
+      </header>
 
-        <main className="flex-grow overflow-y-auto p-4 pb-20">
-          {renderPage()}
-        </main>
+      <main className="flex-grow overflow-y-auto p-4 pb-20">
+        {renderPage()}
+      </main>
 
-        <nav className="fixed bottom-0 left-0 right-0 bg-primary shadow-lg z-50">
-          <div className="flex justify-around max-w-2xl mx-auto">
-            <NavItem page="DASHBOARD" label="Home" icon={Home} />
-            <NavItem page="CUSTOMERS" label="Customers" icon={Users} />
-            <NavItem page="SALES" label="Sales" icon={ShoppingCart} />
-            <NavItem page="PURCHASES" label="Purchases" icon={Package} />
-            <NavItem page="PRODUCTS" label="Products" icon={Boxes} />
-            <NavItem page="RETURNS" label="Returns" icon={Undo2} />
-            <NavItem page="REPORTS" label="Reports" icon={FileText} />
-          </div>
-        </nav>
-      </div>
-    </AppProvider>
+      <nav className="fixed bottom-0 left-0 right-0 bg-primary shadow-lg z-50">
+        <div className="flex justify-around max-w-2xl mx-auto">
+          <NavItem page="DASHBOARD" label="Home" icon={Home} />
+          <NavItem page="CUSTOMERS" label="Customers" icon={Users} />
+          <NavItem page="SALES" label="Sales" icon={ShoppingCart} />
+          <NavItem page="PURCHASES" label="Purchases" icon={Package} />
+          <NavItem page="PRODUCTS" label="Products" icon={Boxes} />
+          <NavItem page="RETURNS" label="Returns" icon={Undo2} />
+          <NavItem page="REPORTS" label="Reports" icon={FileText} />
+        </div>
+      </nav>
+    </div>
   );
 };
+
+const App: React.FC = () => (
+    <AppProvider>
+        <MainApp />
+    </AppProvider>
+);
+
 
 export default App;
