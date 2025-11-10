@@ -911,20 +911,38 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                             </div>
                              {!supplierId && <p className="text-xs text-red-500 text-center">Please select a supplier to enable CSV import.</p>}
                         </div>
-                         <div className="pt-4 border-t space-y-3 mt-4">
+                         <div className="pt-4 border-t space-y-4 mt-4">
                             <h3 className="font-semibold">Add New Item Manually</h3>
-                             <div className="flex flex-col sm:flex-row gap-2">
-                                <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full sm:w-auto flex-grow">
+                             <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                                <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full sm:w-auto">
                                     <QrCode size={16} className="mr-2"/> Scan Saree Code/ID
                                 </Button>
-                                <input type="text" placeholder="Or Enter Manually" value={newItem.productId} onChange={e => setNewItem({...newItem, productId: e.target.value})} className="w-full sm:w-auto flex-grow p-2 border rounded" />
+                                <div className="flex-grow w-full">
+                                    <label htmlFor="productId" className="block text-sm font-medium text-gray-700">Saree Code/ID</label>
+                                    <input id="productId" type="text" placeholder="Enter code manually" value={newItem.productId} onChange={e => setNewItem({...newItem, productId: e.target.value})} className="w-full p-2 border rounded" />
+                                </div>
                             </div>
-                            <input type="text" placeholder="Saree Name" value={newItem.productName} onChange={e => setNewItem({...newItem, productName: e.target.value})} className="w-full p-2 border rounded" />
-                            <div className="grid grid-cols-2 gap-2">
-                                <input type="number" placeholder="Quantity" value={newItem.quantity} onChange={e => setNewItem({...newItem, quantity: e.target.value})} className="w-full p-2 border rounded" />
-                                <input type="number" placeholder="Purchase Price" value={newItem.price} onChange={e => setNewItem({...newItem, price: e.target.value})} className="w-full p-2 border rounded" />
-                                <input type="number" placeholder="GST %" value={newItem.gstPercent} onChange={e => setNewItem({...newItem, gstPercent: e.target.value})} className="w-full p-2 border rounded" />
-                                <input type="number" placeholder="Sale Price" value={newItem.saleValue} onChange={e => setNewItem({...newItem, saleValue: e.target.value})} className="w-full p-2 border rounded" />
+                            <div>
+                                <label htmlFor="productName" className="block text-sm font-medium text-gray-700">Saree Name</label>
+                                <input id="productName" type="text" placeholder="e.g., Kanchipuram Silk" value={newItem.productName} onChange={e => setNewItem({...newItem, productName: e.target.value})} className="w-full p-2 border rounded" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">Quantity</label>
+                                    <input id="quantity" type="number" placeholder="e.g., 10" value={newItem.quantity} onChange={e => setNewItem({...newItem, quantity: e.target.value})} className="w-full p-2 border rounded" />
+                                </div>
+                                <div>
+                                    <label htmlFor="purchasePrice" className="block text-sm font-medium text-gray-700">Purchase Price</label>
+                                    <input id="purchasePrice" type="number" placeholder="e.g., 5000" value={newItem.price} onChange={e => setNewItem({...newItem, price: e.target.value})} className="w-full p-2 border rounded" />
+                                </div>
+                                <div>
+                                    <label htmlFor="gstPercent" className="block text-sm font-medium text-gray-700">GST %</label>
+                                    <input id="gstPercent" type="number" placeholder="e.g., 5" value={newItem.gstPercent} onChange={e => setNewItem({...newItem, gstPercent: e.target.value})} className="w-full p-2 border rounded" />
+                                </div>
+                                <div>
+                                    <label htmlFor="salePrice" className="block text-sm font-medium text-gray-700">Sale Price</label>
+                                    <input id="salePrice" type="number" placeholder="e.g., 12000" value={newItem.saleValue} onChange={e => setNewItem({...newItem, saleValue: e.target.value})} className="w-full p-2 border rounded" />
+                                </div>
                             </div>
                             <Button onClick={handleAddItem} className="w-full"><Plus className="mr-2" size={16}/>Add Item to Purchase</Button>
                          </div>

@@ -30,11 +30,14 @@ const Dashboard: React.FC = () => {
     const totalPurchases = state.purchases.reduce((sum, purchase) => sum + purchase.totalAmount, 0);
     
     const availableYears = useMemo(() => {
-        const years = new Set(state.sales.map(s => new Date(s.date).getFullYear()));
+        const years = new Set(
+            state.sales
+                .map(s => new Date(s.date).getFullYear())
+                .filter(y => !isNaN(y)) // Filter out NaN values from invalid dates
+        );
         if (!years.has(new Date().getFullYear())) {
             years.add(new Date().getFullYear());
         }
-        // FIX: Explicitly type the sort function parameters to resolve potential type inference issues.
         return Array.from(years).sort((a: number, b: number) => b - a);
     }, [state.sales]);
 
