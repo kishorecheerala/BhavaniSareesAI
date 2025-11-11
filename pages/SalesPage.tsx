@@ -9,71 +9,6 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import DeleteButton from '../components/DeleteButton';
 
-
-// --- Divine Symbols (Detailed and Respectful SVG) ---
-const tirunamamSvg = `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <path d="M42 20 C42 40, 30 55, 25 70 C20 85, 20 95, 20 95" stroke="#6a0dad" stroke-width="5" fill="none" stroke-linecap="round"/>
-  <path d="M58 20 C58 40, 70 55, 75 70 C80 85, 80 95, 80 95" stroke="#6a0dad" stroke-width="5" fill="none" stroke-linecap="round"/>
-  <path d="M50 20 V 70" stroke="red" stroke-width="4" fill="none" stroke-linecap="round"/>
-  <path d="M48 70 H 52" stroke="red" stroke-width="4" fill="none" stroke-linecap="round"/>
-  <path d="M40 95 A 10 10 0 0 1 60 95" stroke="#6a0dad" stroke-width="4" fill="none"/>
-</svg>`;
-
-const sankuSvg = `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <path d="M50,95 C70,95 85,80 85,60 C85,40 70,25 50,25 C30,25 15,40 15,60 C15,80 30,95 50,95 Z" fill="#f3e5f5" stroke="#6a0dad" stroke-width="4"/>
-  <path d="M50,25 C40,25 30,20 30,10 C30,0 40,5 50,5 C60,5 70,0 70,10 C70,20 60,25 50,25" fill="#f3e5f5" stroke="#6a0dad" stroke-width="4"/>
-  <path d="M30,60 C30,50 40,45 50,45 C60,45 70,50 70,60" fill="none" stroke="#6a0dad" stroke-width="3"/>
-  <path d="M35,75 C35,68 42,65 50,65 C58,65 65,68 65,75" fill="none" stroke="#6a0dad" stroke-width="3"/>
-</svg>`;
-
-const chakraSvg = `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="35" fill="#f3e5f5" stroke="#6a0dad" stroke-width="4"/>
-  <circle cx="50" cy="50" r="10" fill="#6a0dad"/>
-  <g transform="translate(50,50)">
-    <line x1="0" y1="-35" x2="0" y2="35" stroke="#6a0dad" stroke-width="3"/>
-    <line x1="-35" y1="0" x2="35" y2="0" stroke="#6a0dad" stroke-width="3"/>
-    <line x1="-24.7" y1="-24.7" x2="24.7" y2="24.7" stroke="#6a0dad" stroke-width="3"/>
-    <line x1="-24.7" y1="24.7" x2="24.7" y2="-24.7" stroke="#6a0dad" stroke-width="3"/>
-  </g>
-  <g transform="translate(50,50)">
-    <path d="M0 -35 L -5 -45 L 5 -45 Z" fill="#6a0dad"/>
-    <path d="M0 35 L -5 45 L 5 45 Z" fill="#6a0dad" transform="rotate(180)"/>
-    <path d="M0 -35 L -5 -45 L 5 -45 Z" fill="#6a0dad" transform="rotate(90)"/>
-    <path d="M0 35 L -5 45 L 5 45 Z" fill="#6a0dad" transform="rotate(270)"/>
-  </g>
-</svg>`;
-
-// Helper to convert SVG string to PNG data URL
-const svgToPng = (svgString: string, width: number, height: number): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        
-        const image = new Image();
-        image.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-                ctx.drawImage(image, 0, 0, width, height);
-                const pngDataUrl = canvas.toDataURL('image/png');
-                URL.revokeObjectURL(url);
-                resolve(pngDataUrl);
-            } else {
-                URL.revokeObjectURL(url);
-                reject(new Error('Could not get canvas context'));
-            }
-        };
-        image.onerror = (e) => {
-            URL.revokeObjectURL(url);
-            reject(new Error('Failed to load SVG image for PDF conversion.'));
-        };
-        image.src = url;
-    });
-};
-
-
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
   const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -103,26 +38,6 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     const [productSearchTerm, setProductSearchTerm] = useState('');
     const [isAddingCustomer, setIsAddingCustomer] = useState(false);
     const [newCustomer, setNewCustomer] = useState({ id: '', name: '', phone: '', address: '', area: '' });
-
-    // State for pre-rendered PDF images
-    const [logoImages, setLogoImages] = useState({ tirunamam: '', sanku: '', chakra: '' });
-
-    // Pre-render images on component mount for synchronous PDF generation later
-    useEffect(() => {
-        const convertImages = async () => {
-            try {
-                const [tirunamam, sanku, chakra] = await Promise.all([
-                    svgToPng(tirunamamSvg, 100, 100),
-                    svgToPng(sankuSvg, 100, 100),
-                    svgToPng(chakraSvg, 100, 100)
-                ]);
-                setLogoImages({ tirunamam, sanku, chakra });
-            } catch (error) {
-                console.error("Failed to pre-convert logo images for PDF:", error);
-            }
-        };
-        convertImages();
-    }, []);
 
     useEffect(() => {
         const formIsDirty = !!customerId || cart.length > 0 || !!discount || !!amountPaid;
@@ -244,42 +159,34 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     const totalAmount = subTotal - (parseFloat(discount) || 0);
 
     const generateInvoicePDF = (sale: Sale, customer: Customer, isShare = false) => {
-        // This function is now synchronous and uses pre-loaded images
         const doc = new jsPDF({
             unit: 'mm',
             format: [80, 297] // Thermal printer size
         });
         const date = new Date(sale.date).toLocaleString();
         
-        if (logoImages.tirunamam) {
-            doc.addImage(logoImages.tirunamam, 'PNG', 32.5, 5, 15, 15);
-        }
-
         doc.setFont('times', 'bold');
-        doc.setFontSize(12);
-        doc.text('OM namo venkatesaya', 40, 26, { align: 'center' });
-        
+        doc.setFontSize(18);
+        doc.text('🕉️', 40, 15, { align: 'center' });
+
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(16);
-        doc.text('Bhavani Sarees', 40, 34, { align: 'center' });
+        doc.text('Bhavani Sarees', 40, 25, { align: 'center' });
         
-        if (logoImages.sanku) doc.addImage(logoImages.sanku, 'PNG', 12, 29, 8, 8);
-        if (logoImages.chakra) doc.addImage(logoImages.chakra, 'PNG', 60, 29, 8, 8);
-
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
-        doc.text(`Invoice: ${sale.id}`, 5, 45);
-        doc.text(`Date: ${date}`, 5, 50);
+        doc.text(`Invoice: ${sale.id}`, 5, 35);
+        doc.text(`Date: ${date}`, 5, 40);
 
-        doc.text(`Billed To:`, 5, 57);
+        doc.text(`Billed To:`, 5, 47);
         doc.setFont('helvetica', 'bold');
-        doc.text(customer.name, 5, 62);
+        doc.text(customer.name, 5, 52);
         doc.setFont('helvetica', 'normal');
-        if (customer.address) doc.text(customer.address, 5, 67);
+        if (customer.address) doc.text(customer.address, 5, 57);
 
 
         autoTable(doc, {
-            startY: 75,
+            startY: 65,
             head: [['Item', 'Qty', 'Price', 'Total']],
             body: sale.items.map(item => [
                 item.productName,
@@ -399,11 +306,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         });
         
         showToast("Sale created successfully!");
-        if (logoImages.tirunamam) {
-            generateInvoicePDF(newSale, customer, true);
-        } else {
-            alert("Generating PDF... Logos are still loading. Please try again in a moment.");
-        }
+        generateInvoicePDF(newSale, customer, true);
         resetForm();
     };
 
