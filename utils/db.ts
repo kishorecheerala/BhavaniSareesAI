@@ -69,16 +69,16 @@ export async function setLastBackupDate(): Promise<void> {
     await db.put('app_metadata', { id: 'lastBackup', date: now });
 }
 
-export async function exportData(): Promise<Omit<AppState, 'toast'>> {
+export async function exportData(): Promise<Omit<AppState, 'toast' | 'selection'>> {
     const db = await getDb();
     const data: any = {};
     for (const storeName of STORE_NAMES) {
         data[storeName] = await db.getAll(storeName);
     }
-    return data as Omit<AppState, 'toast'>;
+    return data as Omit<AppState, 'toast' | 'selection' >;
 }
 
-export async function importData(data: Omit<AppState, 'toast'>): Promise<void> {
+export async function importData(data: Omit<AppState, 'toast' | 'selection' >): Promise<void> {
     const db = await getDb();
     const tx = db.transaction(STORE_NAMES, 'readwrite');
     

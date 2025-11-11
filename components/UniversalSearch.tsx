@@ -75,7 +75,6 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({ isOpen, onClose, onNa
         }
     }, [isOpen]);
 
-    // FIX: Add Array.isArray check to safely access .length on the 'unknown' type returned by Object.values()
     const hasResults = useMemo(() => Object.values(results).some(arr => Array.isArray(arr) && arr.length > 0), [results]);
 
     if (!isOpen) return null;

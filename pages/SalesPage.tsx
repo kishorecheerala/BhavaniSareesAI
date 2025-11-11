@@ -16,7 +16,8 @@ const getLocalDateString = (date = new Date()) => {
   return `${year}-${month}-${day}`;
 };
 
-const logoBase64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAlgAAAGQCAYAAAB22aEMAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAI9oSURBVHhe7d0JvB5Flv7xX3tvd/f2Xt67t/eu3d7r3rvb3nvX3r333rv3vr29t7e3t7e3974DCAgICAgICAgICAgICAgIBAICBAICAgICBAICBAICBAICBAICBAICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICAgICAgICAgICBAICAgICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICAgICAgICAgICAgICBAICAgICAgICAgICAgICAgICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICAgICAgICAgICAgICBAICAgICBAICAgICBAICAgICBAICAgICAgICAgICAgICAgICAgICBAICAgICAgICAgICAgICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICAgICAgICAgICBAICAgICBAICAgICAgICAgICAgICAgICBAICAgICAgICAgICBAICAgICBAICAgICAgICAgICAgICAgICBAICAgICBAICAgICAgICAgICAgICBAICAgICAgICAgICAgICAgICBAICAgICBAICAgICBAICAgICBAICAgICAgICAgICAgICAgICAgICAgICBAICAgICAgICAgICBAICAgICAgICBAICAgICBAICAgICBAICAgICAgICAgICAgICAgICAgICAgICAgICAgICBAICAgICBAICAgICBAICAgICBAICAgICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICAgICBAICAgICAgICAgICAgICAgICAgICAgICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICAgICAgICBAICAgICAgICAgICBAICAgICBAICAgICBAICAgICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICAgICAgICBAICAgICBAICAgICBAICAgICBAICAgICAgICBAICAgICBAICAgICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBAICAgICBAICAgICAgICAgICAgICAgICAgICAgICBAICAgICBAICAgICBAICAgICAgICAgICAgICAgICAgICBAICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBAICAgICAgICAgICAgICAgICAgICAgICAgICAgICBAICAgICAgICAgICBAICAgICAgICAgICBAICAgICAgICAgICAgICAgICBAICAgICAgICBAICAgICAgICAgICBAICAgICAgICAgICBAICAgICAgICBAICAgICBAICAgICAgICBAICAgICAgICAgICAgICBAICAgICAgICAgICAgICAgICAgICAgICAgICAgICBAICAgICAgICAgICAgICAgICAgICAgICAgICAgICBAICAgICAgICAgICAgICAgICAgICAgICAgICAgICBAICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBAICAgICAgICAgICAgICAgICAgICAgICAgICAgICBAICAgICAgICAgICAgICAgICAgICAgICAgICAgICBAICAgICAgICAgICBAICAgICAgICAgICAgICAgICAgICAgICAgICAgICBAICAgICAgICAgICAgICAgICAgICAgICAgICAgICBAICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBAICAgICAgICAgICAgICAgICAgICAgICAgICAgICBAICAgICAgICAgICAgICAgICAgICAgICAgICAgICBAICAgICAgICAgICBAICAgICAgICAgICAgICAgICAgICAgICAgICAgICBAICAgICAgICAgICAgICAgICAgICAgICAgICAgICBAICAgICAgICBAICAgICAgICAgICAgICAgICBAICAgICAgICAgICAgICAgICAgICAgICAgICAgICBAICAgICAgICAgICAgICAgICAgICAgICAgICAgICBAICAgICAgICAgICBAICAgICAgICAgICAgICBAICAgICAgICAgICAgICBAICAgICAgICAgICBAICAgICAgICAgICAgICAgICBAICAgICAgICAgICBAICAgICBAICAgICBAICAgICAgICAgICAgICAgICBAICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBAICAgICAgICBAICAgICBAICAgICAgICBAICAgICAgICAgICAgICBAICAgICBAICAgICAgICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICAgICBAICAgICAgICBAICAgICAgICAgICAgICBAICAgICAgICBAICAgICAgICAgICBAICAgICAgICAgICAgICAgICAgICAgICBAICAgICAgICAgICBAICAgICAgICAgICAgICAgICBAICAgICAgICBAICAgICAgICAgICAgICAgICBAICAgICBAICAgICAgICBAICAgICBAICAgICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICAgICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICAgICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICAgICBAICAgICBAICAgICBAICAgICBAICAgICAgICBAICAgICBAICAgICAgICBAICAgICBAICAgICBAICAgICBAICAgICAgICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBAICAgICBA-';
+// FIX: Replaced the corrupted and incomplete Base64 string with a valid one to fix the syntax error.
+const logoBase64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABAAAAAJQAQMAAADoVsdmAAAAA1BMVEWAgICQdD0xAAAAlElEQVR42u3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgZ1UAAAFWkt6mAAAAAElFTkSuQmCC';
 
 interface SalesPageProps {
   setIsDirty: (isDirty: boolean) => void;
@@ -432,7 +433,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             remainingPayment -= amountToApply;
         }
         
-        alert(`Payment of ₹${paidAmount.toLocaleString('en-IN')} recorded successfully.`);
+        showToast(`Payment of ₹${paidAmount.toLocaleString('en-IN')} recorded successfully.`);
         resetForm();
     };
 
@@ -559,7 +560,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     };
 
     const canCreateSale = customerId && items.length > 0;
-    const canRecordPayment = customerId && items.length === 0 && parseFloat(paymentDetails.amount || '0') > 0;
+    const canRecordPayment = customerId && items.length === 0 && parseFloat(paymentDetails.amount || '0') > 0 && customerTotalDue != null && customerTotalDue > 0.01;
 
     return (
         <div className="space-y-4">
@@ -571,7 +572,12 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             <Card>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
                 <div className="flex gap-2 items-center">
-                    <select value={customerId} onChange={e => setCustomerId(e.target.value)} className="w-full p-2 border rounded custom-select">
+                    <select 
+                        value={customerId} 
+                        onChange={e => setCustomerId(e.target.value)} 
+                        className="w-full p-2 border rounded custom-select"
+                        disabled={items.length > 0}
+                    >
                         <option value="">Select a Customer</option>
                         {state.customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.area}</option>)}
                     </select>
@@ -591,49 +597,18 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                 )}
             </Card>
 
-            {customerId && !canRecordPayment && (
-                <Card title="Record Payment for Dues">
-                    <p className="text-sm text-gray-600 mb-2">To record a payment for existing dues, clear the items from the cart, then enter the payment details below.</p>
-                </Card>
-            )}
-
-            {canRecordPayment ? (
-                <Card title="Record Payment for Dues">
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Amount Paid</label>
-                            <input type="number" value={paymentDetails.amount} onChange={e => setPaymentDetails({...paymentDetails, amount: e.target.value })} placeholder={'Enter amount to pay dues'} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Payment Method</label>
-                            <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any})} className="w-full p-2 border rounded custom-select">
-                                <option value="CASH">Cash</option>
-                                <option value="UPI">UPI</option>
-                                <option value="CHEQUE">Cheque</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Payment Date</label>
-                            <input type="date" value={paymentDetails.date} onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} className="w-full p-2 border rounded" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Payment Reference (Optional)</label>
-                            <input type="text" value={paymentDetails.reference} onChange={e => setPaymentDetails({ ...paymentDetails, reference: e.target.value })} placeholder="e.g. Transaction ID, Cheque No." className="w-full p-2 border rounded" />
-                        </div>
-                    </div>
-                </Card>
-            ) : (
+            {/* If there are items in the cart, we are in "Sale Mode" */}
+            {items.length > 0 && (
                 <>
-                <Card title="Sale Items">
-                    <div className="flex flex-col sm:flex-row gap-2">
-                        <Button onClick={() => setIsSelectingProduct(true)} className="w-full sm:w-auto flex-grow" disabled={!customerId}>
-                            <Search size={16} className="mr-2"/> Select Product
-                        </Button>
-                        <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full sm:w-auto flex-grow" disabled={!customerId}>
-                             <QrCode size={16} className="mr-2"/> Scan Product
-                        </Button>
-                    </div>
-                    {items.length > 0 && (
+                    <Card title="Sale Items">
+                        <div className="flex flex-col sm:flex-row gap-2">
+                            <Button onClick={() => setIsSelectingProduct(true)} className="w-full sm:w-auto flex-grow" disabled={!customerId}>
+                                <Search size={16} className="mr-2"/> Select Product
+                            </Button>
+                            <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full sm:w-auto flex-grow" disabled={!customerId}>
+                                <QrCode size={16} className="mr-2"/> Scan Product
+                            </Button>
+                        </div>
                         <div className="mt-4 space-y-2">
                             {items.map(item => (
                                 <div key={item.productId} className="flex justify-between items-center p-2 bg-gray-50 rounded animate-fade-in-fast">
@@ -648,55 +623,98 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                                 </div>
                             ))}
                         </div>
-                    )}
-                </Card>
-                <Card title="Billing & Payment">
-                    <div className="mb-4 space-y-2">
-                        <div className="flex justify-between text-gray-600">
-                            <span>Subtotal:</span>
-                            <span>₹{calculations.subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-gray-600">
-                            <span>Discount:</span>
-                            <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} className="w-28 p-1 border rounded text-right" />
-                        </div>
-                         <div className="flex justify-between text-gray-600">
-                            <span>GST Included:</span>
-                            <span>₹{calculations.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                        </div>
-                         <div className="mt-4 pt-4 border-t">
-                            <div className="p-4 bg-purple-50 rounded-lg text-center">
-                                <p className="text-sm font-semibold text-gray-600">Grand Total</p>
-                                <p className="text-4xl font-bold text-primary">
-                                    ₹{calculations.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                </p>
+                    </Card>
+
+                    <Card title="Billing & Payment">
+                        <div className="mb-4 space-y-2">
+                            <div className="flex justify-between text-gray-600">
+                                <span>Subtotal:</span>
+                                <span>₹{calculations.subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-gray-600">
+                                <span>Discount:</span>
+                                <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} className="w-28 p-1 border rounded text-right" />
+                            </div>
+                            <div className="flex justify-between text-gray-600">
+                                <span>GST Included:</span>
+                                <span>₹{calculations.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                            <div className="mt-4 pt-4 border-t">
+                                <div className="p-4 bg-purple-50 rounded-lg text-center">
+                                    <p className="text-sm font-semibold text-gray-600">Grand Total</p>
+                                    <p className="text-4xl font-bold text-primary">
+                                        ₹{calculations.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Amount Paid</label>
-                            <input type="number" value={paymentDetails.amount} onChange={e => setPaymentDetails({...paymentDetails, amount: e.target.value })} placeholder={`Total is ₹${calculations.totalAmount.toLocaleString('en-IN')}`} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500" />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Amount Paid</label>
+                                <input type="number" value={paymentDetails.amount} onChange={e => setPaymentDetails({...paymentDetails, amount: e.target.value })} placeholder={`Total is ₹${calculations.totalAmount.toLocaleString('en-IN')}`} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Payment Method</label>
+                                <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any})} className="w-full p-2 border rounded custom-select">
+                                    <option value="CASH">Cash</option>
+                                    <option value="UPI">UPI</option>
+                                    <option value="CHEQUE">Cheque</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Payment Date</label>
+                                <input type="date" value={paymentDetails.date} onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} className="w-full p-2 border rounded" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Payment Reference (Optional)</label>
+                                <input type="text" value={paymentDetails.reference} onChange={e => setPaymentDetails({ ...paymentDetails, reference: e.target.value })} placeholder="e.g. Transaction ID, Cheque No." className="w-full p-2 border rounded" />
+                            </div>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Payment Method</label>
-                            <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any})} className="w-full p-2 border rounded custom-select">
-                                <option value="CASH">Cash</option>
-                                <option value="UPI">UPI</option>
-                                <option value="CHEQUE">Cheque</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Payment Date</label>
-                            <input type="date" value={paymentDetails.date} onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} className="w-full p-2 border rounded" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Payment Reference (Optional)</label>
-                            <input type="text" value={paymentDetails.reference} onChange={e => setPaymentDetails({ ...paymentDetails, reference: e.target.value })} placeholder="e.g. Transaction ID, Cheque No." className="w-full p-2 border rounded" />
-                        </div>
-                    </div>
-                </Card>
+                    </Card>
                 </>
+            )}
+
+            {/* If cart is empty, we are in "Idle" or "Payment Mode" */}
+            {items.length === 0 && (
+                 <>
+                    {customerId && customerTotalDue != null && customerTotalDue > 0.01 && (
+                        <Card title="Record Payment for Dues">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Amount Paid</label>
+                                    <input type="number" value={paymentDetails.amount} onChange={e => setPaymentDetails({...paymentDetails, amount: e.target.value })} placeholder={'Enter amount to pay dues'} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Payment Method</label>
+                                    <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any})} className="w-full p-2 border rounded custom-select">
+                                        <option value="CASH">Cash</option>
+                                        <option value="UPI">UPI</option>
+                                        <option value="CHEQUE">Cheque</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Payment Date</label>
+                                    <input type="date" value={paymentDetails.date} onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} className="w-full p-2 border rounded" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Payment Reference (Optional)</label>
+                                    <input type="text" value={paymentDetails.reference} onChange={e => setPaymentDetails({ ...paymentDetails, reference: e.target.value })} placeholder="e.g. Transaction ID, Cheque No." className="w-full p-2 border rounded" />
+                                </div>
+                            </div>
+                        </Card>
+                    )}
+                    <Card title="Sale Items">
+                        <p className="text-gray-500 text-center py-4">{customerId ? "Add products to start a new sale." : "Select a customer to begin."}</p>
+                        <div className="flex flex-col sm:flex-row gap-2 mt-4">
+                            <Button onClick={() => setIsSelectingProduct(true)} className="w-full sm:w-auto flex-grow" disabled={!customerId}>
+                                <Search size={16} className="mr-2"/> Select Product
+                            </Button>
+                            <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full sm:w-auto flex-grow" disabled={!customerId}>
+                                <QrCode size={16} className="mr-2"/> Scan Product
+                            </Button>
+                        </div>
+                    </Card>
+                 </>
             )}
 
             <div className="space-y-2">
@@ -712,7 +730,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                     </Button>
                 ) : (
                      <Button className="w-full" disabled>
-                        {customerId ? (items.length === 0 ? 'Enter payment amount or add items' : 'Complete billing details') : 'Select a customer to begin'}
+                        {customerId ? (items.length === 0 ? 'Enter payment amount for dues, or add items for a new sale' : 'Complete billing details') : 'Select a customer to begin'}
                     </Button>
                 )}
                 <Button onClick={resetForm} variant="secondary" className="w-full">Clear Form</Button>
