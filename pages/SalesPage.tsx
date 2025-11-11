@@ -1,47 +1,13 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Trash2, Share2, Search, X, IndianRupee, QrCode } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { ShoppingCart, Plus, UserPlus, QrCode, Search, IndianRupee, X } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
-import { Sale, SaleItem, Customer, Product, Payment } from '../types';
+import { Customer, Product, SaleItem, Payment, Sale } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import jsPDF from 'jspdf';
 import { Html5Qrcode } from 'html5-qrcode';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import DeleteButton from '../components/DeleteButton';
-
-
-const svgToPng = (svgString: string, width: number, height: number): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-
-        const img = new Image();
-
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const scale = 3; // Render at 3x resolution for better quality
-            canvas.width = width * scale;
-            canvas.height = height * scale;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                const pngData = canvas.toDataURL('image/png');
-                URL.revokeObjectURL(url); // Clean up
-                resolve(pngData);
-            } else {
-                URL.revokeObjectURL(url);
-                reject(new Error('Could not get canvas context for image conversion.'));
-            }
-        };
-
-        img.onerror = (e) => {
-            URL.revokeObjectURL(url);
-            console.error("SVG to PNG conversion failed:", e);
-            reject(new Error('Failed to load SVG image for PDF.'));
-        };
-        
-        img.src = url;
-    });
-};
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -56,682 +22,487 @@ interface SalesPageProps {
 
 const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     const { state, dispatch, showToast } = useAppContext();
+    
+    // Form state
     const [customerId, setCustomerId] = useState('');
-    const [items, setItems] = useState<SaleItem[]>([]);
-    const [discount, setDiscount] = useState('0');
-    
-    const [paymentDetails, setPaymentDetails] = useState({
-        amount: '',
-        method: 'CASH' as 'CASH' | 'UPI' | 'CHEQUE',
-        date: getLocalDateString(),
-        reference: '',
-    });
+    const [cart, setCart] = useState<SaleItem[]>([]);
+    const [discount, setDiscount] = useState('');
+    const [amountPaid, setAmountPaid] = useState('');
+    const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'UPI' | 'CHEQUE'>('CASH');
+    const [paymentDate, setPaymentDate] = useState(getLocalDateString());
 
+    // UI/Modal state
     const [isSelectingProduct, setIsSelectingProduct] = useState(false);
-    const [productSearchTerm, setProductSearchTerm] = useState('');
     const [isScanning, setIsScanning] = useState(false);
-    
-    // State for the new "Add Customer" modal
+    const [productSearchTerm, setProductSearchTerm] = useState('');
     const [isAddingCustomer, setIsAddingCustomer] = useState(false);
-    const [newCustomer, setNewCustomer] = useState({ id: '', name: '', phone: '', address: '', area: '', reference: '' });
-
+    const [newCustomer, setNewCustomer] = useState({ id: '', name: '', phone: '', address: '', area: '' });
 
     useEffect(() => {
-        const formIsDirty = !!customerId || items.length > 0 || discount !== '0' || !!paymentDetails.amount;
-        // FIX: Coerce the potentially string result of the logical OR to a boolean using `!!`
-        const newCustomerFormIsDirty = isAddingCustomer && !!(newCustomer.id || newCustomer.name || newCustomer.phone || newCustomer.address || newCustomer.area);
-        setIsDirty(formIsDirty || newCustomerFormIsDirty);
+        const formIsDirty = !!customerId || cart.length > 0 || !!discount || !!amountPaid;
+        setIsDirty(formIsDirty);
 
-        return () => {
-            setIsDirty(false);
-        };
-    }, [customerId, items, discount, paymentDetails.amount, isAddingCustomer, newCustomer, setIsDirty]);
+        return () => setIsDirty(false);
+    }, [customerId, cart, discount, amountPaid, setIsDirty]);
 
     const resetForm = () => {
         setCustomerId('');
-        setItems([]);
-        setDiscount('0');
-        setPaymentDetails({
-            amount: '',
-            method: 'CASH',
-            date: getLocalDateString(),
-            reference: '',
-        });
-        setProductSearchTerm('');
-        setIsSelectingProduct(false);
+        setCart([]);
+        setDiscount('');
+        setAmountPaid('');
+        setPaymentMethod('CASH');
+        setPaymentDate(getLocalDateString());
     };
-    
-    const handleSelectProduct = (product: Product) => {
-        const newItem = {
-            productId: product.id,
-            productName: product.name,
-            price: product.salePrice,
-            quantity: 1,
-        };
 
-        const existingItem = items.find(i => i.productId === newItem.productId);
-        if (existingItem) {
-            if (existingItem.quantity + 1 > product.quantity) {
-                 alert(`Not enough stock for ${product.name}. Only ${product.quantity} available.`);
-                 return;
+    const handleCustomerChange = (id: string) => {
+        if (cart.length > 0) {
+            if (window.confirm("Changing the customer will clear the current cart. Are you sure?")) {
+                setCart([]);
+                setDiscount('');
+            } else {
+                return;
             }
-            setItems(items.map(i => i.productId === newItem.productId ? { ...i, quantity: i.quantity + 1 } : i));
-        } else {
-             if (1 > product.quantity) {
-                 alert(`Not enough stock for ${product.name}. Only ${product.quantity} available.`);
-                 return;
-            }
-            setItems([...items, newItem]);
         }
-        
+        setCustomerId(id);
+    };
+
+    const handleSelectProduct = (product: Product) => {
+        const itemInCart = cart.find(item => item.productId === product.id);
+        const availableStock = product.quantity - (itemInCart?.quantity || 0);
+
+        if (availableStock <= 0) {
+            alert(`${product.name} is out of stock or all available units are in the cart.`);
+            return;
+        }
+
+        if (itemInCart) {
+            const updatedCart = cart.map(item =>
+                item.productId === product.id ? { ...item, quantity: item.quantity + 1 } : item
+            );
+            setCart(updatedCart);
+        } else {
+            const newItem: SaleItem = {
+                productId: product.id,
+                productName: product.name,
+                quantity: 1,
+                price: product.salePrice,
+            };
+            setCart([...cart, newItem]);
+        }
         setIsSelectingProduct(false);
         setProductSearchTerm('');
     };
+
+    const handleQuantityChange = (productId: string, newQuantityStr: string) => {
+        const newQuantity = parseInt(newQuantityStr, 10);
+        const product = state.products.find(p => p.id === productId);
+        if (!product) return;
+
+        if (isNaN(newQuantity) || newQuantity <= 0) {
+             setCart(cart.filter(item => item.productId !== productId));
+             return;
+        }
+
+        if (newQuantity > product.quantity) {
+            alert(`Cannot add more than available stock (${product.quantity}).`);
+            setCart(cart.map(item => item.productId === productId ? { ...item, quantity: product.quantity } : item));
+        } else {
+            setCart(cart.map(item => item.productId === productId ? { ...item, quantity: newQuantity } : item));
+        }
+    };
     
+    const handleRemoveItem = (productId: string) => {
+        setCart(cart.filter(item => item.productId !== productId));
+    }
+
     const handleProductScanned = (decodedText: string) => {
         const product = state.products.find(p => p.id.toLowerCase() === decodedText.toLowerCase());
         if (product) {
             handleSelectProduct(product);
         } else {
-            alert("Product not found in inventory.");
+            alert("Product not found.");
         }
+        setIsScanning(false);
     };
-
-    const handleRemoveItem = (productId: string) => {
-        setItems(items.filter(item => item.productId !== productId));
-    };
-
-    const calculations = useMemo(() => {
-        const subTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-        const discountAmount = parseFloat(discount) || 0;
-        
-        const gstAmount = items.reduce((sum, item) => {
-            const product = state.products.find(p => p.id === item.productId);
-            const itemGstPercent = product ? product.gstPercent : 0;
-            const itemTotalWithGst = item.price * item.quantity;
-            const itemGst = itemTotalWithGst - (itemTotalWithGst / (1 + (itemGstPercent / 100)));
-            return sum + itemGst;
-        }, 0);
-
-        const totalAmount = subTotal - discountAmount;
-        return { subTotal, discountAmount, gstAmount, totalAmount };
-    }, [items, discount, state.products]);
 
     const handleAddCustomer = () => {
         const trimmedId = newCustomer.id.trim();
-        if (!trimmedId) {
-            alert('Customer ID is required.');
-            return;
-        }
-        if (!newCustomer.name || !newCustomer.phone || !newCustomer.address || !newCustomer.area) {
-            alert('Please fill all required fields (Name, Phone, Address, Area).');
-            return;
-        }
+        if (!trimmedId) return alert('Customer ID is required.');
+        if (!newCustomer.name || !newCustomer.phone) return alert('Name and Phone are required.');
 
         const finalId = `CUST-${trimmedId}`;
-        const isIdTaken = state.customers.some(c => c.id.toLowerCase() === finalId.toLowerCase());
-
-        if (isIdTaken) {
-            alert(`Customer ID "${finalId}" is already taken. Please choose another one.`);
-            return;
+        if (state.customers.some(c => c.id.toLowerCase() === finalId.toLowerCase())) {
+            return alert(`Customer ID "${finalId}" is already taken.`);
         }
-
-        const customerWithId: Customer = {
-            name: newCustomer.name,
-            phone: newCustomer.phone,
-            address: newCustomer.address,
-            area: newCustomer.area,
-            id: finalId,
-            reference: newCustomer.reference || ''
-        };
-        dispatch({ type: 'ADD_CUSTOMER', payload: customerWithId });
-        setNewCustomer({ id: '', name: '', phone: '', address: '', area: '', reference: '' });
-        setIsAddingCustomer(false);
-        setCustomerId(customerWithId.id); // Automatically select the new customer
+        
+        const customerToAdd: Customer = { ...newCustomer, id: finalId, reference: '' };
+        dispatch({ type: 'ADD_CUSTOMER', payload: customerToAdd });
         showToast("Customer added successfully!");
+        setCustomerId(finalId);
+        setIsAddingCustomer(false);
+        setNewCustomer({ id: '', name: '', phone: '', address: '', area: '' });
     };
 
-    const generateAndSharePDF = async (sale: Sale, customer: Customer, paidAmountOnSale: number) => {
-      try {
-        const VENKATESHWARA_LOGO_SVG = `
-<svg width="40" height="50" viewBox="0 0 40 50" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M5 5C5.00001 22 13 38 20 48C27 38 35 22 35 5" stroke="#6a0dad" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M20 8.35291V43" stroke="#C41E3A" stroke-width="4" stroke-linecap="round"/>
-  <path d="M20 8.35291V43" stroke="#FFBF00" stroke-width="2" stroke-linecap="round"/>
-  <path d="M14 42C16.3333 45.3333 23.6 45.4 26 42" stroke="#6a0dad" stroke-width="3" stroke-linecap="round"/>
-</svg>`;
+    const subTotal = useMemo(() => cart.reduce((sum, item) => sum + item.price * item.quantity, 0), [cart]);
+    const totalGst = useMemo(() => {
+        return cart.reduce((sum, item) => {
+            const product = state.products.find(p => p.id === item.productId);
+            if (!product) return sum;
+            const itemTotal = item.price * item.quantity;
+            const gstAmount = itemTotal * (product.gstPercent / (100 + product.gstPercent)); // Assuming sale price is inclusive of GST
+            return sum + gstAmount;
+        }, 0);
+    }, [cart, state.products]);
 
-        const SANKU_LOGO_SVG = `
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M10.3283 15.3188C8.25333 12.8278 8.65333 8.34983 11.5313 6.09683C14.4093 3.84383 18.2563 4.29583 20.1743 7.03183C22.0923 9.76783 21.3533 13.9788 18.4753 16.2318C15.5973 18.4848 12.4033 17.8098 10.3283 15.3188Z" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M10.3284 15.3188C8.80543 16.8928 6.57843 18.0008 3.99943 18.0008" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M15.8193 6.00002C14.1593 7.63302 12.4283 9.17202 10.6303 10.632" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>`;
-        
-        const CHAKRA_LOGO_SVG = `
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="12" cy="12" r="9" stroke="#6a0dad" stroke-width="1.5"/>
-  <circle cx="12" cy="12" r="3" stroke="#6a0dad" stroke-width="1.5"/>
-  <path d="M12 3V6" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
-  <path d="M21 12H18" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
-  <path d="M12 21V18" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
-  <path d="M3 12H6" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
-  <path d="M18.364 5.63604L16.2427 7.75736" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
-  <path d="M18.364 18.364L16.2427 16.2426" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
-  <path d="M5.63608 18.364L7.7574 16.2426" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
-  <path d="M5.63608 5.63604L7.7574 7.75736" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
-  <path d="M13 3.05078L15 2" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
-  <path d="M20.9492 11L22 9" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
-  <path d="M20.9492 13L22 15" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
-  <path d="M13 20.9492L15 22" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
-  <path d="M11 20.9492L9 22" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
-  <path d="M3.05078 13L2 15" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
-  <path d="M3.05078 11L2 9" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
-  <path d="M11 3.05078L9 2" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
-</svg>`;
+    const totalAmount = subTotal - (parseFloat(discount) || 0);
 
-        const [venkateshwaraPng, sankuPng, chakraPng] = await Promise.all([
-            svgToPng(VENKATESHWARA_LOGO_SVG, 20, 25),
-            svgToPng(SANKU_LOGO_SVG, 12, 12),
-            svgToPng(CHAKRA_LOGO_SVG, 12, 12)
-        ]);
+    const generateInvoicePDF = async (sale: Sale, customer: Customer, isShare = false) => {
+        const doc = new jsPDF();
+        const date = new Date(sale.date).toLocaleString();
 
-        const renderContentOnDoc = (doc: jsPDF) => {
-          doc.addFont('Times-Roman', 'Times', 'normal');
-          doc.addFont('Times-Bold', 'Times', 'bold');
-          
-          const pageWidth = doc.internal.pageSize.getWidth();
-          const centerX = pageWidth / 2;
-          const margin = 5;
-          const maxLineWidth = pageWidth - margin * 2;
-          let y = 8;
-          
-          doc.addImage(venkateshwaraPng, 'PNG', centerX - 10, y, 20, 25);
-          y += 28;
+        doc.setFontSize(18);
+        doc.text('Tax Invoice', 105, 15, { align: 'center' });
+        doc.setFontSize(14);
+        doc.text('Bhavani Sarees', 105, 22, { align: 'center' });
 
-          doc.setFont('Times', 'bold');
-          doc.setFontSize(11);
-          doc.setTextColor('#333333');
-          doc.text('OM namo venkatesaya', centerX, y, { align: 'center' });
-          y += 6;
-          
-          doc.setFont('Helvetica', 'bold');
-          doc.setFontSize(20);
-          doc.setTextColor('#6a0dad');
-          
-          const businessName = 'Bhavani Sarees';
-          const businessNameWidth = doc.getTextWidth(businessName);
-          const businessNameX = centerX - (businessNameWidth / 2);
-          const sankuX = businessNameX - 14; 
-          const chakraX = businessNameX + businessNameWidth + 2;
+        doc.setFontSize(10);
+        doc.text(`Invoice ID: ${sale.id}`, 14, 35);
+        doc.text(`Date: ${date}`, 14, 40);
 
-          doc.addImage(sankuPng, 'PNG', sankuX, y - 8, 12, 12);
-          doc.text(businessName, centerX, y, { align: 'center' });
-          doc.addImage(chakraPng, 'PNG', chakraX, y - 8, 12, 12);
-          y += 10;
-          
-          doc.setDrawColor('#cccccc');
-          doc.line(margin, y, pageWidth - margin, y);
-          y += 6;
+        doc.text(`Customer: ${customer.name}`, 14, 50);
+        doc.text(`Phone: ${customer.phone}`, 14, 55);
+        if (customer.address) doc.text(`Address: ${customer.address}, ${customer.area}`, 14, 60);
 
-          doc.setFont('Helvetica', 'normal');
-          doc.setFontSize(8);
-          doc.setTextColor('#000000');
-          
-          doc.text(`Invoice: ${sale.id}`, margin, y);
-          y += 4;
-          doc.text(`Date: ${new Date(sale.date).toLocaleString()}`, margin, y);
-          y += 6;
-          
-          doc.setFont('Helvetica', 'bold');
-          doc.text('Billed To:', margin, y);
-          y += 4;
-          doc.setFont('Helvetica', 'normal');
-          doc.text(customer.name, margin, y);
-          y += 4;
-          const addressLines = doc.splitTextToSize(customer.address, maxLineWidth);
-          doc.text(addressLines, margin, y);
-          y += (addressLines.length * 4) + 4;
-
-          doc.setDrawColor('#000000');
-          doc.line(margin, y, pageWidth - margin, y); 
-          y += 5;
-          doc.setFont('Helvetica', 'bold');
-          doc.text('Purchase Details', centerX, y, { align: 'center' });
-          y += 5;
-          doc.line(margin, y, pageWidth - margin, y); 
-          y += 6;
-
-          doc.setFont('Helvetica', 'bold');
-          doc.text('Item', margin, y);
-          doc.text('Total', pageWidth - margin, y, { align: 'right' });
-          y += 2;
-          doc.setDrawColor('#cccccc');
-          doc.line(margin, y, pageWidth - margin, y);
-          y += 6;
-          
-          doc.setFont('Helvetica', 'normal');
-          sale.items.forEach(item => {
-              const itemTotal = item.price * item.quantity;
-              doc.setFontSize(9);
-              const splitName = doc.splitTextToSize(item.productName, maxLineWidth - 25);
-              doc.text(splitName, margin, y);
-              doc.text(`Rs. ${itemTotal.toLocaleString('en-IN')}`, pageWidth - margin, y, { align: 'right' });
-              y += (splitName.length * 4);
-              doc.setFontSize(7);
-              doc.setTextColor('#666666');
-              doc.text(`(x${item.quantity} @ Rs. ${item.price.toLocaleString('en-IN')})`, margin, y);
-              y += 7;
-              doc.setTextColor('#000000');
-          });
-          
-          y -= 2;
-          doc.setDrawColor('#cccccc');
-          doc.line(margin, y, pageWidth - margin, y); 
-          y += 6;
-
-          const dueAmountOnSale = sale.totalAmount - paidAmountOnSale;
-          const totalsX = pageWidth - margin;
-          
-          const totals = [
-              { label: 'Subtotal', value: calculations.subTotal },
-              { label: 'GST', value: calculations.gstAmount },
-              { label: 'Discount', value: -calculations.discountAmount },
-              { label: 'Total', value: calculations.totalAmount, bold: true, size: 11 },
-              { label: 'Paid', value: paidAmountOnSale },
-              { label: 'Due', value: dueAmountOnSale, bold: true, size: 11 },
-          ];
-          
-          totals.forEach(({label, value, bold = false, size = 9}) => {
-              doc.setFont('Helvetica', bold ? 'bold' : 'normal');
-              doc.setFontSize(size);
-              doc.text(label, totalsX - 30, y, { align: 'right' });
-              doc.text(`Rs. ${value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, y, { align: 'right' });
-              y += (size * 0.5) + 2;
-          });
-          
-          return y;
-        };
-        
-        const dummyDoc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, 500] });
-        const finalY = renderContentOnDoc(dummyDoc);
-
-        const doc = new jsPDF({
-          orientation: 'p',
-          unit: 'mm',
-          format: [80, finalY + 5]
+        autoTable(doc, {
+            startY: 70,
+            head: [['#', 'Item', 'Qty', 'Price', 'Amount']],
+            body: sale.items.map((item, index) => [
+                index + 1,
+                item.productName,
+                item.quantity,
+                item.price.toFixed(2),
+                (item.price * item.quantity).toFixed(2),
+            ]),
+            theme: 'striped',
+            headStyles: { fillColor: [106, 13, 173] },
+            columnStyles: { 3: { halign: 'right' }, 4: { halign: 'right' } }
         });
 
-        renderContentOnDoc(doc);
-        
-        const pdfBlob = doc.output('blob');
-        const pdfFile = new File([pdfBlob], `${sale.id}.pdf`, { type: 'application/pdf' });
-        const dueAmountOnSale = sale.totalAmount - paidAmountOnSale;
-        
-        const whatsAppText = `Thank you for your purchase from Bhavani Sarees!\n\n*Invoice Summary:*\nInvoice ID: ${sale.id}\nDate: ${new Date(sale.date).toLocaleString()}\n\n*Items:*\n${sale.items.map(i => `- ${i.productName} (x${i.quantity}) - Rs. ${(i.price * i.quantity).toLocaleString('en-IN')}`).join('\n')}\n\nSubtotal: Rs. ${calculations.subTotal.toLocaleString('en-IN')}\nGST: Rs. ${calculations.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\nDiscount: Rs. ${calculations.discountAmount.toLocaleString('en-IN')}\n*Total: Rs. ${sale.totalAmount.toLocaleString('en-IN')}*\nPaid: Rs. ${paidAmountOnSale.toLocaleString('en-IN')}\nDue: Rs. ${dueAmountOnSale.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\nHave a blessed day!`;
-        
-        if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
-          await navigator.share({
-            title: `Bhavani Sarees Invoice ${sale.id}`,
-            text: whatsAppText,
-            files: [pdfFile],
-          });
-        } else {
-          doc.save(`${sale.id}.pdf`);
+        let finalY = (doc as any).lastAutoTable.finalY + 10;
+        const rightAlignX = 196;
+
+        doc.setFontSize(10);
+        doc.text(`Subtotal:`, rightAlignX - 30, finalY);
+        doc.text(`${subTotal.toFixed(2)}`, rightAlignX, finalY, { align: 'right' });
+
+        if (sale.discount > 0) {
+            finalY += 5;
+            doc.text(`Discount:`, rightAlignX - 30, finalY);
+            doc.text(`-${sale.discount.toFixed(2)}`, rightAlignX, finalY, { align: 'right' });
         }
-      } catch (error) {
-        console.error("PDF generation or sharing failed:", error);
-        alert(`Sale created successfully, but the PDF invoice could not be generated or shared. Error: ${(error as Error).message}`);
-      }
+
+        finalY += 5;
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Total Amount:`, rightAlignX - 30, finalY);
+        doc.text(`₹ ${sale.totalAmount.toFixed(2)}`, rightAlignX, finalY, { align: 'right' });
+        
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+
+        const amountPaidInSale = sale.payments.reduce((sum, p) => sum + p.amount, 0);
+        if (amountPaidInSale > 0) {
+            finalY += 5;
+            doc.text(`Amount Paid:`, rightAlignX - 30, finalY);
+            doc.text(`${amountPaidInSale.toFixed(2)}`, rightAlignX, finalY, { align: 'right' });
+        }
+        
+        const dueInSale = sale.totalAmount - amountPaidInSale;
+        if(dueInSale > 0.01) {
+            finalY += 5;
+            doc.setFont('helvetica', 'bold');
+            doc.text(`Balance Due:`, rightAlignX - 30, finalY);
+            doc.text(`${dueInSale.toFixed(2)}`, rightAlignX, finalY, { align: 'right' });
+        }
+
+
+        if (isShare && navigator.share) {
+            const blob = doc.output('blob');
+            const file = new File([blob], `invoice-${sale.id}.pdf`, { type: 'application/pdf' });
+            try {
+                await navigator.share({
+                    title: `Invoice ${sale.id}`,
+                    text: `Invoice from Bhavani Sarees for ${customer.name}`,
+                    files: [file],
+                });
+            } catch (error) {
+                console.error('Error sharing:', error);
+                alert("Could not share the file. It will be downloaded instead.");
+                doc.save(`invoice-${sale.id}.pdf`);
+            }
+        } else {
+            doc.save(`invoice-${sale.id}.pdf`);
+        }
     };
 
-
-    const handleCompleteSale = async () => {
-        if (!customerId || items.length === 0) {
-            alert("Please select a customer and add at least one item.");
-            return;
-        }
-
-        const customer = state.customers.find(c => c.id === customerId);
-        if(!customer) {
-            alert("Could not find the selected customer.");
-            return;
+    const handleCreateSale = () => {
+        if (!customerId || cart.length === 0) {
+            return alert("Please select a customer and add items to the cart.");
         }
         
-        const { totalAmount, gstAmount, discountAmount } = calculations;
-        const paidAmount = parseFloat(paymentDetails.amount) || 0;
+        const customer = state.customers.find(c => c.id === customerId);
+        if (!customer) return alert("Selected customer not found.");
 
-        if (paidAmount > totalAmount + 0.01) {
-            alert(`Paid amount (₹${paidAmount.toLocaleString('en-IN')}) cannot be greater than the total amount (₹${totalAmount.toLocaleString('en-IN')}).`);
-            return;
-        }
-
-        const payments: Payment[] = [];
-        if (paidAmount > 0) {
-            payments.push({
-                id: `PAY-S-${Date.now()}`,
-                amount: paidAmount,
-                method: paymentDetails.method,
-                date: new Date(paymentDetails.date).toISOString(),
-                reference: paymentDetails.reference.trim() || undefined,
-            });
+        const paid = parseFloat(amountPaid) || 0;
+        if (paid > totalAmount + 0.01) {
+            return alert("Paid amount cannot exceed the total amount.");
         }
         
         const now = new Date();
-        const saleId = `SALE-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}-${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
+        const saleId = `SALE-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}-${Date.now().toString().slice(-6)}`;
+
+        const payment: Payment | null = paid > 0 ? {
+            id: `PAY-S-${Date.now()}`,
+            amount: paid,
+            method: paymentMethod,
+            date: new Date(paymentDate).toISOString(),
+            reference: 'Sale Payment'
+        } : null;
 
         const newSale: Sale = {
             id: saleId,
             customerId,
-            items,
-            discount: discountAmount,
-            gstAmount: gstAmount,
-            totalAmount,
+            items: cart,
+            discount: parseFloat(discount) || 0,
+            gstAmount: totalGst,
+            totalAmount: totalAmount,
             date: now.toISOString(),
-            payments
+            payments: payment ? [payment] : [],
         };
 
         dispatch({ type: 'ADD_SALE', payload: newSale });
 
-        items.forEach(item => {
+        cart.forEach(item => {
             dispatch({ type: 'UPDATE_PRODUCT_STOCK', payload: { productId: item.productId, change: -item.quantity } });
         });
         
-        await generateAndSharePDF(newSale, customer, paidAmount);
+        showToast("Sale created successfully!");
+        generateInvoicePDF(newSale, customer, true);
         resetForm();
     };
 
-     const handleRecordStandalonePayment = () => {
-        if (!customerId) {
-            alert('Please select a customer to record a payment for.');
-            return;
-        }
-
-        const paidAmount = parseFloat(paymentDetails.amount || '0');
-        if (paidAmount <= 0) {
-            alert('Please enter a valid payment amount.');
-            return;
-        }
-
-        const outstandingSales = state.sales
-            .filter(sale => {
-                const paid = (sale.payments || []).reduce((sum, p) => sum + p.amount, 0);
-                return sale.customerId === customerId && (sale.totalAmount - paid) > 0.01;
-            })
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-        if (outstandingSales.length === 0) {
-            alert('This customer has no outstanding dues.');
-            return;
-        }
+    const handleStandalonePayment = () => {
+        if (!customerId) return alert("Please select a customer to record a payment for.");
+        if (cart.length > 0) return alert("Cannot record a standalone payment when items are in the cart. Please clear the cart first.");
         
-        let remainingPayment = paidAmount;
-        for (const sale of outstandingSales) {
+        const paid = parseFloat(amountPaid);
+        if (isNaN(paid) || paid <= 0) return alert("Please enter a valid payment amount.");
+
+        const customerSales = state.sales.filter(s => s.customerId === customerId).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        
+        let remainingPayment = paid;
+
+        for (const sale of customerSales) {
             if (remainingPayment <= 0) break;
 
-            const paid = (sale.payments || []).reduce((sum, p) => sum + p.amount, 0);
-            const dueAmount = sale.totalAmount - paid;
-            
-            const amountToApply = Math.min(remainingPayment, dueAmount);
+            const paidOnSale = (sale.payments || []).reduce((sum, p) => sum + p.amount, 0);
+            const dueOnSale = sale.totalAmount - paidOnSale;
 
-            const newPayment: Payment = {
-                id: `PAY-S-${Date.now()}-${Math.random()}`,
-                amount: amountToApply,
-                method: paymentDetails.method,
-                date: new Date(paymentDetails.date).toISOString(),
-                reference: paymentDetails.reference.trim() || undefined,
-            };
-
-            dispatch({ type: 'ADD_PAYMENT_TO_SALE', payload: { saleId: sale.id, payment: newPayment } });
-            
-            remainingPayment -= amountToApply;
+            if (dueOnSale > 0.01) {
+                const paymentForThisSale = Math.min(remainingPayment, dueOnSale);
+                const payment: Payment = {
+                    id: `PAY-DUE-${Date.now()}`,
+                    amount: paymentForThisSale,
+                    method: paymentMethod,
+                    date: new Date(paymentDate).toISOString(),
+                    reference: 'Due Payment'
+                };
+                dispatch({ type: 'ADD_PAYMENT_TO_SALE', payload: { saleId: sale.id, payment } });
+                remainingPayment -= paymentForThisSale;
+            }
         }
         
-        alert(`Payment of ₹${paidAmount.toLocaleString('en-IN')} recorded successfully.`);
+        if (remainingPayment > 0.01) {
+            showToast(`Recorded ₹${(paid - remainingPayment).toFixed(2)} towards dues. ₹${remainingPayment.toFixed(2)} could not be allocated as there are no more outstanding dues.`);
+        } else {
+            showToast(`Successfully recorded payment of ₹${paid.toFixed(2)}.`);
+        }
+        
         resetForm();
     };
 
-    const AddCustomerModal = () => (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
-            <Card title="Add New Customer" className="w-full max-w-md animate-scale-in">
-                <div className="space-y-4">
-                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Customer ID</label>
-                        <div className="flex items-center mt-1">
-                            <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-                                CUST-
-                            </span>
-                            <input 
-                                type="text" 
-                                placeholder="Enter unique ID" 
-                                value={newCustomer.id} 
-                                onChange={e => setNewCustomer({ ...newCustomer, id: e.target.value })} 
-                                className="w-full p-2 border rounded-r-md" 
-                            />
-                        </div>
-                    </div>
-                    <input type="text" placeholder="Name" value={newCustomer.name} onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })} className="w-full p-2 border rounded" autoFocus />
-                    <input type="text" placeholder="Phone" value={newCustomer.phone} onChange={e => setNewCustomer({ ...newCustomer, phone: e.target.value })} className="w-full p-2 border rounded" />
-                    <input type="text" placeholder="Address" value={newCustomer.address} onChange={e => setNewCustomer({ ...newCustomer, address: e.target.value })} className="w-full p-2 border rounded" />
-                    <input type="text" placeholder="Area/Location" value={newCustomer.area} onChange={e => setNewCustomer({ ...newCustomer, area: e.target.value })} className="w-full p-2 border rounded" />
-                    <input type="text" placeholder="Reference (Optional)" value={newCustomer.reference} onChange={e => setNewCustomer({ ...newCustomer, reference: e.target.value })} className="w-full p-2 border rounded" />
-                    <div className="flex gap-2">
-                        <Button onClick={handleAddCustomer} className="w-full">Save Customer</Button>
-                        <Button onClick={() => { setIsAddingCustomer(false); setNewCustomer({ id: '', name: '', phone: '', address: '', area: '', reference: '' }); }} variant="secondary" className="w-full">Cancel</Button>
-                    </div>
-                </div>
-            </Card>
-        </div>
-    );
+    const selectedCustomerDues = useMemo(() => {
+        if (!customerId) return 0;
+        const customerSales = state.sales.filter(s => s.customerId === customerId);
+        const totalPurchased = customerSales.reduce((sum, s) => sum + s.totalAmount, 0);
+        const totalPaid = customerSales.reduce((sum, s) => sum + (s.payments || []).reduce((pSum, p) => pSum + p.amount, 0), 0);
+        return totalPurchased - totalPaid;
+    }, [customerId, state.sales]);
+
+    const QRScannerModal: React.FC = () => {
+        const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
+
+        useEffect(() => {
+            html5QrCodeRef.current = new Html5Qrcode("qr-reader-sales");
+            
+            const qrCodeSuccessCallback = (decodedText: string) => {
+                if (html5QrCodeRef.current?.isScanning) {
+                    html5QrCodeRef.current.stop().then(() => {
+                        handleProductScanned(decodedText);
+                    }).catch(err => console.error("Error stopping scanner", err));
+                }
+            };
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            html5QrCodeRef.current.start({ facingMode: "environment" }, config, qrCodeSuccessCallback, undefined)
+                .catch(() => alert("Camera permission is required. Please allow and try again."));
+            
+            return () => {
+                if (html5QrCodeRef.current?.isScanning) {
+                    html5QrCodeRef.current.stop().catch(err => console.log("Failed to stop scanner on cleanup.", err));
+                }
+            };
+        }, []);
+
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+                <Card title="Scan Product" className="w-full max-w-md relative animate-scale-in">
+                    <button onClick={() => setIsScanning(false)} className="absolute top-4 right-4 p-2"><X size={20}/></button>
+                    <div id="qr-reader-sales" className="w-full mt-4"></div>
+                </Card>
+            </div>
+        );
+    };
 
     const ProductSearchModal = () => (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
         <Card className="w-full max-w-lg animate-scale-in">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-bold">Select Product</h2>
-            <button onClick={() => setIsSelectingProduct(false)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
-              <X size={20}/>
-            </button>
+            <button onClick={() => setIsSelectingProduct(false)}><X size={20}/></button>
           </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="text"
-              placeholder="Search products..."
-              value={productSearchTerm}
-              onChange={e => setProductSearchTerm(e.target.value)}
-              className="w-full p-2 pl-10 border rounded-lg"
-              autoFocus
-            />
-          </div>
-          <div className="mt-4 max-h-80 overflow-y-auto space-y-2">
+          <input type="text" placeholder="Search products..." value={productSearchTerm} onChange={e => setProductSearchTerm(e.target.value)} className="w-full p-2 border rounded-lg mb-4" autoFocus/>
+          <div className="max-h-80 overflow-y-auto space-y-2">
             {state.products
-              .filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase()) || p.id.toLowerCase().includes(productSearchTerm.toLowerCase()))
+              .filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase()) && p.quantity > 0)
               .map(p => (
-              <div key={p.id} onClick={() => handleSelectProduct(p)} className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-purple-100 flex justify-between items-center">
-                <div>
+                <div key={p.id} onClick={() => handleSelectProduct(p)} className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-purple-100">
                   <p className="font-semibold">{p.name}</p>
-                  <p className="text-sm text-gray-500">Code: {p.id}</p>
+                  <p className="text-sm text-gray-500">Code: {p.id} | Stock: {p.quantity}</p>
                 </div>
-                <div className="text-right">
-                    <p className="font-semibold">₹{p.salePrice.toLocaleString('en-IN')}</p>
-                    <p className="text-sm">Stock: {p.quantity}</p>
-                </div>
-              </div>
             ))}
           </div>
         </Card>
       </div>
     );
     
-     const QRScannerModal: React.FC = () => {
-        const [scanStatus, setScanStatus] = useState<string>("Click 'Start Scanning' to activate camera.");
-        const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
+    const NewCustomerModal = () => (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+          <Card title="Add New Customer" className="w-full max-w-md animate-scale-in">
+              <div className="space-y-3">
+                  <div className="flex items-center">
+                    <span className="px-3 py-2 bg-gray-100 border rounded-l-md">CUST-</span>
+                    <input type="text" placeholder="Unique ID" value={newCustomer.id} onChange={e => setNewCustomer({...newCustomer, id: e.target.value})} className="w-full p-2 border rounded-r-md" autoFocus />
+                  </div>
+                  <input type="text" placeholder="Name" value={newCustomer.name} onChange={e => setNewCustomer({...newCustomer, name: e.target.value})} className="w-full p-2 border rounded" />
+                  <input type="text" placeholder="Phone" value={newCustomer.phone} onChange={e => setNewCustomer({...newCustomer, phone: e.target.value})} className="w-full p-2 border rounded" />
+                  <input type="text" placeholder="Address" value={newCustomer.address} onChange={e => setNewCustomer({...newCustomer, address: e.target.value})} className="w-full p-2 border rounded" />
+                  <input type="text" placeholder="Area" value={newCustomer.area} onChange={e => setNewCustomer({...newCustomer, area: e.target.value})} className="w-full p-2 border rounded" />
+                  <div className="flex gap-2">
+                      <Button onClick={handleAddCustomer} className="w-full">Add Customer</Button>
+                      <Button onClick={() => setIsAddingCustomer(false)} variant="secondary" className="w-full">Cancel</Button>
+                  </div>
+              </div>
+          </Card>
+        </div>
+    );
 
-        const startScan = () => {
-            if (!html5QrCodeRef.current) return;
-            setScanStatus("Requesting camera permissions...");
-
-            const qrCodeSuccessCallback = (decodedText: string) => {
-                if (html5QrCodeRef.current?.isScanning) {
-                    html5QrCodeRef.current.stop().then(() => {
-                        setIsScanning(false);
-                        handleProductScanned(decodedText);
-                    });
-                }
-            };
-            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-
-            html5QrCodeRef.current.start({ facingMode: "environment" }, config, qrCodeSuccessCallback, undefined)
-                .then(() => setScanStatus("Scanning for QR Code..."))
-                .catch(err => {
-                    setScanStatus(`Camera Permission Error. Please allow camera access for this site in your browser's settings.`);
-                    console.error("Camera start failed.", err);
-                });
-        };
-
-        useEffect(() => {
-            html5QrCodeRef.current = new Html5Qrcode("qr-reader-sales");
-            return () => {
-                if (html5QrCodeRef.current?.isScanning) {
-                    html5QrCodeRef.current.stop().catch(err => console.error("Cleanup stop scan failed.", err));
-                }
-            };
-        }, []);
-
-        return (
-            <div className="fixed inset-0 bg-black bg-opacity-75 flex flex-col items-center justify-center z-50 p-4 animate-fade-in-fast">
-                <Card title="Scan Product QR Code" className="w-full max-w-md relative animate-scale-in">
-                     <button onClick={() => setIsScanning(false)} className="absolute top-4 right-4 p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
-                        <X size={20}/>
-                     </button>
-                    <div id="qr-reader-sales" className="w-full mt-4"></div>
-                    <p className="text-center text-sm my-2 text-gray-600">{scanStatus}</p>
-                    <Button onClick={startScan} className="w-full">Start Scanning</Button>
-                </Card>
-            </div>
-        );
-    };
-
-    const canCreateSale = customerId && items.length > 0;
-    const canRecordPayment = customerId && items.length === 0 && parseFloat(paymentDetails.amount || '0') > 0;
 
     return (
         <div className="space-y-4">
-            {isAddingCustomer && <AddCustomerModal />}
-            {isSelectingProduct && <ProductSearchModal />}
-            {isScanning && <QRScannerModal />}
-            <h1 className="text-2xl font-bold text-primary">New Sale / Payment</h1>
-            
-            <Card>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
-                <div className="flex gap-2 items-center">
-                    <select value={customerId} onChange={e => setCustomerId(e.target.value)} className="w-full p-2 border rounded custom-select">
-                        <option value="">Select a Customer</option>
-                        {state.customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.area}</option>)}
-                    </select>
-                    <Button onClick={() => setIsAddingCustomer(true)} variant="secondary" className="flex-shrink-0">
-                        <Plus size={16}/> New Customer
-                    </Button>
-                </div>
-            </Card>
+             {isScanning && <QRScannerModal />}
+             {isSelectingProduct && <ProductSearchModal />}
+             {isAddingCustomer && <NewCustomerModal />}
 
-            <Card title="Sale Items">
-                <div className="flex flex-col sm:flex-row gap-2">
-                    <Button onClick={() => setIsSelectingProduct(true)} className="w-full sm:w-auto flex-grow">
-                        <Search size={16} className="mr-2"/> Select Product from Stock
-                    </Button>
-                    <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full sm:w-auto flex-grow">
-                         <QrCode size={16} className="mr-2"/> Scan Product QR
-                    </Button>
+             <h1 className="text-2xl font-bold text-primary">New Sale</h1>
+             <Card>
+                <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex-grow">
+                        <label className="block text-sm font-medium text-gray-700">Customer</label>
+                        <select value={customerId} onChange={e => handleCustomerChange(e.target.value)} className="w-full p-2 border rounded custom-select">
+                            <option value="">Select a Customer</option>
+                            {state.customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.area}</option>)}
+                        </select>
+                    </div>
+                    <div className="flex-shrink-0 self-end">
+                        <Button onClick={() => setIsAddingCustomer(true)} variant="secondary"><UserPlus size={16} className="mr-2"/> New</Button>
+                    </div>
                 </div>
-                {items.length > 0 && (
-                    <div className="mt-4 space-y-2">
-                        {items.map(item => (
-                            <div key={item.productId} className="flex justify-between items-center p-2 bg-gray-50 rounded animate-fade-in-fast">
-                                <div>
-                                    <p className="font-semibold">{item.productName}</p>
-                                    <p className="text-sm">{item.quantity} x ₹{item.price.toLocaleString('en-IN')}</p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <p>₹{(item.quantity * item.price).toLocaleString('en-IN')}</p>
-                                    <DeleteButton variant="remove" onClick={() => handleRemoveItem(item.productId)} />
-                                </div>
-                            </div>
-                        ))}
+                {customerId && (
+                    <div className="mt-2 text-sm text-red-600 font-semibold">
+                        Current Dues: ₹{selectedCustomerDues.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </div>
                 )}
-            </Card>
-
-            {(items.length > 0 || customerId) && (
-                <Card title={items.length > 0 ? 'Billing & Payment' : 'Record Standalone Payment'}>
-                    {items.length > 0 && (
-                        <div className="mb-4 space-y-2">
-                            <div className="flex justify-between text-gray-600">
-                                <span>Subtotal:</span>
-                                <span>₹{calculations.subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+             </Card>
+             <Card title="Items in Cart">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+                    <Button onClick={() => setIsSelectingProduct(true)}><Search size={16} className="mr-2"/> Select Product</Button>
+                    <Button onClick={() => setIsScanning(true)} variant="secondary"><QrCode size={16} className="mr-2"/> Scan Product</Button>
+                </div>
+                <div className="space-y-2">
+                    {cart.map(item => (
+                        <div key={item.productId} className="flex items-center p-2 bg-gray-50 rounded">
+                            <div className="flex-grow">
+                                <p className="font-semibold">{item.productName}</p>
+                                <p className="text-sm text-gray-500">@ ₹{item.price.toLocaleString('en-IN')}</p>
                             </div>
-                            <div className="flex justify-between items-center text-gray-600">
-                                <span>Discount:</span>
-                                <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} className="w-28 p-1 border rounded text-right" />
-                            </div>
-                             <div className="flex justify-between text-gray-600">
-                                <span>GST Included:</span>
-                                <span>₹{calculations.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                            </div>
-                             <div className="mt-4 pt-4 border-t">
-                                <div className="p-4 bg-purple-50 rounded-lg text-center">
-                                    <p className="text-sm font-semibold text-gray-600">Grand Total</p>
-                                    <p className="text-4xl font-bold text-primary">
-                                        ₹{calculations.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                    </p>
-                                </div>
-                            </div>
+                            <input 
+                                type="number" 
+                                value={item.quantity} 
+                                onChange={e => handleQuantityChange(item.productId, e.target.value)}
+                                className="w-16 p-1 border rounded text-center mx-2"
+                            />
+                            <p className="w-24 text-right font-medium">₹{(item.price * item.quantity).toLocaleString('en-IN')}</p>
+                            <DeleteButton variant="remove" onClick={() => handleRemoveItem(item.productId)} />
                         </div>
-                    )}
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Amount Paid</label>
-                            <input type="number" value={paymentDetails.amount} onChange={e => setPaymentDetails({...paymentDetails, amount: e.target.value })} placeholder={items.length > 0 ? `Total is ₹${calculations.totalAmount.toLocaleString('en-IN')}` : 'Enter amount to pay dues'} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Payment Method</label>
-                            <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any})} className="w-full p-2 border rounded custom-select">
-                                <option value="CASH">Cash</option>
-                                <option value="UPI">UPI</option>
-                                <option value="CHEQUE">Cheque</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Payment Date</label>
-                            <input type="date" value={paymentDetails.date} onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} className="w-full p-2 border rounded" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Payment Reference (Optional)</label>
-                            <input type="text" value={paymentDetails.reference} onChange={e => setPaymentDetails({ ...paymentDetails, reference: e.target.value })} placeholder="e.g. Transaction ID, Cheque No." className="w-full p-2 border rounded" />
-                        </div>
+                    ))}
+                    {cart.length === 0 && <p className="text-center text-gray-500">Cart is empty.</p>}
+                </div>
+             </Card>
+             <Card title="Billing Summary">
+                 <div className="space-y-2 text-right">
+                     <p>Subtotal: <span className="font-semibold">₹{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></p>
+                     <div className="flex justify-end items-center gap-2">
+                        <label className="text-sm font-medium">Discount:</label>
+                        <input type="number" placeholder="0.00" value={discount} onChange={e => setDiscount(e.target.value)} className="w-32 p-1 border rounded text-right" />
+                     </div>
+                     <p className="text-2xl font-bold text-primary">Total: <span >₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></p>
+                 </div>
+             </Card>
+             <Card title="Payment Details">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium">Amount Paid Now</label>
+                        <input type="number" placeholder={`Total is ₹${totalAmount.toLocaleString('en-IN')}`} value={amountPaid} onChange={e => setAmountPaid(e.target.value)} className="w-full p-2 border-2 border-green-300 rounded-lg shadow-inner focus:ring-green-500 focus:border-green-500" />
                     </div>
-                </Card>
-            )}
-
-            <div className="space-y-2">
-                {canCreateSale ? (
-                    <Button onClick={handleCompleteSale} className="w-full">
-                        <Share2 className="w-4 h-4 mr-2"/>
-                        Create Sale & Share Invoice
-                    </Button>
-                ) : canRecordPayment ? (
-                     <Button onClick={handleRecordStandalonePayment} className="w-full">
-                        <IndianRupee className="w-4 h-4 mr-2" />
-                        Record Standalone Payment
-                    </Button>
-                ) : (
-                     <Button className="w-full" disabled>
-                        {customerId ? (items.length === 0 ? 'Add items or enter payment amount' : 'Add items to cart') : 'Select a customer to begin'}
-                    </Button>
-                )}
-                <Button onClick={resetForm} variant="secondary" className="w-full">Clear Form</Button>
-            </div>
+                    <div>
+                        <label className="block text-sm font-medium">Payment Method</label>
+                        <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as any)} className="w-full p-2 border rounded custom-select">
+                            <option value="CASH">Cash</option>
+                            <option value="UPI">UPI</option>
+                            <option value="CHEQUE">Cheque</option>
+                        </select>
+                    </div>
+                    <div>
+                         <label className="block text-sm font-medium">Date</label>
+                         <input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} className="w-full p-2 border rounded" />
+                    </div>
+                </div>
+             </Card>
+             <div className="flex flex-col sm:flex-row gap-4">
+                <Button onClick={handleCreateSale} className="w-full" disabled={cart.length === 0 || !customerId}>Create Sale & Share Invoice</Button>
+                <Button onClick={handleStandalonePayment} variant="secondary" className="w-full" disabled={cart.length > 0 || !customerId || !amountPaid}>Record Standalone Payment</Button>
+             </div>
+             <Button onClick={resetForm} variant="danger" className="w-full">Clear Form</Button>
         </div>
     );
 };
