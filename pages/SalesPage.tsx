@@ -123,6 +123,21 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         return { subTotal, discountAmount, gstAmount, totalAmount };
     }, [items, discount, state.products]);
 
+    const customerTotalDue = useMemo(() => {
+        if (!customerId) return null;
+
+        const customerSales = state.sales.filter(s => s.customerId === customerId);
+        if (customerSales.length === 0) return 0;
+        
+        const totalBilled = customerSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+        const totalPaid = customerSales.reduce((sum, sale) => {
+            return sum + (sale.payments || []).reduce((paySum, payment) => paySum + payment.amount, 0);
+        }, 0);
+
+        return totalBilled - totalPaid;
+    }, [customerId, state.sales]);
+
+
     const handleAddCustomer = () => {
         const trimmedId = newCustomer.id.trim();
         if (!trimmedId) {
@@ -558,6 +573,16 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                         <Plus size={16}/> New Customer
                     </Button>
                 </div>
+                {customerId && customerTotalDue !== null && (
+                    <div className="mt-3 p-2 bg-gray-50 rounded-lg text-center">
+                        <p className="text-sm font-medium text-gray-600">
+                            Selected Customer's Total Outstanding Due:
+                        </p>
+                        <p className={`text-xl font-bold ${customerTotalDue > 0.01 ? 'text-red-600' : 'text-green-600'}`}>
+                            ₹{customerTotalDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </p>
+                    </div>
+                )}
             </Card>
 
             <Card title="Sale Items">
