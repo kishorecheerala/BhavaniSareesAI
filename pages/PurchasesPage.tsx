@@ -600,7 +600,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     if (view === 'add_purchase') {
         return (
             <div className="space-y-4">
-                 <input type="file" accept=".csv" ref={csvInputRef} onChange={handleImportCSV} className="hidden" />
+                 <input type="file" accept=".csv,text/csv,application/vnd.ms-excel,text/plain" ref={csvInputRef} onChange={handleImportCSV} className="hidden" />
                  {isScanning && <QRScannerModal />}
                  {isSelectingProduct && <ProductSearchModal />}
                  {isAddingProduct && <NewProductModal />}

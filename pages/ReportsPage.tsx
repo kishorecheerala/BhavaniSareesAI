@@ -320,7 +320,7 @@ const ReportsPage: React.FC = () => {
                 </p>
                 <input
                     type="file"
-                    accept=".csv"
+                    accept=".csv,text/csv,application/vnd.ms-excel,text/plain"
                     className="hidden"
                     ref={csvInputRef}
                     onChange={handleImportCSV}
