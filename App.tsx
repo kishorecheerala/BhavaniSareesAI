@@ -14,6 +14,7 @@ import ProductsPage from './pages/ProductsPage';
 import UniversalSearch from './components/UniversalSearch';
 import HelpModal from './components/HelpModal';
 import AppSkeletonLoader from './components/AppSkeletonLoader';
+import { BeforeInstallPromptEvent } from './types';
 
 export type Page = 'DASHBOARD' | 'CUSTOMERS' | 'SALES' | 'PURCHASES' | 'REPORTS' | 'RETURNS' | 'PRODUCTS';
 
@@ -43,6 +44,21 @@ const MainApp: React.FC = () => {
   useEffect(() => {
     sessionStorage.setItem('currentPage', currentPage);
   }, [currentPage]);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+        // Prevent the mini-infobar from appearing on mobile
+        e.preventDefault();
+        // Stash the event so it can be triggered later.
+        dispatch({ type: 'SET_INSTALL_PROMPT_EVENT', payload: e as BeforeInstallPromptEvent });
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, [dispatch]);
 
   const setCurrentPage = (page: Page) => {
     if (page === currentPageRef.current) {

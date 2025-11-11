@@ -10,6 +10,7 @@ const Dashboard: React.FC = () => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [restoreStatus, setRestoreStatus] = useState<{ type: 'info' | 'success' | 'error', message: string } | null>(null);
     const [lastBackupDate, setLastBackupDate] = useState<string | null>(null);
+    const { installPromptEvent } = state;
 
     useEffect(() => {
         const fetchLastBackup = async () => {
@@ -149,6 +150,18 @@ const Dashboard: React.FC = () => {
         };
 
         reader.readAsText(file);
+    };
+    
+    const handleInstallClick = async () => {
+        if (!installPromptEvent) {
+            return;
+        }
+        installPromptEvent.prompt();
+        // Wait for the user to respond to the prompt
+        const { outcome } = await installPromptEvent.userChoice;
+        console.log(`User response to the install prompt: ${outcome}`);
+        // We can only use the prompt once, so clear it.
+        dispatch({ type: 'SET_INSTALL_PROMPT_EVENT', payload: null });
     };
 
 
@@ -331,6 +344,15 @@ const Dashboard: React.FC = () => {
                             Restore from Backup
                         </Button>
                     </div>
+                     {installPromptEvent && (
+                        <Button
+                            onClick={handleInstallClick}
+                            className="w-full mt-4 bg-green-600 hover:bg-green-700 focus:ring-green-600"
+                        >
+                            <Download className="w-4 h-4 mr-2" />
+                            Install App on Device
+                        </Button>
+                    )}
                 </div>
             </Card>
         </div>

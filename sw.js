@@ -5,7 +5,7 @@ const APP_SHELL_URLS = [
   '/',
   '/index.html',
   '/vite.svg',
-  '/manifest.json',
+  '/pages/manifest.json',
   '/index.tsx',
 ];
 

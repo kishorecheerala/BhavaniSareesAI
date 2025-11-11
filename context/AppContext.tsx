@@ -1,5 +1,5 @@
 import React, { createContext, useReducer, useContext, useEffect, ReactNode, useState } from 'react';
-import { Customer, Supplier, Product, Sale, Purchase, Return, Payment } from '../types';
+import { Customer, Supplier, Product, Sale, Purchase, Return, Payment, BeforeInstallPromptEvent } from '../types';
 import * as db from '../utils/db';
 import { Page } from '../App';
 
@@ -23,10 +23,11 @@ export interface AppState {
   app_metadata: AppMetadata[];
   toast: ToastState;
   selection: { page: Page; id: string } | null;
+  installPromptEvent: BeforeInstallPromptEvent | null;
 }
 
 type Action =
-  | { type: 'SET_STATE'; payload: Omit<AppState, 'toast' | 'selection'> }
+  | { type: 'SET_STATE'; payload: Omit<AppState, 'toast' | 'selection' | 'installPromptEvent'> }
   | { type: 'ADD_CUSTOMER'; payload: Customer }
   | { type: 'UPDATE_CUSTOMER'; payload: Customer }
   | { type: 'ADD_SUPPLIER'; payload: Supplier }
@@ -45,7 +46,8 @@ type Action =
   | { type: 'HIDE_TOAST' }
   | { type: 'SET_LAST_BACKUP_DATE'; payload: string }
   | { type: 'SET_SELECTION'; payload: { page: Page; id: string } }
-  | { type: 'CLEAR_SELECTION' };
+  | { type: 'CLEAR_SELECTION' }
+  | { type: 'SET_INSTALL_PROMPT_EVENT'; payload: BeforeInstallPromptEvent | null };
 
 
 const initialState: AppState = {
@@ -58,6 +60,7 @@ const initialState: AppState = {
   app_metadata: [],
   toast: { message: '', show: false },
   selection: null,
+  installPromptEvent: null,
 };
 
 const appReducer = (state: AppState, action: Action): AppState => {
@@ -208,6 +211,8 @@ const appReducer = (state: AppState, action: Action): AppState => {
       return { ...state, selection: action.payload };
     case 'CLEAR_SELECTION':
       return { ...state, selection: null };
+    case 'SET_INSTALL_PROMPT_EVENT':
+      return { ...state, installPromptEvent: action.payload };
     default:
       return state;
   }
@@ -245,7 +250,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           db.getAll('app_metadata'),
         ]);
 
-        const validatedState: Omit<AppState, 'toast' | 'selection'> = {
+        const validatedState: Omit<AppState, 'toast' | 'selection' | 'installPromptEvent'> = {
             customers: Array.isArray(customers) ? customers : [],
             suppliers: Array.isArray(suppliers) ? suppliers : [],
             products: Array.isArray(products) ? products : [],

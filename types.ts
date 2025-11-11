@@ -92,3 +92,12 @@ export interface Return {
   amount: number; // Amount refunded to customer or credited from supplier
   reason?: string;
 }
+
+export interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: string[];
+  readonly userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed';
+    platform: string;
+  }>;
+  prompt(): Promise<void>;
+}
