@@ -25,10 +25,16 @@ const Toast = () => {
 };
 
 const MainApp: React.FC = () => {
-  const [currentPage, _setCurrentPage] = useState<Page>('DASHBOARD');
+  const [currentPage, _setCurrentPage] = useState<Page>(
+    () => (sessionStorage.getItem('currentPage') as Page) || 'DASHBOARD'
+  );
   const [isDirty, setIsDirty] = useState(false);
   const currentPageRef = useRef(currentPage);
   currentPageRef.current = currentPage;
+
+  useEffect(() => {
+    sessionStorage.setItem('currentPage', currentPage);
+  }, [currentPage]);
 
   const setCurrentPage = (page: Page) => {
     if (page === currentPageRef.current) {
