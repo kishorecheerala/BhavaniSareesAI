@@ -9,6 +9,33 @@ import { Html5Qrcode } from 'html5-qrcode';
 import DeleteButton from '../components/DeleteButton';
 
 
+const svgToPng = (svgData: string, width: number, height: number): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.src = svgData;
+
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const scale = 3; // Render at 3x resolution for better quality in PDF
+            canvas.width = width * scale;
+            canvas.height = height * scale;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                const pngData = canvas.toDataURL('image/png');
+                resolve(pngData);
+            } else {
+                reject(new Error('Could not get canvas context for image conversion.'));
+            }
+        };
+
+        img.onerror = (e) => {
+            console.error("SVG to PNG conversion failed:", e);
+            reject(new Error('Failed to load SVG image for PDF.'));
+        };
+    });
+};
+
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
   const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -159,9 +186,15 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
 
     const generateAndSharePDF = async (sale: Sale, customer: Customer, paidAmountOnSale: number) => {
       try {
-        const VENKATESHWARA_LOGO_BASE64 = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNTAiIHZpZXdCb3g9IjAgMCA0MCA1MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNNCA1QzQgMjAgMjAgNDggMjAgNDhDMjAgNDggMzYgMjAgMzYgNSIgc3Ryb2tlPSIjNmEwZGFkIiBzdHJva2Utd2lkdGg9IjMiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxsaW5lIHgxPSIyMCIgeTE9IjEwIiB4Mj0iMjAiIHkyPSI0NSIgc3Ryb2tlPSIjRkZCRjAwIiBzdHJva2Utd2lkdGg9IjYiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxsaW5lIHgxPSIyMCIgeTE9IjEwIiB4Mj0iMjAiIHkyPSI0NSIgc3Ryb2tlPSIjQzQxRTNBIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvc3ZnPg==';
-        const SANKU_LOGO_BASE64 = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNNi4zMjAxOCAxMy44QzQuOTYwMTggMTAuMyA3LjQxMDE4IDQuMjMgMTIuMzcwMiAzLjMyQzE3LjMzMDIgMi40MSAyMS4yMTAyIDYuNjQgMjAuMTYwMiAxMS42MkMxOS4xMTAyIDE2LjYgMTMuMjEwMiAxOS43OCA4LjM3MDE4IDE4LjY2IiBzdHJva2U9IiM2YTBkYWQiIHN0cm9rZS1widthPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xMy45OCAzLjVDMTMuMzMgNS4wOCAxMi41MyA2LjU3IDExLjU5IDcuOTYiIHN0cm9rZT0iIzZhMGRhZCIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xOC4zMDAyIDE2LjA2QzE5LjU5MDIgMTcuNjUgMjAuNTAwMiAxOS4yOSAyMS4wMDAyIDIxIiBzdHJva2U9IiM2YTBkYWQiIHN0cm9rZS1widthPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg==';
-        const CHAKRA_LOGO_BASE64 = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTIgMjFDMTYuOTcwNiAyMSAyMSAxNi45NzA2IDIxIDEyQzIxIDcuMDI5NDQgMTYuOTcwNiAzIDEyIDNDNy4wMjk0NCAzIDMgNy4wMjk0NCAzIDEyQzMgMTYuOTcwNiA3LjAyOTQ0IDIxIDEyIDIxWiIgc3Ryb2tlPSIjNmEwZGFkIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PHBhdGggZD0iTTEyIDE1QzEzLjY1NjkgMTUgMTUgMTMuNjU2OSAxNSAxMkMxNSAxMC4zNDMxIDEzLjY1NjkgOSAxMiA5QzEwLjM0MzEgOSAxMCAxMC4zNDMxIDEwIDEyQzEwIDEzLjY1NjkgMTAuMzQzMSAxNSAxMiAxNVoiIHN0cm9rZT0iIzZhMGRhZCIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xOS4wNyA0LjkzMDA1TDE3IDcuMDAwMDVNNC45MyAxOS4wN0w3IDE3TTE5LjA3IDE5LjA3TDE3IDE3TTQuOTMgNC45MzAwNUw3IDcuMDAwMDUiIHN0cm9rZT0iIzZhMGRhZCIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg==';
+        const VENKATESHWARA_LOGO_SVG = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNTAiIHZpZXdCb3g9IjAgMCA0MCA1MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNNCA1QzQgMjAgMjAgNDggMjAgNDhDMjAgNDggMzYgMjAgMzYgNSIgc3Ryb2tlPSIjNmEwZGFkIiBzdHJva2Utd2lkdGg9IjMiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxsaW5lIHgxPSIyMCIgeTE9IjEwIiB4Mj0iMjAiIHkyPSI0NSIgc3Ryb2tlPSIjRkZCRjAwIiBzdHJva2Utd2lkdGg9IjYiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxsaW5lIHgxPSIyMCIgeTE9IjEwIiB4Mj0iMjAiIHkyPSI0NSIgc3Ryb2tlPSIjQzQxRTNBIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvc3ZnPg==';
+        const SANKU_LOGO_SVG = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNNi4zMjAxOCAxMy44QzQuOTYwMTggMTAuMyA3LjQxMDE4IDQuMjMgMTIuMzcwMiAzLjMyQzE3LjMzMDIgMi40MSAyMS4yMTAyIDYuNjQgMjAuMTYwMiAxMS42MkMxOS4xMTAyIDE2LjYgMTMuMjEwMiAxOS43OCA4LjM3MDE4IDE4LjY2IiBzdHJva2U9IiM2YTBkYWQiIHN0cm9rZS1widthPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xMy45OCAzLjVDMTMuMzMgNS4wOCAxMi41MyA2LjU3IDExLjU5IDcuOTYiIHN0cm9rZT0iIzZhMGRhZCIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xOC4zMDAyIDE2LjA2QzE5LjU5MDIgMTcuNjUgMjAuNTAwMiAxOS4yOSAyMS4wMDAyIDIxIiBzdHJva2U9IiM2YTBkYWQiIHN0cm9rZS1widthPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg==';
+        const CHAKRA_LOGO_SVG = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTIgMjFDMTYuOTcwNiAyMSAyMSAxNi45NzA2IDIxIDEyQzIxIDcuMDI5NDQgMTYuOTcwNiAzIDEyIDNDNy4wMjk0NCAzIDMgNy4wMjk0NCAzIDEyQzMgMTYuOTcwNiA3LjAyOTQ0IDIxIDEyIDIxWiIgc3Ryb2tlPSIjNmEwZGFkIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PHBhdGggZD0iTTEyIDE1QzEzLjY1NjkgMTUgMTUgMTMuNjU2OSAxNSAxMkMxNSAxMC4zNDMxIDEzLjY1NjkgOSAxMiA5QzEwLjM0MzEgOSAxMCAxMC4zNDMxIDEwIDEyQzEwIDEzLjY1NjkgMTAuMzQzMSAxNSAxMiAxNVoiIHN0cm9rZT0iIzZhMGRhZCIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xOS4wNyA0LjkzMDA1TDE3IDcuMDAwMDVNNC45MyAxOS4wN0w3IDE3TTE5LjA3IDE5LjA3TDE3IDE3TTQuOTMgNC45MzAwNUw3IDcuMDAwMDUiIHN0cm9rZT0iIzZhMGRhZCIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg==';
+        
+        const [venkateshwaraPng, sankuPng, chakraPng] = await Promise.all([
+            svgToPng(VENKATESHWARA_LOGO_SVG, 20, 25),
+            svgToPng(SANKU_LOGO_SVG, 10, 10),
+            svgToPng(CHAKRA_LOGO_SVG, 10, 10)
+        ]);
 
         const renderContentOnDoc = (doc: jsPDF) => {
           doc.addFont('Times-Roman', 'Times', 'normal');
@@ -173,7 +206,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
           const maxLineWidth = pageWidth - margin * 2;
           let y = 8;
           
-          doc.addImage(VENKATESHWARA_LOGO_BASE64, 'SVG', centerX - 10, y, 20, 25);
+          doc.addImage(venkateshwaraPng, 'PNG', centerX - 10, y, 20, 25);
           y += 28;
 
           doc.setFont('Times', 'bold');
@@ -192,9 +225,9 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
           const sankuX = businessNameX - 12; // 10 for image width + 2 for padding
           const chakraX = businessNameX + businessNameWidth + 2;
 
-          doc.addImage(SANKU_LOGO_BASE64, 'SVG', sankuX, y - 8, 10, 10);
+          doc.addImage(sankuPng, 'PNG', sankuX, y - 8, 10, 10);
           doc.text(businessName, centerX, y, { align: 'center' });
-          doc.addImage(CHAKRA_LOGO_BASE64, 'SVG', chakraX, y - 8, 10, 10);
+          doc.addImage(chakraPng, 'PNG', chakraX, y - 8, 10, 10);
           y += 10;
           
           doc.setDrawColor('#cccccc');
