@@ -170,23 +170,10 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
           const maxLineWidth = pageWidth - margin * 2;
           let y = 12;
 
-          // Divine Flourish
-          doc.setLineWidth(0.2);
-          doc.setDrawColor(106, 13, 173); // primary purple
-          doc.line(centerX - 20, y, centerX - 5, y); // left line
-          doc.line(centerX + 5, y, centerX + 20, y); // right line
-          // Simple lotus-like shape in center
-          doc.line(centerX, y - 2, centerX - 2, y);
-          doc.line(centerX, y - 2, centerX + 2, y);
-          doc.line(centerX, y + 2, centerX - 2, y);
-          doc.line(centerX, y + 2, centerX + 2, y);
-          y += 5;
-
-
-          doc.setFont('Times', 'bold');
+          doc.setFont('Times', 'italic');
           doc.setFontSize(12);
           doc.setTextColor('#000000');
-          doc.text('OM namo venkatesaya', centerX, y, { align: 'center' });
+          doc.text('Om Namo Venkatesaya', centerX, y, { align: 'center' });
           y += 7;
 
           doc.setFont('Times', 'bold');

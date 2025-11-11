@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle } from 'lucide-react';
 
@@ -102,7 +103,7 @@ const MainApp: React.FC = () => {
     <button
       onClick={() => page ? setCurrentPage(page) : action?.()}
       className={`flex flex-col items-center justify-center w-full pt-2 pb-1 text-xs transition-colors duration-200 ${
-        currentPage === page ? 'text-white scale-105' : 'text-purple-200 hover:text-white'
+        currentPage === page ? 'text-white scale-[1.02]' : 'text-purple-200 hover:text-white'
       }`}
     >
       <Icon className="w-6 h-6 mb-1" />
