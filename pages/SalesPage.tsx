@@ -36,13 +36,13 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     
     // State for the new "Add Customer" modal
     const [isAddingCustomer, setIsAddingCustomer] = useState(false);
-    const [newCustomer, setNewCustomer] = useState<Omit<Customer, 'id'>>({ name: '', phone: '', address: '', area: '', reference: '' });
+    const [newCustomer, setNewCustomer] = useState({ id: '', name: '', phone: '', address: '', area: '', reference: '' });
 
 
     useEffect(() => {
         const formIsDirty = !!customerId || items.length > 0 || discount !== '0' || !!paymentAmount;
         // FIX: Coerce the potentially string result of the logical OR to a boolean using `!!`
-        const newCustomerFormIsDirty = isAddingCustomer && !!(newCustomer.name || newCustomer.phone || newCustomer.address || newCustomer.area);
+        const newCustomerFormIsDirty = isAddingCustomer && !!(newCustomer.id || newCustomer.name || newCustomer.phone || newCustomer.address || newCustomer.area);
         setIsDirty(formIsDirty || newCustomerFormIsDirty);
 
         return () => {
@@ -118,16 +118,37 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     }, [items, discount, state.products]);
 
     const handleAddCustomer = () => {
-        if (newCustomer.name && newCustomer.phone && newCustomer.address && newCustomer.area) {
-            const customerWithId: Customer = { ...newCustomer, id: `CUST-${Date.now()}` };
-            dispatch({ type: 'ADD_CUSTOMER', payload: customerWithId });
-            setNewCustomer({ name: '', phone: '', address: '', area: '', reference: '' });
-            setIsAddingCustomer(false);
-            setCustomerId(customerWithId.id); // Automatically select the new customer
-            showToast("Customer added successfully!");
-        } else {
-            alert('Please fill all required fields.');
+        const trimmedId = newCustomer.id.trim();
+        if (!trimmedId) {
+            alert('Customer ID is required.');
+            return;
         }
+        if (!newCustomer.name || !newCustomer.phone || !newCustomer.address || !newCustomer.area) {
+            alert('Please fill all required fields (Name, Phone, Address, Area).');
+            return;
+        }
+
+        const finalId = `CUST-${trimmedId}`;
+        const isIdTaken = state.customers.some(c => c.id.toLowerCase() === finalId.toLowerCase());
+
+        if (isIdTaken) {
+            alert(`Customer ID "${finalId}" is already taken. Please choose another one.`);
+            return;
+        }
+
+        const customerWithId: Customer = {
+            name: newCustomer.name,
+            phone: newCustomer.phone,
+            address: newCustomer.address,
+            area: newCustomer.area,
+            id: finalId,
+            reference: newCustomer.reference || ''
+        };
+        dispatch({ type: 'ADD_CUSTOMER', payload: customerWithId });
+        setNewCustomer({ id: '', name: '', phone: '', address: '', area: '', reference: '' });
+        setIsAddingCustomer(false);
+        setCustomerId(customerWithId.id); // Automatically select the new customer
+        showToast("Customer added successfully!");
     };
 
     const generateAndSharePDF = async (sale: Sale, customer: Customer, paidAmountOnSale: number) => {
@@ -390,6 +411,21 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <Card title="Add New Customer" className="w-full max-w-md">
                 <div className="space-y-4">
+                     <div>
+                        <label className="block text-sm font-medium text-gray-700">Customer ID</label>
+                        <div className="flex items-center mt-1">
+                            <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                                CUST-
+                            </span>
+                            <input 
+                                type="text" 
+                                placeholder="Enter unique ID" 
+                                value={newCustomer.id} 
+                                onChange={e => setNewCustomer({ ...newCustomer, id: e.target.value })} 
+                                className="w-full p-2 border rounded-r-md" 
+                            />
+                        </div>
+                    </div>
                     <input type="text" placeholder="Name" value={newCustomer.name} onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })} className="w-full p-2 border rounded" autoFocus />
                     <input type="text" placeholder="Phone" value={newCustomer.phone} onChange={e => setNewCustomer({ ...newCustomer, phone: e.target.value })} className="w-full p-2 border rounded" />
                     <input type="text" placeholder="Address" value={newCustomer.address} onChange={e => setNewCustomer({ ...newCustomer, address: e.target.value })} className="w-full p-2 border rounded" />
@@ -397,7 +433,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                     <input type="text" placeholder="Reference (Optional)" value={newCustomer.reference} onChange={e => setNewCustomer({ ...newCustomer, reference: e.target.value })} className="w-full p-2 border rounded" />
                     <div className="flex gap-2">
                         <Button onClick={handleAddCustomer} className="w-full">Save Customer</Button>
-                        <Button onClick={() => { setIsAddingCustomer(false); setNewCustomer({ name: '', phone: '', address: '', area: '', reference: '' }); }} variant="secondary" className="w-full">Cancel</Button>
+                        <Button onClick={() => { setIsAddingCustomer(false); setNewCustomer({ id: '', name: '', phone: '', address: '', area: '', reference: '' }); }} variant="secondary" className="w-full">Cancel</Button>
                     </div>
                 </div>
             </Card>

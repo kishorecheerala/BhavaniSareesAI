@@ -22,7 +22,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
     const { state, dispatch, showToast } = useAppContext();
     const [searchTerm, setSearchTerm] = useState('');
     const [isAdding, setIsAdding] = useState(false);
-    const [newCustomer, setNewCustomer] = useState<Omit<Customer, 'id'>>({ name: '', phone: '', address: '', area: '', reference: '' });
+    const [newCustomer, setNewCustomer] = useState({ id: '', name: '', phone: '', address: '', area: '', reference: '' });
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
     const [isEditing, setIsEditing] = useState(false);
@@ -39,7 +39,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
 
     useEffect(() => {
         // FIX: Coerce the potentially string result of the logical OR to a boolean using `!!`
-        const formIsDirty = (isAdding && !!(newCustomer.name || newCustomer.phone || newCustomer.address || newCustomer.area)) || isEditing;
+        const formIsDirty = (isAdding && !!(newCustomer.id || newCustomer.name || newCustomer.phone || newCustomer.address || newCustomer.area)) || isEditing;
         setIsDirty(formIsDirty);
 
         return () => {
@@ -60,14 +60,36 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
 
 
     const handleAddCustomer = () => {
-        if (newCustomer.name && newCustomer.phone && newCustomer.address && newCustomer.area) {
-            const customerWithId: Customer = { ...newCustomer, id: `CUST-${Date.now()}` };
-            dispatch({ type: 'ADD_CUSTOMER', payload: customerWithId });
-            setNewCustomer({ name: '', phone: '', address: '', area: '', reference: '' });
-            setIsAdding(false);
-        } else {
-            alert('Please fill all required fields.');
+        const trimmedId = newCustomer.id.trim();
+        if (!trimmedId) {
+            alert('Customer ID is required.');
+            return;
         }
+        if (!newCustomer.name || !newCustomer.phone || !newCustomer.address || !newCustomer.area) {
+            alert('Please fill all required fields (Name, Phone, Address, Area).');
+            return;
+        }
+
+        const finalId = `CUST-${trimmedId}`;
+        const isIdTaken = state.customers.some(c => c.id.toLowerCase() === finalId.toLowerCase());
+        
+        if (isIdTaken) {
+            alert(`Customer ID "${finalId}" is already taken. Please choose another one.`);
+            return;
+        }
+
+        const customerWithId: Customer = { 
+            name: newCustomer.name,
+            phone: newCustomer.phone,
+            address: newCustomer.address,
+            area: newCustomer.area,
+            id: finalId,
+            reference: newCustomer.reference || ''
+        };
+        dispatch({ type: 'ADD_CUSTOMER', payload: customerWithId });
+        setNewCustomer({ id: '', name: '', phone: '', address: '', area: '', reference: '' });
+        setIsAdding(false);
+        showToast("Customer added successfully!");
     };
     
     const handleUpdateCustomer = () => {
@@ -336,6 +358,21 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
             {isAdding && (
                 <Card title="New Customer Form">
                     <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Customer ID</label>
+                            <div className="flex items-center mt-1">
+                                <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                                    CUST-
+                                </span>
+                                <input 
+                                    type="text" 
+                                    placeholder="Enter unique ID" 
+                                    value={newCustomer.id} 
+                                    onChange={e => setNewCustomer({ ...newCustomer, id: e.target.value })} 
+                                    className="w-full p-2 border rounded-r-md" 
+                                />
+                            </div>
+                        </div>
                         <input type="text" placeholder="Name" value={newCustomer.name} onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })} className="w-full p-2 border rounded" />
                         <input type="text" placeholder="Phone" value={newCustomer.phone} onChange={e => setNewCustomer({ ...newCustomer, phone: e.target.value })} className="w-full p-2 border rounded" />
                         <input type="text" placeholder="Address" value={newCustomer.address} onChange={e => setNewCustomer({ ...newCustomer, address: e.target.value })} className="w-full p-2 border rounded" />
