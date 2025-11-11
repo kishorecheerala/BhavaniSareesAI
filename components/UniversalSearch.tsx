@@ -75,12 +75,13 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({ isOpen, onClose, onNa
         }
     }, [isOpen]);
 
-    const hasResults = useMemo(() => Object.values(results).some(arr => arr.length > 0), [results]);
+    // FIX: Add Array.isArray check to safely access .length on the 'unknown' type returned by Object.values()
+    const hasResults = useMemo(() => Object.values(results).some(arr => Array.isArray(arr) && arr.length > 0), [results]);
 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-background z-[100] flex flex-col p-4" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 bg-background z-[100] flex flex-col p-4 animate-fade-in-fast" role="dialog" aria-modal="true">
             <div className="flex items-center gap-4 mb-4">
                 <div className="relative flex-grow">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />

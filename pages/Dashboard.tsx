@@ -250,13 +250,13 @@ const Dashboard: React.FC = () => {
                     icon={ShoppingCart} 
                     title="Total Sales (All Time)" 
                     value={totalSales} 
-                    color="bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg" 
+                    color="bg-gradient-to-br from-purple-600 to-amber-400 shadow-lg" 
                 />
                  <MetricCard 
                     icon={Package} 
                     title="Total Purchases (All Time)" 
                     value={totalPurchases} 
-                    color="bg-gradient-to-br from-teal-500 to-cyan-600 shadow-lg" 
+                    color="bg-gradient-to-br from-green-500 to-lime-400 shadow-lg" 
                 />
                 <MetricCard 
                     icon={IndianRupee} 

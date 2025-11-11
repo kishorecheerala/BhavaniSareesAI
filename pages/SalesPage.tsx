@@ -26,9 +26,12 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     const [items, setItems] = useState<SaleItem[]>([]);
     const [discount, setDiscount] = useState('0');
     
-    const [paymentAmount, setPaymentAmount] = useState('');
-    const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'UPI' | 'CHEQUE'>('CASH');
-    const [paymentDate, setPaymentDate] = useState(getLocalDateString());
+    const [paymentDetails, setPaymentDetails] = useState({
+        amount: '',
+        method: 'CASH' as 'CASH' | 'UPI' | 'CHEQUE',
+        date: getLocalDateString(),
+        reference: '',
+    });
 
     const [isSelectingProduct, setIsSelectingProduct] = useState(false);
     const [productSearchTerm, setProductSearchTerm] = useState('');
@@ -40,7 +43,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
 
 
     useEffect(() => {
-        const formIsDirty = !!customerId || items.length > 0 || discount !== '0' || !!paymentAmount;
+        const formIsDirty = !!customerId || items.length > 0 || discount !== '0' || !!paymentDetails.amount;
         // FIX: Coerce the potentially string result of the logical OR to a boolean using `!!`
         const newCustomerFormIsDirty = isAddingCustomer && !!(newCustomer.id || newCustomer.name || newCustomer.phone || newCustomer.address || newCustomer.area);
         setIsDirty(formIsDirty || newCustomerFormIsDirty);
@@ -48,15 +51,18 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         return () => {
             setIsDirty(false);
         };
-    }, [customerId, items, discount, paymentAmount, isAddingCustomer, newCustomer, setIsDirty]);
+    }, [customerId, items, discount, paymentDetails.amount, isAddingCustomer, newCustomer, setIsDirty]);
 
     const resetForm = () => {
         setCustomerId('');
         setItems([]);
         setDiscount('0');
-        setPaymentAmount('');
-        setPaymentMethod('CASH');
-        setPaymentDate(getLocalDateString());
+        setPaymentDetails({
+            amount: '',
+            method: 'CASH',
+            date: getLocalDateString(),
+            reference: '',
+        });
         setProductSearchTerm('');
         setIsSelectingProduct(false);
     };
@@ -162,9 +168,22 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
           const centerX = pageWidth / 2;
           const margin = 5;
           const maxLineWidth = pageWidth - margin * 2;
-          let y = 10;
+          let y = 12;
 
-          doc.setFont('Times', 'italic');
+          // Divine Flourish
+          doc.setLineWidth(0.2);
+          doc.setDrawColor(106, 13, 173); // primary purple
+          doc.line(centerX - 20, y, centerX - 5, y); // left line
+          doc.line(centerX + 5, y, centerX + 20, y); // right line
+          // Simple lotus-like shape in center
+          doc.line(centerX, y - 2, centerX - 2, y);
+          doc.line(centerX, y - 2, centerX + 2, y);
+          doc.line(centerX, y + 2, centerX - 2, y);
+          doc.line(centerX, y + 2, centerX + 2, y);
+          y += 5;
+
+
+          doc.setFont('Times', 'bold');
           doc.setFontSize(12);
           doc.setTextColor('#000000');
           doc.text('OM namo venkatesaya', centerX, y, { align: 'center' });
@@ -317,7 +336,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         }
         
         const { totalAmount, gstAmount, discountAmount } = calculations;
-        const paidAmount = parseFloat(paymentAmount) || 0;
+        const paidAmount = parseFloat(paymentDetails.amount) || 0;
 
         if (paidAmount > totalAmount + 0.01) {
             alert(`Paid amount (₹${paidAmount.toLocaleString('en-IN')}) cannot be greater than the total amount (₹${totalAmount.toLocaleString('en-IN')}).`);
@@ -329,8 +348,9 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             payments.push({
                 id: `PAY-S-${Date.now()}`,
                 amount: paidAmount,
-                method: paymentMethod,
-                date: new Date(paymentDate).toISOString(),
+                method: paymentDetails.method,
+                date: new Date(paymentDetails.date).toISOString(),
+                reference: paymentDetails.reference.trim() || undefined,
             });
         }
         
@@ -364,7 +384,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             return;
         }
 
-        const paidAmount = parseFloat(paymentAmount || '0');
+        const paidAmount = parseFloat(paymentDetails.amount || '0');
         if (paidAmount <= 0) {
             alert('Please enter a valid payment amount.');
             return;
@@ -394,8 +414,9 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             const newPayment: Payment = {
                 id: `PAY-S-${Date.now()}-${Math.random()}`,
                 amount: amountToApply,
-                method: paymentMethod,
-                date: new Date(paymentDate).toISOString()
+                method: paymentDetails.method,
+                date: new Date(paymentDetails.date).toISOString(),
+                reference: paymentDetails.reference.trim() || undefined,
             };
 
             dispatch({ type: 'ADD_PAYMENT_TO_SALE', payload: { saleId: sale.id, payment: newPayment } });
@@ -408,8 +429,8 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     };
 
     const AddCustomerModal = () => (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <Card title="Add New Customer" className="w-full max-w-md">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+            <Card title="Add New Customer" className="w-full max-w-md animate-scale-in">
                 <div className="space-y-4">
                      <div>
                         <label className="block text-sm font-medium text-gray-700">Customer ID</label>
@@ -441,8 +462,8 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     );
 
     const ProductSearchModal = () => (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <Card className="w-full max-w-lg">
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+        <Card className="w-full max-w-lg animate-scale-in">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-bold">Select Product</h2>
             <button onClick={() => setIsSelectingProduct(false)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
@@ -516,8 +537,8 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         }, []);
 
         return (
-            <div className="fixed inset-0 bg-black bg-opacity-75 flex flex-col items-center justify-center z-50 p-4">
-                <Card title="Scan Product QR Code" className="w-full max-w-md relative">
+            <div className="fixed inset-0 bg-black bg-opacity-75 flex flex-col items-center justify-center z-50 p-4 animate-fade-in-fast">
+                <Card title="Scan Product QR Code" className="w-full max-w-md relative animate-scale-in">
                      <button onClick={() => setIsScanning(false)} className="absolute top-4 right-4 p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
                         <X size={20}/>
                      </button>
@@ -530,7 +551,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     };
 
     const canCreateSale = customerId && items.length > 0;
-    const canRecordPayment = customerId && items.length === 0 && parseFloat(paymentAmount || '0') > 0;
+    const canRecordPayment = customerId && items.length === 0 && parseFloat(paymentDetails.amount || '0') > 0;
 
     return (
         <div className="space-y-4">
@@ -564,7 +585,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                 {items.length > 0 && (
                     <div className="mt-4 space-y-2">
                         {items.map(item => (
-                            <div key={item.productId} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                            <div key={item.productId} className="flex justify-between items-center p-2 bg-gray-50 rounded animate-fade-in-fast">
                                 <div>
                                     <p className="font-semibold">{item.productName}</p>
                                     <p className="text-sm">{item.quantity} x ₹{item.price.toLocaleString('en-IN')}</p>
@@ -608,19 +629,23 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Amount Paid</label>
-                            <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} placeholder={items.length > 0 ? `Total is ₹${calculations.totalAmount.toLocaleString('en-IN')}` : 'Enter amount to pay dues'} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500" />
+                            <input type="number" value={paymentDetails.amount} onChange={e => setPaymentDetails({...paymentDetails, amount: e.target.value })} placeholder={items.length > 0 ? `Total is ₹${calculations.totalAmount.toLocaleString('en-IN')}` : 'Enter amount to pay dues'} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500" />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Payment Method</label>
-                            <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as any)} className="w-full p-2 border rounded custom-select">
+                            <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any})} className="w-full p-2 border rounded custom-select">
                                 <option value="CASH">Cash</option>
                                 <option value="UPI">UPI</option>
                                 <option value="CHEQUE">Cheque</option>
                             </select>
                         </div>
-                        <div className="md:col-span-2">
+                        <div>
                             <label className="block text-sm font-medium text-gray-700">Payment Date</label>
-                            <input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} className="w-full p-2 border rounded" />
+                            <input type="date" value={paymentDetails.date} onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} className="w-full p-2 border rounded" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Payment Reference (Optional)</label>
+                            <input type="text" value={paymentDetails.reference} onChange={e => setPaymentDetails({ ...paymentDetails, reference: e.target.value })} placeholder="e.g. Transaction ID, Cheque No." className="w-full p-2 border rounded" />
                         </div>
                     </div>
                 </Card>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search } from 'lucide-react';
+import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle } from 'lucide-react';
 
 import { AppProvider, useAppContext } from './context/AppContext';
 import Dashboard from './pages/Dashboard';
@@ -10,6 +10,7 @@ import ReportsPage from './pages/ReportsPage';
 import ReturnsPage from './pages/ReturnsPage';
 import ProductsPage from './pages/ProductsPage';
 import UniversalSearch from './components/UniversalSearch';
+import HelpModal from './components/HelpModal';
 
 export type Page = 'DASHBOARD' | 'CUSTOMERS' | 'SALES' | 'PURCHASES' | 'REPORTS' | 'RETURNS' | 'PRODUCTS';
 
@@ -31,6 +32,7 @@ const MainApp: React.FC = () => {
   );
   const [isDirty, setIsDirty] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const { dispatch } = useAppContext();
   const currentPageRef = useRef(currentPage);
   currentPageRef.current = currentPage;
@@ -111,17 +113,24 @@ const MainApp: React.FC = () => {
   return (
     <div className="flex flex-col h-screen font-sans text-text bg-background">
       <Toast />
+      <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       <UniversalSearch 
         isOpen={isSearchOpen} 
         onClose={() => setIsSearchOpen(false)} 
         onNavigate={handleSearchResultClick} 
       />
-      <header className="bg-primary text-white shadow-md p-4 flex items-center justify-center">
-          <h1 className="text-xl font-bold">Bhavani Sarees</h1>
+      <header className="bg-gradient-to-r from-primary to-secondary text-white shadow-md p-4 flex items-center justify-between">
+          <div className="w-8"></div> {/* Spacer */}
+          <h1 className="text-xl font-bold text-center">Bhavani Sarees</h1>
+          <button onClick={() => setIsHelpOpen(true)} className="p-1 rounded-full hover:bg-white/20 transition-colors" aria-label="Open help">
+            <HelpCircle className="w-6 h-6" />
+          </button>
       </header>
 
       <main className="flex-grow overflow-y-auto p-4 pb-20">
-        {renderPage()}
+        <div key={currentPage} className="animate-fade-in-fast">
+          {renderPage()}
+        </div>
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-primary shadow-lg z-50">

@@ -32,7 +32,8 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
     const [paymentDetails, setPaymentDetails] = useState({
         amount: '',
         method: 'CASH' as 'CASH' | 'UPI' | 'CHEQUE',
-        date: getLocalDateString() 
+        date: getLocalDateString(),
+        reference: '',
     });
     
     const [confirmModalState, setConfirmModalState] = useState<{ isOpen: boolean, saleIdToDelete: string | null }>({ isOpen: false, saleIdToDelete: null });
@@ -145,13 +146,14 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
             id: `PAY-${Date.now()}`,
             amount: newPaymentAmount,
             method: paymentDetails.method,
-            date: new Date(paymentDetails.date).toISOString()
+            date: new Date(paymentDetails.date).toISOString(),
+            reference: paymentDetails.reference.trim() || undefined,
         };
 
         dispatch({ type: 'ADD_PAYMENT_TO_SALE', payload: { saleId: sale.id, payment } });
         
         setPaymentModalState({ isOpen: false, saleId: null });
-        setPaymentDetails({ amount: '', method: 'CASH', date: getLocalDateString() });
+        setPaymentDetails({ amount: '', method: 'CASH', date: getLocalDateString(), reference: '' });
     };
 
     const filteredCustomers = state.customers.filter(c =>
@@ -168,8 +170,8 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
         const dueAmount = sale.totalAmount - amountPaid;
 
         return (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <Card title="Add Payment" className="w-full max-w-sm">
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+                <Card title="Add Payment" className="w-full max-w-sm animate-scale-in">
                     <div className="space-y-4">
                         <p>Invoice Total: <span className="font-bold">₹{sale.totalAmount.toLocaleString('en-IN')}</span></p>
                         <p>Amount Due: <span className="font-bold text-red-600">₹{dueAmount.toLocaleString('en-IN')}</span></p>
@@ -191,6 +193,16 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                                 type="date" 
                                 value={paymentDetails.date} 
                                 onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} 
+                                className="w-full p-2 border rounded"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Payment Reference (Optional)</label>
+                            <input 
+                                type="text"
+                                placeholder="e.g. UPI ID, Cheque No."
+                                value={paymentDetails.reference}
+                                onChange={e => setPaymentDetails({ ...paymentDetails, reference: e.target.value })}
                                 className="w-full p-2 border rounded"
                             />
                         </div>
@@ -305,6 +317,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                                                     {sale.payments.map(payment => (
                                                         <li key={payment.id}>
                                                             ₹{payment.amount.toLocaleString('en-IN')} {payment.method === 'RETURN_CREDIT' ? <span className="text-blue-600 font-semibold">(Return Credit)</span> : `via ${payment.method}`} on {new Date(payment.date).toLocaleDateString()}
+                                                            {payment.reference && <span className="text-xs text-gray-500 block">Ref: {payment.reference}</span>}
                                                         </li>
                                                     ))}
                                                 </ul>
@@ -406,14 +419,19 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
             </div>
 
             <div className="space-y-3">
-                {filteredCustomers.map(customer => {
+                {filteredCustomers.map((customer, index) => {
                     const customerSales = state.sales.filter(s => s.customerId === customer.id);
                     const totalPurchase = customerSales.reduce((sum, s) => sum + s.totalAmount, 0);
                     const totalPaid = customerSales.reduce((sum, s) => sum + s.payments.reduce((pSum, p) => pSum + p.amount, 0), 0);
                     const totalDue = totalPurchase - totalPaid;
 
                     return (
-                        <Card key={customer.id} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setSelectedCustomer(customer)}>
+                        <Card 
+                            key={customer.id} 
+                            className="cursor-pointer transition-shadow animate-slide-up-fade" 
+                            style={{ animationDelay: `${index * 50}ms` }}
+                            onClick={() => setSelectedCustomer(customer)}
+                        >
                             <div className="flex justify-between items-start">
                                 <div>
                                     <p className="font-bold text-lg text-primary flex items-center gap-2"><User size={16}/> {customer.name}</p>

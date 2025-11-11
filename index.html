@@ -24,15 +24,31 @@
               accent: '#ff69b4',
               background: '#f3e5f5',
               text: '#333333',
+              divine_gold: '#FFBF00',
             },
             keyframes: {
               'fade-in-out': {
                 '0%, 100%': { opacity: 0, transform: 'translateY(-20px)' },
                 '10%, 90%': { opacity: 1, transform: 'translateY(0)' },
               },
+              'fade-in-fast': {
+                '0%': { opacity: 0 },
+                '100%': { opacity: 1 },
+              },
+              'scale-in': {
+                '0%': { opacity: 0, transform: 'scale(0.95)' },
+                '100%': { opacity: 1, transform: 'scale(1)' },
+              },
+              'slide-up-fade': {
+                '0%': { opacity: 0, transform: 'translateY(10px)' },
+                '100%': { opacity: 1, transform: 'translateY(0)' },
+              }
             },
             animation: {
               'fade-in-out': 'fade-in-out 3s ease-in-out forwards',
+              'fade-in-fast': 'fade-in-fast 0.3s ease-out forwards',
+              'scale-in': 'scale-in 0.2s ease-out forwards',
+              'slide-up-fade': 'slide-up-fade 0.4s ease-out forwards',
             },
           },
         },
@@ -48,6 +64,9 @@
         background-repeat: no-repeat;
         background-size: 1.5em 1.5em;
         padding-right: 2.5rem;
+      }
+      body {
+        background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80"><path fill="%236a0dad" fill-opacity="0.05" d="M40 40c5.523 0 10-4.477 10-10s-4.477-10-10-10-10 4.477-10 10 4.477 10 10 10zm0 0c-5.523 0-10 4.477-10 10s4.477 10 10 10 10-4.477 10-10-4.477-10-10-10zM20 40c5.523 0 10-4.477 10-10s-4.477-10-10-10-10 4.477-10 10 4.477 10 10 10zm0 0c-5.523 0-10 4.477-10 10s4.477 10 10 10 10-4.477 10-10-4.477-10-10-10zM60 40c5.523 0 10-4.477 10-10s-4.477-10-10-10-10 4.477-10 10 4.477 10 10 10zm0 0c-5.523 0-10 4.477-10 10s4.477 10 10 10 10-4.477 10-10-4.477-10-10-10z"></path></svg>');
       }
     </style>
   <script type="importmap">

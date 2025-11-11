@@ -5,6 +5,7 @@ export interface Payment {
   amount: number;
   date: string; // ISO string
   method: 'CASH' | 'UPI' | 'CHEQUE' | 'RETURN_CREDIT';
+  reference?: string;
 }
 
 export interface Customer {

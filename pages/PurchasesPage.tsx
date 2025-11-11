@@ -32,9 +32,12 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     const [purchaseSupplierId, setPurchaseSupplierId] = useState('');
     const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
     const [supplierInvoiceId, setSupplierInvoiceId] = useState('');
-    const [purchasePaymentAmount, setPurchasePaymentAmount] = useState('');
-    const [purchasePaymentMethod, setPurchasePaymentMethod] = useState<'CASH' | 'UPI' | 'CHEQUE'>('CASH');
-    const [purchaseDate, setPurchaseDate] = useState(getLocalDateString());
+    const [purchasePaymentDetails, setPurchasePaymentDetails] = useState({
+        amount: '',
+        method: 'CASH' as 'CASH' | 'UPI' | 'CHEQUE',
+        date: getLocalDateString(),
+        reference: '',
+    });
     
     // State for modals and interactions
     const [isSelectingProduct, setIsSelectingProduct] = useState(false);
@@ -49,7 +52,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editedSupplier, setEditedSupplier] = useState<Supplier | null>(null);
     const [paymentModalState, setPaymentModalState] = useState<{ isOpen: boolean, purchaseId: string | null }>({ isOpen: false, purchaseId: null });
-    const [paymentDetails, setPaymentDetails] = useState({ amount: '', method: 'CASH' as 'CASH' | 'UPI' | 'CHEQUE', date: getLocalDateString() });
+    const [paymentDetails, setPaymentDetails] = useState({ amount: '', method: 'CASH' as 'CASH' | 'UPI' | 'CHEQUE', date: getLocalDateString(), reference: '' });
     const [confirmModalState, setConfirmModalState] = useState<{ isOpen: boolean, purchaseIdToDelete: string | null }>({ isOpen: false, purchaseIdToDelete: null });
     
     useEffect(() => {
@@ -64,11 +67,11 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     
     useEffect(() => {
         const addSupplierDirty = view === 'add_supplier' && !!(newSupplier.id || newSupplier.name || newSupplier.phone || newSupplier.location);
-        const addPurchaseDirty = view === 'add_purchase' && !!(purchaseSupplierId || purchaseItems.length > 0 || purchasePaymentAmount);
+        const addPurchaseDirty = view === 'add_purchase' && !!(purchaseSupplierId || purchaseItems.length > 0 || purchasePaymentDetails.amount);
         const detailViewDirty = !!(selectedSupplier && isEditing);
         setIsDirty(addSupplierDirty || addPurchaseDirty || detailViewDirty);
         return () => setIsDirty(false);
-    }, [view, newSupplier, purchaseSupplierId, purchaseItems, purchasePaymentAmount, selectedSupplier, isEditing, setIsDirty]);
+    }, [view, newSupplier, purchaseSupplierId, purchaseItems, purchasePaymentDetails.amount, selectedSupplier, isEditing, setIsDirty]);
     
     useEffect(() => {
         if (selectedSupplier) {
@@ -85,9 +88,12 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         setPurchaseSupplierId('');
         setPurchaseItems([]);
         setSupplierInvoiceId('');
-        setPurchasePaymentAmount('');
-        setPurchasePaymentMethod('CASH');
-        setPurchaseDate(getLocalDateString());
+        setPurchasePaymentDetails({
+            amount: '',
+            method: 'CASH',
+            date: getLocalDateString(),
+            reference: ''
+        });
     };
 
     const handleAddSupplier = () => {
@@ -133,13 +139,14 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             id: `PAY-P-${Date.now()}`,
             amount: newPaymentAmount,
             method: paymentDetails.method,
-            date: new Date(paymentDetails.date).toISOString()
+            date: new Date(paymentDetails.date).toISOString(),
+            reference: paymentDetails.reference.trim() || undefined,
         };
 
         dispatch({ type: 'ADD_PAYMENT_TO_PURCHASE', payload: { purchaseId: purchase.id, payment } });
         showToast("Payment added successfully.");
         setPaymentModalState({ isOpen: false, purchaseId: null });
-        setPaymentDetails({ amount: '', method: 'CASH', date: getLocalDateString() });
+        setPaymentDetails({ amount: '', method: 'CASH', date: getLocalDateString(), reference: '' });
     };
 
     const handleDeletePurchase = (purchaseId: string) => {
@@ -224,7 +231,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             return alert("Please select a supplier and add at least one item.");
         }
         
-        const paidAmount = parseFloat(purchasePaymentAmount) || 0;
+        const paidAmount = parseFloat(purchasePaymentDetails.amount) || 0;
         if(paidAmount > totalPurchaseAmount + 0.01) {
             return alert("Paid amount cannot be greater than the total amount.");
         }
@@ -235,8 +242,9 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         const payments: Payment[] = paidAmount > 0 ? [{
             id: `PAY-P-${Date.now()}`,
             amount: paidAmount,
-            method: purchasePaymentMethod,
-            date: new Date(purchaseDate).toISOString(),
+            method: purchasePaymentDetails.method,
+            date: new Date(purchasePaymentDetails.date).toISOString(),
+            reference: purchasePaymentDetails.reference.trim() || undefined,
         }] : [];
         
         const newPurchase: Purchase = {
@@ -296,8 +304,8 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         }, []);
 
         return (
-            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-                <Card title="Scan Product" className="w-full max-w-md relative">
+            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+                <Card title="Scan Product" className="w-full max-w-md relative animate-scale-in">
                     <button onClick={() => setIsScanning(false)} className="absolute top-4 right-4 p-2"><X size={20}/></button>
                     <div id="qr-reader-purchase" className="w-full mt-4"></div>
                 </Card>
@@ -306,8 +314,8 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     };
 
     const ProductSearchModal = () => (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <Card className="w-full max-w-lg">
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+        <Card className="w-full max-w-lg animate-scale-in">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-bold">Select Existing Product</h2>
             <button onClick={() => setIsSelectingProduct(false)}><X size={20}/></button>
@@ -326,8 +334,8 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     );
     
     const NewProductModal = () => (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <Card title="Add New Product to Purchase" className="w-full max-w-md">
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+        <Card title="Add New Product to Purchase" className="w-full max-w-md animate-scale-in">
             <div className="space-y-3">
                 <input type="text" placeholder="Product ID (Unique)" value={newProduct.id} onChange={e => setNewProduct({...newProduct, id: e.target.value})} className="w-full p-2 border rounded" autoFocus />
                 <input type="text" placeholder="Product Name" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="w-full p-2 border rounded" />
@@ -352,8 +360,8 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         const dueAmount = purchase.totalAmount - amountPaid;
 
         return (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <Card title="Add Payment" className="w-full max-w-sm">
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+                <Card title="Add Payment" className="w-full max-w-sm animate-scale-in">
                     <div className="space-y-4">
                         <p>Invoice Total: <span className="font-bold">₹{purchase.totalAmount.toLocaleString('en-IN')}</span></p>
                         <p>Amount Due: <span className="font-bold text-red-600">₹{dueAmount.toLocaleString('en-IN')}</span></p>
@@ -364,6 +372,13 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                             <option value="CHEQUE">Cheque</option>
                         </select>
                          <input type="date" value={paymentDetails.date} onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} className="w-full p-2 border rounded" />
+                         <input 
+                            type="text"
+                            placeholder="Payment Reference (Optional)"
+                            value={paymentDetails.reference}
+                            onChange={e => setPaymentDetails({ ...paymentDetails, reference: e.target.value })}
+                            className="w-full p-2 border rounded"
+                        />
                         <div className="flex gap-2">
                            <Button onClick={handleAddPayment} className="w-full">Save Payment</Button>
                            <Button onClick={() => setPaymentModalState({isOpen: false, purchaseId: null})} variant="secondary" className="w-full">Cancel</Button>
@@ -450,7 +465,12 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                             <div>
                                                 <h4 className="font-semibold text-sm">Payments:</h4>
                                                 <ul className="list-disc list-inside text-sm">
-                                                    {(purchase.payments || []).map(p => <li key={p.id}>₹{p.amount.toLocaleString('en-IN')} via {p.method} on {new Date(p.date).toLocaleDateString()}</li>)}
+                                                    {(purchase.payments || []).map(p => (
+                                                      <li key={p.id}>
+                                                        ₹{p.amount.toLocaleString('en-IN')} via {p.method} on {new Date(p.date).toLocaleDateString()}
+                                                        {p.reference && <span className="text-xs text-gray-500 block">Ref: {p.reference}</span>}
+                                                      </li>
+                                                    ))}
                                                 </ul>
                                             </div>
                                         )}
@@ -535,19 +555,23 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium">Amount Paid Now</label>
-                            <input type="number" placeholder={`Total is ₹${totalPurchaseAmount.toLocaleString('en-IN')}`} value={purchasePaymentAmount} onChange={e => setPurchasePaymentAmount(e.target.value)} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500" />
+                            <input type="number" placeholder={`Total is ₹${totalPurchaseAmount.toLocaleString('en-IN')}`} value={purchasePaymentDetails.amount} onChange={e => setPurchasePaymentDetails({ ...purchasePaymentDetails, amount: e.target.value })} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500" />
                         </div>
                         <div>
                             <label className="block text-sm font-medium">Payment Method</label>
-                            <select value={purchasePaymentMethod} onChange={e => setPurchasePaymentMethod(e.target.value as any)} className="w-full p-2 border rounded custom-select">
+                            <select value={purchasePaymentDetails.method} onChange={e => setPurchasePaymentDetails({ ...purchasePaymentDetails, method: e.target.value as any })} className="w-full p-2 border rounded custom-select">
                                 <option value="CASH">Cash</option>
                                 <option value="UPI">UPI</option>
                                 <option value="CHEQUE">Cheque</option>
                             </select>
                         </div>
-                        <div className="md:col-span-2">
+                        <div>
                              <label className="block text-sm font-medium">Purchase Date</label>
-                             <input type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} className="w-full p-2 border rounded" />
+                             <input type="date" value={purchasePaymentDetails.date} onChange={e => setPurchasePaymentDetails({ ...purchasePaymentDetails, date: e.target.value })} className="w-full p-2 border rounded" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium">Payment Reference (Optional)</label>
+                            <input type="text" placeholder="e.g. Cheque No., Txn ID" value={purchasePaymentDetails.reference} onChange={e => setPurchasePaymentDetails({ ...purchasePaymentDetails, reference: e.target.value })} className="w-full p-2 border rounded" />
                         </div>
                     </div>
                  </Card>
@@ -591,14 +615,19 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
 
             <Card title="All Suppliers">
                 <div className="space-y-3">
-                    {filteredSuppliers.map(supplier => {
+                    {filteredSuppliers.map((supplier, index) => {
                         const supplierPurchases = state.purchases.filter(p => p.supplierId === supplier.id);
                         const totalSpent = supplierPurchases.reduce((sum, p) => sum + p.totalAmount, 0);
                         const totalPaid = supplierPurchases.reduce((sum, p) => sum + (p.payments || []).reduce((pSum, payment) => pSum + payment.amount, 0), 0);
                         const totalDue = totalSpent - totalPaid;
 
                         return (
-                            <div key={supplier.id} onClick={() => setSelectedSupplier(supplier)} className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-purple-100 border">
+                            <div 
+                                key={supplier.id} 
+                                onClick={() => setSelectedSupplier(supplier)} 
+                                className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-purple-100 border animate-slide-up-fade"
+                                style={{ animationDelay: `${index * 50}ms` }}
+                            >
                                 <div className="flex justify-between items-start">
                                     <div>
                                         <p className="font-bold text-lg text-primary">{supplier.name}</p>
