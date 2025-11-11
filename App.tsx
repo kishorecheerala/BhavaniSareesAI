@@ -171,7 +171,9 @@ const MainApp: React.FC = () => {
         onNavigate={handleSearchResultClick} 
       />
       <header className="bg-gradient-to-r from-primary to-secondary text-white shadow-md p-4 flex items-center justify-between">
-          <div className="w-8"></div> {/* Spacer */}
+          <button onClick={() => setIsSearchOpen(true)} className="p-1 rounded-full hover:bg-white/20 transition-colors" aria-label="Open search">
+            <Search className="w-6 h-6" />
+          </button>
           <h1 className="text-xl font-bold text-center">Bhavani Sarees</h1>
           <button onClick={() => setIsHelpOpen(true)} className="p-1 rounded-full hover:bg-white/20 transition-colors" aria-label="Open help">
             <HelpCircle className="w-6 h-6" />
@@ -189,7 +191,6 @@ const MainApp: React.FC = () => {
           <NavItem page="DASHBOARD" label="Home" icon={Home} />
           <NavItem page="CUSTOMERS" label="Customers" icon={Users} />
           <NavItem page="SALES" label="Sales" icon={ShoppingCart} />
-          <NavItem label="Search" icon={Search} action={() => setIsSearchOpen(true)} />
           <NavItem page="PURCHASES" label="Purchases" icon={Package} />
           <NavItem page="PRODUCTS" label="Products" icon={Boxes} />
           <NavItem page="RETURNS" label="Returns" icon={Undo2} />
