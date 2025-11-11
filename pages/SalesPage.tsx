@@ -164,29 +164,25 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             format: [80, 297] // Thermal printer size
         });
         const date = new Date(sale.date).toLocaleString();
-        
-        doc.setFont('times', 'bold');
-        doc.setFontSize(18);
-        doc.text('🕉️', 40, 15, { align: 'center' });
 
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(16);
-        doc.text('Bhavani Sarees', 40, 25, { align: 'center' });
+        doc.text('Bhavani Sarees', 40, 15, { align: 'center' });
         
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
-        doc.text(`Invoice: ${sale.id}`, 5, 35);
-        doc.text(`Date: ${date}`, 5, 40);
+        doc.text(`Invoice: ${sale.id}`, 5, 25);
+        doc.text(`Date: ${date}`, 5, 30);
 
-        doc.text(`Billed To:`, 5, 47);
+        doc.text(`Billed To:`, 5, 37);
         doc.setFont('helvetica', 'bold');
-        doc.text(customer.name, 5, 52);
+        doc.text(customer.name, 5, 42);
         doc.setFont('helvetica', 'normal');
-        if (customer.address) doc.text(customer.address, 5, 57);
+        if (customer.address) doc.text(customer.address, 5, 47);
 
 
         autoTable(doc, {
-            startY: 65,
+            startY: 55,
             head: [['Item', 'Qty', 'Price', 'Total']],
             body: sale.items.map(item => [
                 item.productName,
