@@ -16,6 +16,8 @@ const getLocalDateString = (date = new Date()) => {
   return `${year}-${month}-${day}`;
 };
 
+const logoBase64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAArwAAAGgCAYAAAAX8y9yAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAACHrSURBVHhe7d0JmF1VffDxV4iIiAoggoiKICiICIoLgijgoiA4LriCC44LroigixZXRBRZBAUVQVwQEAQRBRFAUBAERQSo/P+9+e7n5M05c+6dO3fu3N/3fe/3JZlJcs5JJjfn3E8+JpEAAAAAgOq4P/kEAAAAAICH4AEAAACAB+ABAAAAgAfwAAAAAAAeAA8AAAAAeAAPAAD42V/84hd/85vfPDH5BADwIe5PfgEA/ORLX/rS6173upf85Cc/ffITAMAHeAAMAAD4qW9961u/+c1v/vKXvzzyCQAAn+ABAAD/9aMf/egFL3jBL3/5yx/+8Idf/OIXv/jFL97whjd86Utf+vKXvvTJT37y+9//ftavX3/ykz895vnnn//KV77yla985Stf+cpb3vKWt7zlLW95y1ve8pZ3vOMdf/nLX/7yl7/85S9/+ctf/vKzP/uzP/3pT3/605/+9Kc//elPf/rTn+YEAAB4ADwAAPgL73znO3/4wx/++Mc//vGPf/zjH//4xz/+8Y9//OMf//jHP/7xj3/84x//+Mc//vGPf/zjH//4xz/+8Y9//OMf//gzn/nMb37zm9/85je/+c1vfvOb3/zmN7/5zW9+85vf/OY3v/nNb37zm9/85je/+c1vfvPb3/72t7/97W9/+9vf/va3v/3tb3/729/+9re//e1vf/vb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W9/+9vf/va3v/3tb3/72t7/97W';
+
 interface SalesPageProps {
   setIsDirty: (isDirty: boolean) => void;
 }
@@ -37,14 +39,11 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     const [productSearchTerm, setProductSearchTerm] = useState('');
     const [isScanning, setIsScanning] = useState(false);
     
-    // State for the new "Add Customer" modal
     const [isAddingCustomer, setIsAddingCustomer] = useState(false);
     const [newCustomer, setNewCustomer] = useState({ id: '', name: '', phone: '', address: '', area: '', reference: '' });
 
-
     useEffect(() => {
         const formIsDirty = !!customerId || items.length > 0 || discount !== '0' || !!paymentDetails.amount;
-        // FIX: Coerce the potentially string result of the logical OR to a boolean using `!!`
         const newCustomerFormIsDirty = isAddingCustomer && !!(newCustomer.id || newCustomer.name || newCustomer.phone || newCustomer.address || newCustomer.area);
         setIsDirty(formIsDirty || newCustomerFormIsDirty);
 
@@ -137,7 +136,6 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         return totalBilled - totalPaid;
     }, [customerId, state.sales]);
 
-
     const handleAddCustomer = () => {
         const trimmedId = newCustomer.id.trim();
         if (!trimmedId) {
@@ -168,7 +166,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         dispatch({ type: 'ADD_CUSTOMER', payload: customerWithId });
         setNewCustomer({ id: '', name: '', phone: '', address: '', area: '', reference: '' });
         setIsAddingCustomer(false);
-        setCustomerId(customerWithId.id); // Automatically select the new customer
+        setCustomerId(customerWithId.id);
         showToast("Customer added successfully!");
     };
 
@@ -183,19 +181,31 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
           const centerX = pageWidth / 2;
           const margin = 5;
           const maxLineWidth = pageWidth - margin * 2;
-          let y = 12;
+          let y = 5;
 
-          doc.setFont('Times', 'italic');
-          doc.setFontSize(12);
-          doc.setTextColor('#000000');
-          doc.text('Om Namo Venkatesaya', centerX, y, { align: 'center' });
-          y += 7;
-
-          doc.setFont('Times', 'bold');
-          doc.setFontSize(16);
-          doc.setTextColor('#6a0dad');
-          doc.text('Bhavani Sarees', centerX, y, { align: 'center' });
-          y += 10;
+          const imgWidth = 60; 
+          const imgHeight = imgWidth / (696 / 392); // Maintain aspect ratio from 696x392
+          const imgX = (pageWidth - imgWidth) / 2;
+          
+          try {
+            doc.addImage(logoBase64, 'PNG', imgX, y, imgWidth, imgHeight);
+            y += imgHeight + 2; // Add spacing after image
+          } catch (err) {
+            console.error('Failed to add header image:', err);
+            // Fallback to text if image fails
+            y = 10;
+            doc.setFont('Times', 'italic');
+            doc.setFontSize(12);
+            doc.setTextColor('#000000');
+            doc.text('Om Namo Venkatesaya', centerX, y, { align: 'center' });
+            y += 7;
+            
+            doc.setFont('Times', 'bold');
+            doc.setFontSize(16);
+            doc.setTextColor('#6a0dad');
+            doc.text('Bhavani Sarees', centerX, y, { align: 'center' });
+            y += 7;
+          }
 
           doc.setDrawColor('#cccccc');
           doc.line(margin, y, pageWidth - margin, y);
@@ -218,8 +228,8 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
           y += 4;
           const addressLines = doc.splitTextToSize(customer.address, maxLineWidth);
           doc.text(addressLines, margin, y);
-          y += (addressLines.length * 4); // Adjust y based on number of lines
-          y += 2; // Some padding
+          y += (addressLines.length * 4);
+          y += 2;
 
           doc.setDrawColor('#000000');
           doc.line(margin, y, pageWidth - margin, y); 
@@ -281,18 +291,15 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
           return y;
         };
         
-        // 1. Create a dummy doc to calculate the final height of the content
         const dummyDoc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, 500] });
         const finalY = renderContentOnDoc(dummyDoc);
 
-        // 2. Create the actual doc with the calculated height + padding
         const doc = new jsPDF({
           orientation: 'p',
           unit: 'mm',
           format: [80, finalY + 5]
         });
 
-        // 3. Render the content for real on the correctly sized doc
         renderContentOnDoc(doc);
         
         const pdfBlob = doc.output('blob');
@@ -323,7 +330,6 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         alert(`Sale created successfully, but the PDF invoice could not be generated or shared. Error: ${(error as Error).message}`);
       }
     };
-
 
     const handleCompleteSale = async () => {
         if (!customerId || items.length === 0) {
@@ -585,63 +591,18 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                 )}
             </Card>
 
-            <Card title="Sale Items">
-                <div className="flex flex-col sm:flex-row gap-2">
-                    <Button onClick={() => setIsSelectingProduct(true)} className="w-full sm:w-auto flex-grow">
-                        <Search size={16} className="mr-2"/> Select Product from Stock
-                    </Button>
-                    <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full sm:w-auto flex-grow">
-                         <QrCode size={16} className="mr-2"/> Scan Product QR
-                    </Button>
-                </div>
-                {items.length > 0 && (
-                    <div className="mt-4 space-y-2">
-                        {items.map(item => (
-                            <div key={item.productId} className="flex justify-between items-center p-2 bg-gray-50 rounded animate-fade-in-fast">
-                                <div>
-                                    <p className="font-semibold">{item.productName}</p>
-                                    <p className="text-sm">{item.quantity} x ₹{item.price.toLocaleString('en-IN')}</p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <p>₹{(item.quantity * item.price).toLocaleString('en-IN')}</p>
-                                    <DeleteButton variant="remove" onClick={() => handleRemoveItem(item.productId)} />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </Card>
+            {customerId && !canRecordPayment && (
+                <Card title="Record Payment for Dues">
+                    <p className="text-sm text-gray-600 mb-2">To record a payment for existing dues, clear the items from the cart, then enter the payment details below.</p>
+                </Card>
+            )}
 
-            {(items.length > 0 || customerId) && (
-                <Card title={items.length > 0 ? 'Billing & Payment' : 'Record Standalone Payment'}>
-                    {items.length > 0 && (
-                        <div className="mb-4 space-y-2">
-                            <div className="flex justify-between text-gray-600">
-                                <span>Subtotal:</span>
-                                <span>₹{calculations.subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-gray-600">
-                                <span>Discount:</span>
-                                <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} className="w-28 p-1 border rounded text-right" />
-                            </div>
-                             <div className="flex justify-between text-gray-600">
-                                <span>GST Included:</span>
-                                <span>₹{calculations.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                            </div>
-                             <div className="mt-4 pt-4 border-t">
-                                <div className="p-4 bg-purple-50 rounded-lg text-center">
-                                    <p className="text-sm font-semibold text-gray-600">Grand Total</p>
-                                    <p className="text-4xl font-bold text-primary">
-                                        ₹{calculations.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+            {canRecordPayment ? (
+                <Card title="Record Payment for Dues">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Amount Paid</label>
-                            <input type="number" value={paymentDetails.amount} onChange={e => setPaymentDetails({...paymentDetails, amount: e.target.value })} placeholder={items.length > 0 ? `Total is ₹${calculations.totalAmount.toLocaleString('en-IN')}` : 'Enter amount to pay dues'} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500" />
+                            <input type="number" value={paymentDetails.amount} onChange={e => setPaymentDetails({...paymentDetails, amount: e.target.value })} placeholder={'Enter amount to pay dues'} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500" />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Payment Method</label>
@@ -661,6 +622,81 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                         </div>
                     </div>
                 </Card>
+            ) : (
+                <>
+                <Card title="Sale Items">
+                    <div className="flex flex-col sm:flex-row gap-2">
+                        <Button onClick={() => setIsSelectingProduct(true)} className="w-full sm:w-auto flex-grow" disabled={!customerId}>
+                            <Search size={16} className="mr-2"/> Select Product
+                        </Button>
+                        <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full sm:w-auto flex-grow" disabled={!customerId}>
+                             <QrCode size={16} className="mr-2"/> Scan Product
+                        </Button>
+                    </div>
+                    {items.length > 0 && (
+                        <div className="mt-4 space-y-2">
+                            {items.map(item => (
+                                <div key={item.productId} className="flex justify-between items-center p-2 bg-gray-50 rounded animate-fade-in-fast">
+                                    <div>
+                                        <p className="font-semibold">{item.productName}</p>
+                                        <p className="text-sm">{item.quantity} x ₹{item.price.toLocaleString('en-IN')}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <p>₹{(item.quantity * item.price).toLocaleString('en-IN')}</p>
+                                        <DeleteButton variant="remove" onClick={() => handleRemoveItem(item.productId)} />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </Card>
+                <Card title="Billing & Payment">
+                    <div className="mb-4 space-y-2">
+                        <div className="flex justify-between text-gray-600">
+                            <span>Subtotal:</span>
+                            <span>₹{calculations.subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-gray-600">
+                            <span>Discount:</span>
+                            <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} className="w-28 p-1 border rounded text-right" />
+                        </div>
+                         <div className="flex justify-between text-gray-600">
+                            <span>GST Included:</span>
+                            <span>₹{calculations.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                         <div className="mt-4 pt-4 border-t">
+                            <div className="p-4 bg-purple-50 rounded-lg text-center">
+                                <p className="text-sm font-semibold text-gray-600">Grand Total</p>
+                                <p className="text-4xl font-bold text-primary">
+                                    ₹{calculations.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Amount Paid</label>
+                            <input type="number" value={paymentDetails.amount} onChange={e => setPaymentDetails({...paymentDetails, amount: e.target.value })} placeholder={`Total is ₹${calculations.totalAmount.toLocaleString('en-IN')}`} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Payment Method</label>
+                            <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any})} className="w-full p-2 border rounded custom-select">
+                                <option value="CASH">Cash</option>
+                                <option value="UPI">UPI</option>
+                                <option value="CHEQUE">Cheque</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Payment Date</label>
+                            <input type="date" value={paymentDetails.date} onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} className="w-full p-2 border rounded" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Payment Reference (Optional)</label>
+                            <input type="text" value={paymentDetails.reference} onChange={e => setPaymentDetails({ ...paymentDetails, reference: e.target.value })} placeholder="e.g. Transaction ID, Cheque No." className="w-full p-2 border rounded" />
+                        </div>
+                    </div>
+                </Card>
+                </>
             )}
 
             <div className="space-y-2">
@@ -676,7 +712,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                     </Button>
                 ) : (
                      <Button className="w-full" disabled>
-                        {customerId ? (items.length === 0 ? 'Add items or enter payment amount' : 'Add items to cart') : 'Select a customer to begin'}
+                        {customerId ? (items.length === 0 ? 'Enter payment amount or add items' : 'Complete billing details') : 'Select a customer to begin'}
                     </Button>
                 )}
                 <Button onClick={resetForm} variant="secondary" className="w-full">Clear Form</Button>
