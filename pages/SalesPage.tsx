@@ -9,30 +9,37 @@ import { Html5Qrcode } from 'html5-qrcode';
 import DeleteButton from '../components/DeleteButton';
 
 
-const svgToPng = (svgData: string, width: number, height: number): Promise<string> => {
+const svgToPng = (svgString: string, width: number, height: number): Promise<string> => {
     return new Promise((resolve, reject) => {
+        const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+
         const img = new Image();
-        img.src = svgData;
 
         img.onload = () => {
             const canvas = document.createElement('canvas');
-            const scale = 3; // Render at 3x resolution for better quality in PDF
+            const scale = 3; // Render at 3x resolution for better quality
             canvas.width = width * scale;
             canvas.height = height * scale;
             const ctx = canvas.getContext('2d');
             if (ctx) {
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                 const pngData = canvas.toDataURL('image/png');
+                URL.revokeObjectURL(url); // Clean up
                 resolve(pngData);
             } else {
+                URL.revokeObjectURL(url);
                 reject(new Error('Could not get canvas context for image conversion.'));
             }
         };
 
         img.onerror = (e) => {
+            URL.revokeObjectURL(url);
             console.error("SVG to PNG conversion failed:", e);
             reject(new Error('Failed to load SVG image for PDF.'));
         };
+        
+        img.src = url;
     });
 };
 
@@ -186,9 +193,9 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
 
     const generateAndSharePDF = async (sale: Sale, customer: Customer, paidAmountOnSale: number) => {
       try {
-        const VENKATESHWARA_LOGO_SVG = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNTAiIHZpZXdCb3g9IjAgMCA0MCA1MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNNCA1QzQgMjAgMjAgNDggMjAgNDhDMjAgNDggMzYgMjAgMzYgNSIgc3Ryb2tlPSIjNmEwZGFkIiBzdHJva2Utd2lkdGg9IjMiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxsaW5lIHgxPSIyMCIgeTE9IjEwIiB4Mj0iMjAiIHkyPSI0NSIgc3Ryb2tlPSIjRkZCRjAwIiBzdHJva2Utd2lkdGg9IjYiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxsaW5lIHgxPSIyMCIgeTE9IjEwIiB4Mj0iMjAiIHkyPSI0NSIgc3Ryb2tlPSIjQzQxRTNBIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvc3ZnPg==';
-        const SANKU_LOGO_SVG = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNNi4zMjAxOCAxMy44QzQuOTYwMTggMTAuMyA3LjQxMDE4IDQuMjMgMTIuMzcwMiAzLjMyQzE3LjMzMDIgMi40MSAyMS4yMTAyIDYuNjQgMjAuMTYwMiAxMS42MkMxOS4xMTAyIDE2LjYgMTMuMjEwMiAxOS43OCA4LjM3MDE4IDE4LjY2IiBzdHJva2U9IiM2YTBkYWQiIHN0cm9rZS1widthPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xMy45OCAzLjVDMTMuMzMgNS4wOCAxMi41MyA2LjU3IDExLjU5IDcuOTYiIHN0cm9rZT0iIzZhMGRhZCIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xOC4zMDAyIDE2LjA2QzE5LjU5MDIgMTcuNjUgMjAuNTAwMiAxOS4yOSAyMS4wMDAyIDIxIiBzdHJva2U9IiM2YTBkYWQiIHN0cm9rZS1widthPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg==';
-        const CHAKRA_LOGO_SVG = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTIgMjFDMTYuOTcwNiAyMSAyMSAxNi45NzA2IDIxIDEyQzIxIDcuMDI5NDQgMTYuOTcwNiAzIDEyIDNDNy4wMjk0NCAzIDMgNy4wMjk0NCAzIDEyQzMgMTYuOTcwNiA3LjAyOTQ0IDIxIDEyIDIxWiIgc3Ryb2tlPSIjNmEwZGFkIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PHBhdGggZD0iTTEyIDE1QzEzLjY1NjkgMTUgMTUgMTMuNjU2OSAxNSAxMkMxNSAxMC4zNDMxIDEzLjY1NjkgOSAxMiA5QzEwLjM0MzEgOSAxMCAxMC4zNDMxIDEwIDEyQzEwIDEzLjY1NjkgMTAuMzQzMSAxNSAxMiAxNVoiIHN0cm9rZT0iIzZhMGRhZCIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xOS4wNyA0LjkzMDA1TDE3IDcuMDAwMDVNNC45MyAxOS4wN0w3IDE3TTE5LjA3IDE5LjA3TDE3IDE3TTQuOTMgNC45MzAwNUw3IDcuMDAwMDUiIHN0cm9rZT0iIzZhMGRhZCIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg==';
+        const VENKATESHWARA_LOGO_SVG = `<svg width="40" height="50" viewBox="0 0 40 50" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 5C4 20 20 48 20 48C20 48 36 20 36 5" stroke="#6a0dad" stroke-width="3" fill="none" stroke-linecap="round"/><line x1="20" y1="10" x2="20" y2="45" stroke="#FFBF00" stroke-width="6" stroke-linecap="round"/><line x1="20" y1="10" x2="20" y2="45" stroke="#C41E3A" stroke-width="3" stroke-linecap="round"/></svg>`;
+        const SANKU_LOGO_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.32018 13.8C4.96018 10.3 7.41018 4.23 12.3702 3.32C17.3302 2.41 21.2102 6.64 20.1602 11.62C19.1102 16.6 13.2102 19.78 8.37018 18.66" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.98 3.5C13.33 5.08 12.53 6.57 11.59 7.96" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.3002 16.06C19.5902 17.65 20.5002 19.29 21.0002 21" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+        const CHAKRA_LOGO_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 16.9706 7.02944 21 12 21Z" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 10 10.3431 10 12C10 13.6569 10.3431 15 12 15Z" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.07 4.93005L17 7.00005M4.93 19.07L7 17M19.07 19.07L17 17M4.93 4.93005L7 7.00005" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
         
         const [venkateshwaraPng, sankuPng, chakraPng] = await Promise.all([
             svgToPng(VENKATESHWARA_LOGO_SVG, 20, 25),
