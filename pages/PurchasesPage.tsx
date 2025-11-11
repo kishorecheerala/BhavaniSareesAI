@@ -1,3 +1,4 @@
+
 // FIX: import useMemo from react.
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Plus, Upload, IndianRupee, Edit, Save, X, Trash2, Search, QrCode, Package } from 'lucide-react';
@@ -728,25 +729,6 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                     className="w-full p-2 pl-10 border rounded-lg"
                 />
             </div>
-            
-             <Card title="Bulk Import Products (CSV)">
-                <p className="text-sm text-gray-600 mb-2">
-                    Quickly add multiple products by uploading a CSV file. The file must have these columns: <code>id,name,purchasePrice,salePrice,gstPercent,quantity</code>.
-                </p>
-                <input
-                    type="file"
-                    accept=".csv,text/csv,application/vnd.ms-excel,text/plain"
-                    className="hidden"
-                    ref={csvInputRef}
-                    onChange={handleImportCSV}
-                />
-                <Button onClick={() => csvInputRef.current?.click()} variant="secondary">
-                    <Upload className="w-4 h-4 mr-2" /> Select CSV to Import
-                </Button>
-                <p className="text-xs text-gray-500 mt-2">
-                    Note: This adds items to the current purchase form. You still need to select a supplier and complete the purchase.
-                </p>
-            </Card>
 
             <div className="space-y-3">
                 {filteredSuppliers.map(supplier => {
