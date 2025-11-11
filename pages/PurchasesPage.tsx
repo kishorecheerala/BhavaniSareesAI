@@ -488,81 +488,108 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                     <div className="space-y-4">
                         <select value={purchaseSupplierId} onChange={e => setPurchaseSupplierId(e.target.value)} className="w-full p-2 border rounded custom-select">
                             <option value="">Select a Supplier</option>
-                            {state.suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                            {state.suppliers.map(s => <option key={s.id} value={s.id}>{s.name} - {s.location}</option>)}
                         </select>
                         <input type="text" placeholder="Supplier Invoice ID (Optional)" value={supplierInvoiceId} onChange={e => setSupplierInvoiceId(e.target.value)} className="w-full p-2 border rounded" />
-                        <input type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} className="w-full p-2 border rounded" />
                     </div>
                  </Card>
                  <Card title="Purchase Items">
-                    <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2 mb-4">
                         <Button onClick={() => setIsAddingProduct(true)} className="w-full"><Plus size={16}/> Add New Product</Button>
-                        <Button onClick={() => setIsSelectingProduct(true)} variant="secondary" className="w-full"><Search size={16}/> Select Existing</Button>
+                        <Button onClick={() => setIsSelectingProduct(true)} variant="secondary" className="w-full"><Search size={16}/> Select Existing Product</Button>
                         <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full"><QrCode size={16}/> Scan Product</Button>
                     </div>
-                     {purchaseItems.length > 0 && (
-                        <div className="mt-4 space-y-2">
-                            {purchaseItems.map(item => (
-                                <div key={item.productId} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                                    <div><p className="font-semibold">{item.productName}</p><p className="text-sm">{item.quantity} x ₹{item.price.toLocaleString('en-IN')}</p></div>
-                                    <div className="flex items-center gap-2">
-                                        <p>₹{(item.quantity * item.price).toLocaleString('en-IN')}</p>
-                                        <DeleteButton variant="remove" onClick={() => setPurchaseItems(purchaseItems.filter(i => i.productId !== item.productId))} />
-                                    </div>
+                    <div className="space-y-2">
+                        {purchaseItems.map(item => (
+                            <div key={item.productId} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                                <div>
+                                    <p className="font-semibold">{item.productName}</p>
+                                    <p className="text-sm">{item.quantity} x ₹{item.price.toLocaleString('en-IN')}</p>
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                                <div className="flex items-center gap-2">
+                                    <p>₹{(item.quantity * item.price).toLocaleString('en-IN')}</p>
+                                    <DeleteButton variant="remove" onClick={() => setPurchaseItems(purchaseItems.filter(i => i.productId !== item.productId))} />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                  </Card>
-                  <Card title="Billing & Payment">
-                     <div className="p-4 bg-purple-50 rounded-lg text-center mb-4">
-                        <p className="text-sm font-semibold">Total Amount</p>
+                 <Card title="Billing Summary">
+                     <div className="p-4 bg-purple-50 rounded-lg text-center">
+                        <p className="text-sm font-semibold text-gray-600">Total Amount</p>
                         <p className="text-4xl font-bold text-primary">₹{totalPurchaseAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                     </div>
+                 </Card>
+                 <Card title="Payment">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input type="number" placeholder="Amount Paid Now" value={purchasePaymentAmount} onChange={e => setPurchasePaymentAmount(e.target.value)} className="w-full p-2 border rounded" />
-                        <select value={purchasePaymentMethod} onChange={e => setPurchasePaymentMethod(e.target.value as any)} className="w-full p-2 border rounded custom-select">
-                             <option value="CASH">Cash</option>
-                             <option value="UPI">UPI</option>
-                             <option value="CHEQUE">Cheque</option>
-                        </select>
+                        <div>
+                            <label className="block text-sm font-medium">Amount Paid Now</label>
+                            <input type="number" placeholder={`Total is ₹${totalPurchaseAmount.toLocaleString('en-IN')}`} value={purchasePaymentAmount} onChange={e => setPurchasePaymentAmount(e.target.value)} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium">Payment Method</label>
+                            <select value={purchasePaymentMethod} onChange={e => setPurchasePaymentMethod(e.target.value as any)} className="w-full p-2 border rounded custom-select">
+                                <option value="CASH">Cash</option>
+                                <option value="UPI">UPI</option>
+                                <option value="CHEQUE">Cheque</option>
+                            </select>
+                        </div>
+                        <div className="md:col-span-2">
+                             <label className="block text-sm font-medium">Purchase Date</label>
+                             <input type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} className="w-full p-2 border rounded" />
+                        </div>
                     </div>
                  </Card>
                  <Button onClick={handleCompletePurchase} className="w-full">Complete Purchase</Button>
+                 <Button onClick={resetAddPurchaseForm} variant="secondary" className="w-full">Clear Form</Button>
             </div>
         );
     }
-    
+
+    // Default 'list' view
     return (
         <div className="space-y-4">
             <h1 className="text-2xl font-bold text-primary">Purchases & Suppliers</h1>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Button onClick={() => setView('add_purchase')} className="w-full h-16"><Package className="w-5 h-5 mr-2"/>Create New Purchase</Button>
-                <Button onClick={() => setView('add_supplier')} className="w-full h-16"><Plus className="w-5 h-5 mr-2"/>Add New Supplier</Button>
+            <div className="flex flex-col sm:flex-row gap-4">
+                <Button onClick={() => setView('add_purchase')} className="w-full">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create New Purchase
+                </Button>
+                <Button onClick={() => setView('add_supplier')} variant="secondary" className="w-full">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add New Supplier
+                </Button>
             </div>
+
             <Card title="All Suppliers">
                 <div className="space-y-3">
                     {state.suppliers.map(supplier => {
-                        const purchases = state.purchases.filter(p => p.supplierId === supplier.id);
-                        const totalBilled = purchases.reduce((sum, p) => sum + p.totalAmount, 0);
-                        const totalPaid = purchases.reduce((sum, p) => sum + (p.payments || []).reduce((pSum, pay) => pSum + pay.amount, 0), 0);
-                        const totalDue = totalBilled - totalPaid;
+                        const supplierPurchases = state.purchases.filter(p => p.supplierId === supplier.id);
+                        const totalSpent = supplierPurchases.reduce((sum, p) => sum + p.totalAmount, 0);
+                        const totalPaid = supplierPurchases.reduce((sum, p) => sum + (p.payments || []).reduce((pSum, payment) => pSum + payment.amount, 0), 0);
+                        const totalDue = totalSpent - totalPaid;
 
                         return (
-                            <Card key={supplier.id} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setSelectedSupplier(supplier)}>
+                            <div key={supplier.id} onClick={() => setSelectedSupplier(supplier)} className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-purple-100 border">
                                 <div className="flex justify-between items-start">
                                     <div>
                                         <p className="font-bold text-lg text-primary">{supplier.name}</p>
                                         <p className="text-sm text-gray-500">{supplier.location}</p>
                                     </div>
-                                    <div className="text-right">
-                                        <p className={`font-semibold ${totalDue > 0 ? 'text-red-600' : 'text-gray-600'}`}>Due: ₹{totalDue.toLocaleString('en-IN')}</p>
+                                    <div className="text-right flex-shrink-0 ml-4">
+                                        <div className="flex items-center justify-end gap-1 text-green-600">
+                                            <Package size={14}/>
+                                            <span className="font-semibold">₹{totalSpent.toLocaleString('en-IN')}</span>
+                                        </div>
+                                        <div className={`flex items-center justify-end gap-1 ${totalDue > 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                                            <IndianRupee size={14} />
+                                            <span className="font-semibold">₹{totalDue.toLocaleString('en-IN')}</span>
+                                        </div>
                                     </div>
                                 </div>
-                            </Card>
+                            </div>
                         );
                     })}
-                     {state.suppliers.length === 0 && <p className="text-center text-gray-500">No suppliers added yet.</p>}
                 </div>
             </Card>
         </div>
