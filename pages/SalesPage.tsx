@@ -193,14 +193,47 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
 
     const generateAndSharePDF = async (sale: Sale, customer: Customer, paidAmountOnSale: number) => {
       try {
-        const VENKATESHWARA_LOGO_SVG = `<svg width="40" height="50" viewBox="0 0 40 50" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 5C4 20 20 48 20 48C20 48 36 20 36 5" stroke="#6a0dad" stroke-width="3" fill="none" stroke-linecap="round"/><line x1="20" y1="10" x2="20" y2="45" stroke="#FFBF00" stroke-width="6" stroke-linecap="round"/><line x1="20" y1="10" x2="20" y2="45" stroke="#C41E3A" stroke-width="3" stroke-linecap="round"/></svg>`;
-        const SANKU_LOGO_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.32018 13.8C4.96018 10.3 7.41018 4.23 12.3702 3.32C17.3302 2.41 21.2102 6.64 20.1602 11.62C19.1102 16.6 13.2102 19.78 8.37018 18.66" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.98 3.5C13.33 5.08 12.53 6.57 11.59 7.96" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.3002 16.06C19.5902 17.65 20.5002 19.29 21.0002 21" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-        const CHAKRA_LOGO_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 16.9706 7.02944 21 12 21Z" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 10 10.3431 10 12C10 13.6569 10.3431 15 12 15Z" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.07 4.93005L17 7.00005M4.93 19.07L7 17M19.07 19.07L17 17M4.93 4.93005L7 7.00005" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+        const VENKATESHWARA_LOGO_SVG = `
+<svg width="40" height="50" viewBox="0 0 40 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M5 5C5.00001 22 13 38 20 48C27 38 35 22 35 5" stroke="#6a0dad" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M20 8.35291V43" stroke="#C41E3A" stroke-width="4" stroke-linecap="round"/>
+  <path d="M20 8.35291V43" stroke="#FFBF00" stroke-width="2" stroke-linecap="round"/>
+  <path d="M14 42C16.3333 45.3333 23.6 45.4 26 42" stroke="#6a0dad" stroke-width="3" stroke-linecap="round"/>
+</svg>`;
+
+        const SANKU_LOGO_SVG = `
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M10.3283 15.3188C8.25333 12.8278 8.65333 8.34983 11.5313 6.09683C14.4093 3.84383 18.2563 4.29583 20.1743 7.03183C22.0923 9.76783 21.3533 13.9788 18.4753 16.2318C15.5973 18.4848 12.4033 17.8098 10.3283 15.3188Z" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M10.3284 15.3188C8.80543 16.8928 6.57843 18.0008 3.99943 18.0008" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M15.8193 6.00002C14.1593 7.63302 12.4283 9.17202 10.6303 10.632" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
         
+        const CHAKRA_LOGO_SVG = `
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="12" cy="12" r="9" stroke="#6a0dad" stroke-width="1.5"/>
+  <circle cx="12" cy="12" r="3" stroke="#6a0dad" stroke-width="1.5"/>
+  <path d="M12 3V6" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M21 12H18" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M12 21V18" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M3 12H6" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M18.364 5.63604L16.2427 7.75736" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M18.364 18.364L16.2427 16.2426" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M5.63608 18.364L7.7574 16.2426" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M5.63608 5.63604L7.7574 7.75736" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M13 3.05078L15 2" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M20.9492 11L22 9" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M20.9492 13L22 15" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M13 20.9492L15 22" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M11 20.9492L9 22" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M3.05078 13L2 15" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M3.05078 11L2 9" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M11 3.05078L9 2" stroke="#6a0dad" stroke-width="1.5" stroke-linecap="round"/>
+</svg>`;
+
         const [venkateshwaraPng, sankuPng, chakraPng] = await Promise.all([
             svgToPng(VENKATESHWARA_LOGO_SVG, 20, 25),
-            svgToPng(SANKU_LOGO_SVG, 10, 10),
-            svgToPng(CHAKRA_LOGO_SVG, 10, 10)
+            svgToPng(SANKU_LOGO_SVG, 12, 12),
+            svgToPng(CHAKRA_LOGO_SVG, 12, 12)
         ]);
 
         const renderContentOnDoc = (doc: jsPDF) => {
@@ -229,12 +262,12 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
           const businessName = 'Bhavani Sarees';
           const businessNameWidth = doc.getTextWidth(businessName);
           const businessNameX = centerX - (businessNameWidth / 2);
-          const sankuX = businessNameX - 12; // 10 for image width + 2 for padding
+          const sankuX = businessNameX - 14; 
           const chakraX = businessNameX + businessNameWidth + 2;
 
-          doc.addImage(sankuPng, 'PNG', sankuX, y - 8, 10, 10);
+          doc.addImage(sankuPng, 'PNG', sankuX, y - 8, 12, 12);
           doc.text(businessName, centerX, y, { align: 'center' });
-          doc.addImage(chakraPng, 'PNG', chakraX, y - 8, 10, 10);
+          doc.addImage(chakraPng, 'PNG', chakraX, y - 8, 12, 12);
           y += 10;
           
           doc.setDrawColor('#cccccc');
