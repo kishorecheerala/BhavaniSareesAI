@@ -26,8 +26,8 @@ const Toast = () => {
     const isSuccess = state.toast.type === 'success';
 
     const toastClasses = isSuccess
-        ? "fixed top-5 left-1/2 -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded-full shadow-lg z-50 animate-fade-in-out"
-        : "fixed bottom-20 left-1/2 -translate-x-1/2 bg-gray-800 bg-opacity-90 text-white px-5 py-3 rounded-full shadow-lg z-50 animate-fade-in-out";
+        ? "fixed top-5 left-1/2 -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded-full shadow-lg z-[200] animate-fade-in-out"
+        : "fixed bottom-20 left-1/2 -translate-x-1/2 bg-gray-800 bg-opacity-90 text-white px-5 py-3 rounded-full shadow-lg z-[200] animate-fade-in-out";
 
     return (
         <div className={toastClasses}>

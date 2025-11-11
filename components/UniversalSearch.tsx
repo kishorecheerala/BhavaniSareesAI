@@ -80,7 +80,7 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({ isOpen, onClose, onNa
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-background z-[100] flex flex-col p-4 animate-fade-in-fast" role="dialog" aria-modal="true">
+        <div className="fixed inset-x-0 top-0 bottom-20 bg-background z-[100] flex flex-col p-4 animate-fade-in-fast" role="dialog" aria-modal="true">
             <div className="flex items-center gap-4 mb-4">
                 <div className="relative flex-grow">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
