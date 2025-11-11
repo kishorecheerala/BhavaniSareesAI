@@ -1,3 +1,4 @@
+
 import React, { createContext, useReducer, useContext, useEffect, ReactNode, useState } from 'react';
 import { Customer, Supplier, Product, Sale, Purchase, Return, Payment, BeforeInstallPromptEvent } from '../types';
 import * as db from '../utils/db';
@@ -6,6 +7,7 @@ import { Page } from '../App';
 interface ToastState {
   message: string;
   show: boolean;
+  type: 'success' | 'info';
 }
 
 interface AppMetadata {
@@ -42,7 +44,7 @@ type Action =
   | { type: 'ADD_RETURN'; payload: Return }
   | { type: 'ADD_PAYMENT_TO_SALE'; payload: { saleId: string; payment: Payment } }
   | { type: 'ADD_PAYMENT_TO_PURCHASE'; payload: { purchaseId: string; payment: Payment } }
-  | { type: 'SHOW_TOAST'; payload: string }
+  | { type: 'SHOW_TOAST'; payload: { message: string; type?: 'success' | 'info' } }
   | { type: 'HIDE_TOAST' }
   | { type: 'SET_LAST_BACKUP_DATE'; payload: string }
   | { type: 'SET_SELECTION'; payload: { page: Page; id: string } }
@@ -58,7 +60,7 @@ const initialState: AppState = {
   purchases: [],
   returns: [],
   app_metadata: [],
-  toast: { message: '', show: false },
+  toast: { message: '', show: false, type: 'info' },
   selection: null,
   installPromptEvent: null,
 };
@@ -199,7 +201,7 @@ const appReducer = (state: AppState, action: Action): AppState => {
         ),
       };
     case 'SHOW_TOAST':
-        return { ...state, toast: { message: action.payload, show: true } };
+        return { ...state, toast: { message: action.payload.message, show: true, type: action.payload.type || 'info' } };
     case 'HIDE_TOAST':
         return { ...state, toast: { ...state.toast, show: false } };
     case 'SET_LAST_BACKUP_DATE':
@@ -281,7 +283,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
 
   const showToast = (message: string) => {
-    dispatch({ type: 'SHOW_TOAST', payload: message });
+    dispatch({ type: 'SHOW_TOAST', payload: { message, type: 'success' } });
     setTimeout(() => {
         dispatch({ type: 'HIDE_TOAST' });
     }, 3000);

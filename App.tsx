@@ -19,12 +19,18 @@ import { BeforeInstallPromptEvent } from './types';
 export type Page = 'DASHBOARD' | 'CUSTOMERS' | 'SALES' | 'PURCHASES' | 'REPORTS' | 'RETURNS' | 'PRODUCTS';
 
 const Toast = () => {
-    const { state, dispatch } = useAppContext();
+    const { state } = useAppContext();
 
     if (!state.toast.show) return null;
 
+    const isSuccess = state.toast.type === 'success';
+
+    const toastClasses = isSuccess
+        ? "fixed top-5 left-1/2 -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded-full shadow-lg z-50 animate-fade-in-out"
+        : "fixed bottom-20 left-1/2 -translate-x-1/2 bg-gray-800 bg-opacity-90 text-white px-5 py-3 rounded-full shadow-lg z-50 animate-fade-in-out";
+
     return (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded-full shadow-lg z-50 animate-fade-in-out">
+        <div className={toastClasses}>
             {state.toast.message}
         </div>
     );
@@ -38,8 +44,7 @@ const MainApp: React.FC = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const { dispatch } = useAppContext();
-  const currentPageRef = useRef(currentPage);
-  currentPageRef.current = currentPage;
+  const canExitApp = useRef(false);
 
   useEffect(() => {
     sessionStorage.setItem('currentPage', currentPage);
@@ -47,21 +52,48 @@ const MainApp: React.FC = () => {
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
-        // Prevent the mini-infobar from appearing on mobile
         e.preventDefault();
-        // Stash the event so it can be triggered later.
         dispatch({ type: 'SET_INSTALL_PROMPT_EVENT', payload: e as BeforeInstallPromptEvent });
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    return () => {
-        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    };
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, [dispatch]);
 
+  useEffect(() => {
+    // Add a second state to the history stack so we can intercept the first back press
+    window.history.pushState(null, '', window.location.href);
+
+    const handlePopState = (event: PopStateEvent) => {
+      if (canExitApp.current) {
+        // Second back press, allow app to exit.
+        // We need to go back one more time to exit the PWA.
+        window.history.back();
+        return;
+      }
+
+      // First back press, trap it.
+      // Push the state again to keep the user on the current page
+      window.history.pushState(null, '', window.location.href);
+
+      canExitApp.current = true;
+      dispatch({ type: 'SHOW_TOAST', payload: { message: 'Press back again to exit', type: 'info' } });
+
+      setTimeout(() => {
+        canExitApp.current = false;
+      }, 2000); // 2-second window to exit
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [dispatch]); // Run only once on mount
+
+
   const setCurrentPage = (page: Page) => {
-    if (page === currentPageRef.current) {
+    if (page === currentPage) {
         return;
     }
 
