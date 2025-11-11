@@ -608,7 +608,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Amount Paid</label>
-                            <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} placeholder={items.length > 0 ? `Total is ₹${calculations.totalAmount.toLocaleString('en-IN')}` : 'Enter amount to pay dues'} className="w-full p-2 border rounded" />
+                            <input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} placeholder={items.length > 0 ? `Total is ₹${calculations.totalAmount.toLocaleString('en-IN')}` : 'Enter amount to pay dues'} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500" />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Payment Method</label>
