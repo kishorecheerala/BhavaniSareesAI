@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Download, Filter, XCircle } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Customer } from '../types';
@@ -52,6 +52,28 @@ const ReportsPage: React.FC = () => {
     const filteredDues = selectedArea 
         ? customerDuesArray.filter(c => c.area.toLowerCase() === selectedArea.toLowerCase())
         : customerDuesArray;
+
+    const salesByCustomer = useMemo(() => {
+        const customerSalesSummary: { [key: string]: { customer: Customer; totalSales: number; totalPaid: number; } } = {};
+
+        filteredSalesByDate.forEach(sale => {
+            const customer = state.customers.find(c => c.id === sale.customerId);
+            if (customer) {
+                if (!customerSalesSummary[customer.id]) {
+                    customerSalesSummary[customer.id] = {
+                        customer,
+                        totalSales: 0,
+                        totalPaid: 0,
+                    };
+                }
+                customerSalesSummary[customer.id].totalSales += sale.totalAmount;
+                const paidForThisSale = (sale.payments || []).reduce((sum, p) => sum + p.amount, 0);
+                customerSalesSummary[customer.id].totalPaid += paidForThisSale;
+            }
+        });
+
+        return Object.values(customerSalesSummary).sort((a, b) => b.totalSales - a.totalSales);
+    }, [filteredSalesByDate, state.customers]);
 
     const uniqueAreas = [...new Set(state.customers.map(c => c.area))];
 
@@ -146,11 +168,11 @@ const ReportsPage: React.FC = () => {
         <div className="space-y-4">
             <h1 className="text-2xl font-bold text-primary">Reports</h1>
             
-            <Card title="Customer Dues Collection List">
+            <Card title="Report Filters">
                 <div className="flex flex-col gap-4 mb-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="relative">
-                            <label htmlFor="areaFilter" className="block text-sm font-medium text-gray-700 mb-1">Filter by Area</label>
+                            <label htmlFor="areaFilter" className="block text-sm font-medium text-gray-700 mb-1">Filter by Area (Dues Report)</label>
                             <Filter className="absolute left-3 bottom-2.5 text-gray-400" size={20} />
                             <select
                                 id="areaFilter"
@@ -171,13 +193,16 @@ const ReportsPage: React.FC = () => {
                             <input id="endDate" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full p-2 border rounded-lg" />
                         </div>
                     </div>
-                    <div className="flex flex-col sm:flex-row gap-4">
-                        <Button onClick={generatePDF} className="w-full sm:w-auto"><Download className="w-4 h-4 mr-2" />Export PDF</Button>
-                        <Button onClick={generateCSV} variant="secondary" className="w-full sm:w-auto"><Download className="w-4 h-4 mr-2" />Export CSV</Button>
-                        <Button onClick={handleClearFilters} variant="danger" className="w-full sm:w-auto sm:ml-auto"><XCircle className="w-4 h-4 mr-2" />Clear Filters</Button>
+                     <div className="flex items-center gap-4">
+                        <p className="text-sm font-medium text-gray-700">Actions:</p>
+                        <Button onClick={generatePDF}><Download className="w-4 h-4 mr-2" />Export Dues (PDF)</Button>
+                        <Button onClick={generateCSV} variant="secondary"><Download className="w-4 h-4 mr-2" />Export Dues (CSV)</Button>
+                        <Button onClick={handleClearFilters} variant="danger" className="ml-auto"><XCircle className="w-4 h-4 mr-2" />Clear Filters</Button>
                     </div>
                 </div>
-                
+            </Card>
+
+            <Card title="Customer Dues Collection List">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
                         <thead className="bg-gray-100">
@@ -199,6 +224,38 @@ const ReportsPage: React.FC = () => {
                             )) : (
                                 <tr>
                                     <td colSpan={4} className="text-center text-gray-500 p-4">No dues found for the selected filters.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </Card>
+
+            <Card title="Sales by Customer Summary">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                        <thead className="bg-gray-100">
+                            <tr>
+                                <th className="p-2">Customer</th>
+                                <th className="p-2 text-right">Total Sales</th>
+                                <th className="p-2 text-right">Total Paid</th>
+                                <th className="p-2 text-right">Total Dues</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {salesByCustomer.length > 0 ? salesByCustomer.map(({ customer, totalSales, totalPaid }) => {
+                                const totalDue = totalSales - totalPaid;
+                                return (
+                                    <tr key={customer.id} className="border-b">
+                                        <td className="p-2 font-medium">{customer.name} <span className="text-gray-500">({customer.area})</span></td>
+                                        <td className="p-2 text-right font-semibold text-green-600">₹{totalSales.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                                        <td className="p-2 text-right font-semibold text-blue-600">₹{totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                                        <td className={`p-2 text-right font-bold ${totalDue > 0.01 ? 'text-red-600' : 'text-gray-600'}`}>₹{totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                                    </tr>
+                                );
+                            }) : (
+                                <tr>
+                                    <td colSpan={4} className="text-center text-gray-500 p-4">No sales data for the selected filters.</td>
                                 </tr>
                             )}
                         </tbody>
