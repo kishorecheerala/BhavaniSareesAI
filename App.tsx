@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle } from 'lucide-react';
 
@@ -60,28 +61,37 @@ const MainApp: React.FC = () => {
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, [dispatch]);
 
+  // Unified popstate handler for back button navigation
   useEffect(() => {
-    // Add a second state to the history stack so we can intercept the first back press
-    window.history.pushState(null, '', window.location.href);
+    // This state is pushed when the app loads, to trap the first back press.
+    window.history.pushState({ guard: 'exit' }, '');
 
     const handlePopState = (event: PopStateEvent) => {
-      if (canExitApp.current) {
-        // Second back press, allow app to exit.
-        // We need to go back one more time to exit the PWA.
-        window.history.back();
-        return;
+      // If the search modal is open, the back button press should close it.
+      // The `popstate` event means the history has already changed, so we just sync our UI state.
+      if (isSearchOpen) {
+        setIsSearchOpen(false);
+        return; // Stop further execution
       }
+      
+      // If we are here, it means no modal was open. Handle the double-press-to-exit logic.
+      if (event.state?.guard === 'exit') {
+        if (canExitApp.current) {
+          // Second back press: actually exit.
+          window.history.back();
+          return;
+        }
 
-      // First back press, trap it.
-      // Push the state again to keep the user on the current page
-      window.history.pushState(null, '', window.location.href);
+        // First back press: trap it and show a toast.
+        window.history.pushState({ guard: 'exit' }, '');
 
-      canExitApp.current = true;
-      dispatch({ type: 'SHOW_TOAST', payload: { message: 'Press back again to exit', type: 'info' } });
+        canExitApp.current = true;
+        dispatch({ type: 'SHOW_TOAST', payload: { message: 'Press back again to exit', type: 'info' } });
 
-      setTimeout(() => {
-        canExitApp.current = false;
-      }, 2000); // 2-second window to exit
+        setTimeout(() => {
+          canExitApp.current = false;
+        }, 2000);
+      }
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -89,8 +99,19 @@ const MainApp: React.FC = () => {
     return () => {
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [dispatch]); // Run only once on mount
+  }, [dispatch, isSearchOpen]); // Depend on isSearchOpen to correctly handle logic inside the listener.
 
+  const openSearch = () => {
+    // Push a new state for the search modal so the back button will close it.
+    window.history.pushState({ modal: 'search' }, '');
+    setIsSearchOpen(true);
+  };
+
+  const closeSearch = () => {
+    // To close the modal, we trigger a history.back(). The popstate listener
+    // will then see this and update the isSearchOpen state to false.
+    window.history.back();
+  };
 
   const setCurrentPage = (page: Page) => {
     if (page === currentPage) {
@@ -110,7 +131,8 @@ const MainApp: React.FC = () => {
   const handleSearchResultClick = (page: Page, id: string) => {
     dispatch({ type: 'SET_SELECTION', payload: { page, id } });
     _setCurrentPage(page);
-    setIsSearchOpen(false);
+    // When navigating from search, we also need to close it.
+    closeSearch();
   };
 
   useEffect(() => {
@@ -167,11 +189,11 @@ const MainApp: React.FC = () => {
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       <UniversalSearch 
         isOpen={isSearchOpen} 
-        onClose={() => setIsSearchOpen(false)} 
+        onClose={closeSearch} 
         onNavigate={handleSearchResultClick} 
       />
       <header className="bg-gradient-to-r from-primary to-secondary text-white shadow-md p-4 flex items-center justify-between">
-          <button onClick={() => setIsSearchOpen(true)} className="p-1 rounded-full hover:bg-white/20 transition-colors" aria-label="Open search">
+          <button onClick={openSearch} className="p-1 rounded-full hover:bg-white/20 transition-colors" aria-label="Open search">
             <Search className="w-6 h-6" />
           </button>
           <h1 className="text-xl font-bold text-center">Bhavani Sarees</h1>
