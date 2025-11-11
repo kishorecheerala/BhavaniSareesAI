@@ -159,38 +159,29 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
 
     const generateAndSharePDF = async (sale: Sale, customer: Customer, paidAmountOnSale: number) => {
       try {
+        const VENKATESHWARA_LOGO_BASE64 = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA2MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTAgNUMxMCAzMCAzMCA3NSAzMCA3NUMzMCA3NSA1MCAzMCA1MCA1IiBzdHJva2U9IiM2YTBkYWQiIHN0cm9rZS13aWR0aD0iMyIgZmlsbD0id2hpdGUiLz48bGluZSB4MT0iMzAiIHkxPSI4IiB4Mj0iMzAiIHkyPSI3MiIgc3Ryb2tlPSIjRTUzOTM1IiBzdHJva2Utd2lkdGg9IjYiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxwYXRoIGQ9Ik01IDc4SDU1TDMwIDcwTDUgNzhaIiBmaWxsPSIjRkZCRjAwIi8+PC9zdmc+';
+
         const renderContentOnDoc = (doc: jsPDF) => {
           doc.addFont('Times-Roman', 'Times', 'normal');
           doc.addFont('Times-Bold', 'Times', 'bold');
-          doc.addFont('Times-Italic', 'Times', 'italic');
-
+          
           const pageWidth = doc.internal.pageSize.getWidth();
           const centerX = pageWidth / 2;
           const margin = 5;
           const maxLineWidth = pageWidth - margin * 2;
-          let y = 12;
-
-          // Divine Flourish
-          doc.setLineWidth(0.2);
-          doc.setDrawColor(106, 13, 173); // primary purple
-          doc.line(centerX - 20, y, centerX - 5, y); // left line
-          doc.line(centerX + 5, y, centerX + 20, y); // right line
-          // Simple lotus-like shape in center
-          doc.line(centerX, y - 2, centerX - 2, y);
-          doc.line(centerX, y - 2, centerX + 2, y);
-          doc.line(centerX, y + 2, centerX - 2, y);
-          doc.line(centerX, y + 2, centerX + 2, y);
-          y += 5;
-
+          let y = 8;
+          
+          doc.addImage(VENKATESHWARA_LOGO_BASE64, 'SVG', centerX - 10, y, 20, 26.67);
+          y += 30;
 
           doc.setFont('Times', 'bold');
-          doc.setFontSize(12);
-          doc.setTextColor('#000000');
+          doc.setFontSize(11);
+          doc.setTextColor('#333333');
           doc.text('OM namo venkatesaya', centerX, y, { align: 'center' });
-          y += 7;
+          y += 6;
 
-          doc.setFont('Times', 'bold');
-          doc.setFontSize(16);
+          doc.setFont('Helvetica', 'bold');
+          doc.setFontSize(20);
           doc.setTextColor('#6a0dad');
           doc.text('Bhavani Sarees', centerX, y, { align: 'center' });
           y += 10;
@@ -206,7 +197,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
           doc.text(`Invoice: ${sale.id}`, margin, y);
           y += 4;
           doc.text(`Date: ${new Date(sale.date).toLocaleString()}`, margin, y);
-          y += 5;
+          y += 6;
           
           doc.setFont('Helvetica', 'bold');
           doc.text('Billed To:', margin, y);
@@ -216,8 +207,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
           y += 4;
           const addressLines = doc.splitTextToSize(customer.address, maxLineWidth);
           doc.text(addressLines, margin, y);
-          y += (addressLines.length * 4); // Adjust y based on number of lines
-          y += 2; // Some padding
+          y += (addressLines.length * 4) + 4;
 
           doc.setDrawColor('#000000');
           doc.line(margin, y, pageWidth - margin, y); 
@@ -226,7 +216,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
           doc.text('Purchase Details', centerX, y, { align: 'center' });
           y += 5;
           doc.line(margin, y, pageWidth - margin, y); 
-          y += 5;
+          y += 6;
 
           doc.setFont('Helvetica', 'bold');
           doc.text('Item', margin, y);
@@ -234,63 +224,60 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
           y += 2;
           doc.setDrawColor('#cccccc');
           doc.line(margin, y, pageWidth - margin, y);
-          y += 5;
+          y += 6;
           
           doc.setFont('Helvetica', 'normal');
           sale.items.forEach(item => {
               const itemTotal = item.price * item.quantity;
               doc.setFontSize(9);
-              const splitName = doc.splitTextToSize(item.productName, maxLineWidth - 20);
+              const splitName = doc.splitTextToSize(item.productName, maxLineWidth - 25);
               doc.text(splitName, margin, y);
               doc.text(`Rs. ${itemTotal.toLocaleString('en-IN')}`, pageWidth - margin, y, { align: 'right' });
               y += (splitName.length * 4);
               doc.setFontSize(7);
               doc.setTextColor('#666666');
               doc.text(`(x${item.quantity} @ Rs. ${item.price.toLocaleString('en-IN')})`, margin, y);
-              y += 6;
+              y += 7;
               doc.setTextColor('#000000');
           });
           
           y -= 2;
           doc.setDrawColor('#cccccc');
           doc.line(margin, y, pageWidth - margin, y); 
-          y += 5;
+          y += 6;
 
           const dueAmountOnSale = sale.totalAmount - paidAmountOnSale;
-
+          const totalsX = pageWidth - margin;
+          
           const totals = [
               { label: 'Subtotal', value: calculations.subTotal },
               { label: 'GST', value: calculations.gstAmount },
               { label: 'Discount', value: -calculations.discountAmount },
-              { label: 'Total', value: calculations.totalAmount, bold: true },
+              { label: 'Total', value: calculations.totalAmount, bold: true, size: 11 },
               { label: 'Paid', value: paidAmountOnSale },
-              { label: 'Due', value: dueAmountOnSale, bold: true },
+              { label: 'Due', value: dueAmountOnSale, bold: true, size: 11 },
           ];
           
-          const totalsX = pageWidth - margin;
-          totals.forEach(({label, value, bold = false}) => {
+          totals.forEach(({label, value, bold = false, size = 9}) => {
               doc.setFont('Helvetica', bold ? 'bold' : 'normal');
-              doc.setFontSize(bold ? 10 : 8);
-              doc.text(label, totalsX - 25, y, { align: 'right' });
+              doc.setFontSize(size);
+              doc.text(label, totalsX - 30, y, { align: 'right' });
               doc.text(`Rs. ${value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, y, { align: 'right' });
-              y += (bold ? 5 : 4);
+              y += (size * 0.5) + 2;
           });
           
           return y;
         };
         
-        // 1. Create a dummy doc to calculate the final height of the content
         const dummyDoc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, 500] });
         const finalY = renderContentOnDoc(dummyDoc);
 
-        // 2. Create the actual doc with the calculated height + padding
         const doc = new jsPDF({
           orientation: 'p',
           unit: 'mm',
           format: [80, finalY + 5]
         });
 
-        // 3. Render the content for real on the correctly sized doc
         renderContentOnDoc(doc);
         
         const pdfBlob = doc.output('blob');
@@ -300,14 +287,6 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         const whatsAppText = `Thank you for your purchase from Bhavani Sarees!\n\n*Invoice Summary:*\nInvoice ID: ${sale.id}\nDate: ${new Date(sale.date).toLocaleString()}\n\n*Items:*\n${sale.items.map(i => `- ${i.productName} (x${i.quantity}) - Rs. ${(i.price * i.quantity).toLocaleString('en-IN')}`).join('\n')}\n\nSubtotal: Rs. ${calculations.subTotal.toLocaleString('en-IN')}\nGST: Rs. ${calculations.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\nDiscount: Rs. ${calculations.discountAmount.toLocaleString('en-IN')}\n*Total: Rs. ${sale.totalAmount.toLocaleString('en-IN')}*\nPaid: Rs. ${paidAmountOnSale.toLocaleString('en-IN')}\nDue: Rs. ${dueAmountOnSale.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\nHave a blessed day!`;
         
         if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
-          try {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-              await navigator.clipboard.writeText(whatsAppText);
-              showToast('Invoice text copied to clipboard!');
-            }
-          } catch (err) {
-            console.warn('Could not copy text to clipboard:', err);
-          }
           await navigator.share({
             title: `Bhavani Sarees Invoice ${sale.id}`,
             text: whatsAppText,
