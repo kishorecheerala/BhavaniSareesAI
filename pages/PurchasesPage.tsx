@@ -537,8 +537,8 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         <div className="space-y-4">
             <h1 className="text-2xl font-bold text-primary">Purchases & Suppliers</h1>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Button onClick={() => setView('add_supplier')} className="w-full h-16"><Plus className="w-5 h-5 mr-2"/>Add New Supplier</Button>
                 <Button onClick={() => setView('add_purchase')} className="w-full h-16"><Package className="w-5 h-5 mr-2"/>Create New Purchase</Button>
+                <Button onClick={() => setView('add_supplier')} className="w-full h-16"><Plus className="w-5 h-5 mr-2"/>Add New Supplier</Button>
             </div>
             <Card title="All Suppliers">
                 <div className="space-y-3">
