@@ -1,8 +1,9 @@
 
 
 
+
 import React, { useState, useEffect, useRef } from 'react';
-import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle } from 'lucide-react';
+import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle, Bell } from 'lucide-react';
 
 import { AppProvider, useAppContext } from './context/AppContext';
 import Dashboard from './pages/Dashboard';
@@ -15,7 +16,8 @@ import ProductsPage from './pages/ProductsPage';
 import UniversalSearch from './components/UniversalSearch';
 import HelpModal from './components/HelpModal';
 import AppSkeletonLoader from './components/AppSkeletonLoader';
-import { BeforeInstallPromptEvent } from './types';
+import NotificationsPanel from './components/NotificationsPanel';
+import { BeforeInstallPromptEvent, Notification } from './types';
 
 export type Page = 'DASHBOARD' | 'CUSTOMERS' | 'SALES' | 'PURCHASES' | 'REPORTS' | 'RETURNS' | 'PRODUCTS';
 
@@ -44,8 +46,11 @@ const MainApp: React.FC = () => {
   const [isDirty, setIsDirty] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
-  const { dispatch } = useAppContext();
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const { state, dispatch, isDbLoaded } = useAppContext();
   const canExitApp = useRef(false);
+
+  const lastBackupDate = state.app_metadata.find(m => m.id === 'lastBackup')?.date;
 
   useEffect(() => {
     sessionStorage.setItem('currentPage', currentPage);
@@ -60,6 +65,45 @@ const MainApp: React.FC = () => {
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, [dispatch]);
+  
+  useEffect(() => {
+    if (!isDbLoaded) return; // Wait for data to be loaded
+
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10); // "YYYY-MM-DD"
+    const backupNotificationId = `backup-reminder-${todayStr}`;
+
+    const lastBackupDay = lastBackupDate ? new Date(lastBackupDate).toISOString().slice(0, 10) : null;
+    const isBackupDoneToday = lastBackupDay === todayStr;
+
+    const existingNotification = state.notifications.find(n => n.id === backupNotificationId);
+    
+    // Clean up old, read backup notifications
+    const oldReadBackupNotifications = state.notifications.filter(n => n.type === 'backup' && n.read && n.id !== backupNotificationId);
+    if(oldReadBackupNotifications.length > 0) {
+        // This is a bit complex for the reducer, for now let's just mark as read
+    }
+
+    if (isBackupDoneToday) {
+        const unreadBackupNotification = state.notifications.find(n => n.type === 'backup' && !n.read);
+        if (unreadBackupNotification) {
+            dispatch({ type: 'MARK_NOTIFICATION_AS_READ', payload: unreadBackupNotification.id });
+        }
+    } else {
+        if (!existingNotification) {
+            const newNotification: Notification = {
+                id: backupNotificationId,
+                title: 'Backup Reminder',
+                message: "Your data hasn't been backed up today. Please create a backup to prevent data loss.",
+                read: false,
+                createdAt: new Date().toISOString(),
+                type: 'backup',
+                actionLink: 'DASHBOARD'
+            };
+            dispatch({ type: 'ADD_NOTIFICATION', payload: newNotification });
+        }
+    }
+}, [isDbLoaded, lastBackupDate, state.notifications, dispatch]);
 
   // Unified popstate handler for back button navigation
   useEffect(() => {
@@ -134,6 +178,11 @@ const MainApp: React.FC = () => {
     // When navigating from search, we also need to close it.
     closeSearch();
   };
+  
+  const handleNotificationClick = (page: Page) => {
+    _setCurrentPage(page);
+    setIsNotificationsOpen(false);
+  }
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -182,6 +231,8 @@ const MainApp: React.FC = () => {
       <span>{label}</span>
     </button>
   );
+  
+  const hasUnreadNotifications = state.notifications.some(n => !n.read);
 
   return (
     <div className="flex flex-col h-screen font-sans text-text bg-background">
@@ -197,9 +248,24 @@ const MainApp: React.FC = () => {
             <Search className="w-6 h-6" />
           </button>
           <h1 className="text-xl font-bold text-center">Bhavani Sarees</h1>
-          <button onClick={() => setIsHelpOpen(true)} className="p-1 rounded-full hover:bg-white/20 transition-colors" aria-label="Open help">
-            <HelpCircle className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+                 <button onClick={() => setIsNotificationsOpen(prev => !prev)} className="p-1 rounded-full hover:bg-white/20 transition-colors" aria-label="Open notifications">
+                    <Bell className="w-6 h-6" />
+                </button>
+                {hasUnreadNotifications && (
+                    <span className="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-primary ring-white"></span>
+                )}
+                 <NotificationsPanel 
+                    isOpen={isNotificationsOpen} 
+                    onClose={() => setIsNotificationsOpen(false)}
+                    onNavigate={handleNotificationClick}
+                 />
+            </div>
+            <button onClick={() => setIsHelpOpen(true)} className="p-1 rounded-full hover:bg-white/20 transition-colors" aria-label="Open help">
+                <HelpCircle className="w-6 h-6" />
+            </button>
+          </div>
       </header>
 
       <main className="flex-grow overflow-y-auto p-4 pb-20">

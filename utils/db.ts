@@ -1,12 +1,12 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import { Customer, Supplier, Product, Sale, Purchase, Return } from '../types';
+import { Customer, Supplier, Product, Sale, Purchase, Return, Notification } from '../types';
 import { AppState } from '../context/AppContext';
 
 const DB_NAME = 'bhavani-sarees-db';
-const DB_VERSION = 2; // Bump version for schema change
+const DB_VERSION = 3; // Bump version for schema change
 
-export type StoreName = 'customers' | 'suppliers' | 'products' | 'sales' | 'purchases' | 'returns' | 'app_metadata';
-const STORE_NAMES: StoreName[] = ['customers', 'suppliers', 'products', 'sales', 'purchases', 'returns', 'app_metadata'];
+export type StoreName = 'customers' | 'suppliers' | 'products' | 'sales' | 'purchases' | 'returns' | 'app_metadata' | 'notifications';
+const STORE_NAMES: StoreName[] = ['customers', 'suppliers', 'products', 'sales', 'purchases', 'returns', 'app_metadata', 'notifications'];
 
 interface AppMetadata {
     id: 'lastBackup';
@@ -21,6 +21,7 @@ interface BhavaniSareesDB extends DBSchema {
   purchases: { key: string; value: Purchase; };
   returns: { key: string; value: Return; };
   app_metadata: { key: string; value: AppMetadata; };
+  notifications: { key: string; value: Notification; };
 }
 
 let dbPromise: Promise<IDBPDatabase<BhavaniSareesDB>>;
@@ -73,6 +74,8 @@ export async function exportData(): Promise<Omit<AppState, 'toast' | 'selection'
     const db = await getDb();
     const data: any = {};
     for (const storeName of STORE_NAMES) {
+        // Exclude notifications from the main data backup
+        if (storeName === 'notifications') continue;
         data[storeName] = await db.getAll(storeName);
     }
     return data as Omit<AppState, 'toast' | 'selection' >;
@@ -83,6 +86,9 @@ export async function importData(data: Omit<AppState, 'toast' | 'selection' >): 
     const tx = db.transaction(STORE_NAMES, 'readwrite');
     
     await Promise.all(STORE_NAMES.map(async (storeName) => {
+        // Exclude notifications from the main data import
+        if (storeName === 'notifications') return;
+        
         await tx.objectStore(storeName).clear();
         const items = (data as any)[storeName] || [];
         for (const item of items) {

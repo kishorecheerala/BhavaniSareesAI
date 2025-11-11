@@ -1,6 +1,6 @@
 
 import React, { createContext, useReducer, useContext, useEffect, ReactNode, useState } from 'react';
-import { Customer, Supplier, Product, Sale, Purchase, Return, Payment, BeforeInstallPromptEvent } from '../types';
+import { Customer, Supplier, Product, Sale, Purchase, Return, Payment, BeforeInstallPromptEvent, Notification } from '../types';
 import * as db from '../utils/db';
 import { Page } from '../App';
 
@@ -23,13 +23,15 @@ export interface AppState {
   purchases: Purchase[];
   returns: Return[];
   app_metadata: AppMetadata[];
+  notifications: Notification[];
   toast: ToastState;
   selection: { page: Page; id: string } | null;
   installPromptEvent: BeforeInstallPromptEvent | null;
 }
 
 type Action =
-  | { type: 'SET_STATE'; payload: Omit<AppState, 'toast' | 'selection' | 'installPromptEvent'> }
+  | { type: 'SET_STATE'; payload: Omit<AppState, 'toast' | 'selection' | 'installPromptEvent' | 'notifications'> }
+  | { type: 'SET_NOTIFICATIONS'; payload: Notification[] }
   | { type: 'ADD_CUSTOMER'; payload: Customer }
   | { type: 'UPDATE_CUSTOMER'; payload: Customer }
   | { type: 'ADD_SUPPLIER'; payload: Supplier }
@@ -49,7 +51,10 @@ type Action =
   | { type: 'SET_LAST_BACKUP_DATE'; payload: string }
   | { type: 'SET_SELECTION'; payload: { page: Page; id: string } }
   | { type: 'CLEAR_SELECTION' }
-  | { type: 'SET_INSTALL_PROMPT_EVENT'; payload: BeforeInstallPromptEvent | null };
+  | { type: 'SET_INSTALL_PROMPT_EVENT'; payload: BeforeInstallPromptEvent | null }
+  | { type: 'ADD_NOTIFICATION'; payload: Notification }
+  | { type: 'MARK_NOTIFICATION_AS_READ'; payload: string } // id
+  | { type: 'MARK_ALL_NOTIFICATIONS_AS_READ' };
 
 
 const initialState: AppState = {
@@ -60,6 +65,7 @@ const initialState: AppState = {
   purchases: [],
   returns: [],
   app_metadata: [],
+  notifications: [],
   toast: { message: '', show: false, type: 'info' },
   selection: null,
   installPromptEvent: null,
@@ -69,6 +75,8 @@ const appReducer = (state: AppState, action: Action): AppState => {
   switch (action.type) {
     case 'SET_STATE':
         return { ...state, ...action.payload };
+    case 'SET_NOTIFICATIONS':
+        return { ...state, notifications: action.payload };
     case 'ADD_CUSTOMER':
       return { ...state, customers: [...state.customers, action.payload] };
     case 'UPDATE_CUSTOMER':
@@ -215,6 +223,22 @@ const appReducer = (state: AppState, action: Action): AppState => {
       return { ...state, selection: null };
     case 'SET_INSTALL_PROMPT_EVENT':
       return { ...state, installPromptEvent: action.payload };
+    case 'ADD_NOTIFICATION':
+      // Prevent duplicates by ID
+      if (state.notifications.some(n => n.id === action.payload.id)) {
+        return state;
+      }
+      return { ...state, notifications: [action.payload, ...state.notifications] };
+    case 'MARK_NOTIFICATION_AS_READ':
+      return {
+        ...state,
+        notifications: state.notifications.map(n => n.id === action.payload ? { ...n, read: true } : n),
+      };
+    case 'MARK_ALL_NOTIFICATIONS_AS_READ':
+      return {
+        ...state,
+        notifications: state.notifications.map(n => ({ ...n, read: true })),
+      };
     default:
       return state;
   }
@@ -242,7 +266,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [customers, suppliers, products, sales, purchases, returns, app_metadata] = await Promise.all([
+        const [customers, suppliers, products, sales, purchases, returns, app_metadata, notifications] = await Promise.all([
           db.getAll('customers'),
           db.getAll('suppliers'),
           db.getAll('products'),
@@ -250,9 +274,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           db.getAll('purchases'),
           db.getAll('returns'),
           db.getAll('app_metadata'),
+          db.getAll('notifications'),
         ]);
 
-        const validatedState: Omit<AppState, 'toast' | 'selection' | 'installPromptEvent'> = {
+        const validatedState: Omit<AppState, 'toast' | 'selection' | 'installPromptEvent' | 'notifications'> = {
             customers: Array.isArray(customers) ? customers : [],
             suppliers: Array.isArray(suppliers) ? suppliers : [],
             products: Array.isArray(products) ? products : [],
@@ -262,6 +287,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             app_metadata: Array.isArray(app_metadata) ? app_metadata : [],
         };
         dispatch({ type: 'SET_STATE', payload: validatedState });
+        dispatch({ type: 'SET_NOTIFICATIONS', payload: Array.isArray(notifications) ? notifications : [] });
       } catch (error) {
         console.error("Could not load data from IndexedDB, using initial state.", error);
       } finally {
@@ -280,6 +306,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => { if (isDbLoaded) db.saveCollection('purchases', state.purchases); }, [state.purchases, isDbLoaded]);
   useEffect(() => { if (isDbLoaded) db.saveCollection('returns', state.returns); }, [state.returns, isDbLoaded]);
   useEffect(() => { if (isDbLoaded) db.saveCollection('app_metadata', state.app_metadata); }, [state.app_metadata, isDbLoaded]);
+  useEffect(() => { if (isDbLoaded) db.saveCollection('notifications', state.notifications); }, [state.notifications, isDbLoaded]);
 
 
   const showToast = (message: string) => {

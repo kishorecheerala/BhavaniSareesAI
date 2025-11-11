@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { Page } from "./App";
 
 export interface Payment {
   id: string;
@@ -45,7 +46,7 @@ export interface SaleItem {
 }
 
 export interface Sale {
-  id: string;
+  id:string;
   customerId: string;
   items: SaleItem[];
   discount: number;
@@ -100,4 +101,14 @@ export interface BeforeInstallPromptEvent extends Event {
     platform: string;
   }>;
   prompt(): Promise<void>;
+}
+
+export interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  read: boolean;
+  createdAt: string; // ISO string
+  type: 'backup' | 'info';
+  actionLink?: Page;
 }
