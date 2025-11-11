@@ -1,17 +1,20 @@
-import React, { useState, useMemo } from 'react';
-import { Download, Filter, XCircle } from 'lucide-react';
+import React, { useState, useMemo, useRef } from 'react';
+import { Download, Filter, XCircle, Upload } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
-import { Customer } from '../types';
+import { Customer, Sale, SaleItem } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 const ReportsPage: React.FC = () => {
-    const { state } = useAppContext();
+    const { state, dispatch, showToast } = useAppContext();
     const [selectedArea, setSelectedArea] = useState<string>('');
     const [startDate, setStartDate] = useState<string>('');
     const [endDate, setEndDate] = useState<string>('');
+    const csvInputRef = useRef<HTMLInputElement>(null);
+    const [importStatus, setImportStatus] = useState<{ type: 'info' | 'success' | 'error', message: string } | null>(null);
+
 
     const filteredSalesByDate = state.sales.filter(sale => {
         if (!startDate && !endDate) return true;
@@ -164,6 +167,115 @@ const ReportsPage: React.FC = () => {
         document.body.removeChild(link);
     };
 
+    const handleImportCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        setImportStatus({type: 'info', message: 'Reading file...'});
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const text = e.target?.result as string;
+            if (!text) {
+                setImportStatus({type: 'error', message: 'Could not read the file content.'});
+                return;
+            }
+
+            try {
+                const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '');
+                if (lines.length < 2) {
+                    setImportStatus({type: 'error', message: 'CSV file must have a header row and at least one data row.'});
+                    return;
+                }
+
+                const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+                const requiredHeaders = ['id', 'name', 'phone', 'address', 'area', 'dueamount'];
+                const missingHeaders = requiredHeaders.filter(rh => !headers.includes(rh));
+
+                if (missingHeaders.length > 0) {
+                     setImportStatus({type: 'error', message: `CSV is missing required columns: ${missingHeaders.join(', ')}.`});
+                     return;
+                }
+                
+                let importedCount = 0;
+                setImportStatus({type: 'info', message: `Processing ${lines.length - 1} records...`});
+
+                for (let i = 1; i < lines.length; i++) {
+                    const values = lines[i].split(',');
+                    const row = headers.reduce((obj, header, index) => {
+                        obj[header] = values[index]?.trim() || '';
+                        return obj;
+                    }, {} as any);
+
+                    const customerId = `CUST-${row.id}`;
+                    const dueAmount = parseFloat(row.dueamount);
+
+                    if (!row.id || !row.name || isNaN(dueAmount)) {
+                        console.warn(`Skipping row ${i+1} due to missing ID, Name, or invalid Due Amount.`);
+                        continue;
+                    }
+
+                    const existingCustomer = state.customers.find(c => c.id === customerId);
+                    if (!existingCustomer) {
+                        const newCustomer: Customer = {
+                            id: customerId,
+                            name: row.name,
+                            phone: row.phone,
+                            address: row.address,
+                            area: row.area
+                        };
+                        dispatch({ type: 'ADD_CUSTOMER', payload: newCustomer });
+                    }
+                    
+                    if (dueAmount > 0) {
+                        const saleItem: SaleItem = {
+                            productId: 'IMPORTED_DUE',
+                            productName: 'Opening Balance / Imported Due',
+                            quantity: 1,
+                            price: dueAmount,
+                        };
+                        const newSale: Sale = {
+                            id: `SALE-IMP-${row.id}-${Date.now()}`,
+                            customerId,
+                            items: [saleItem],
+                            discount: 0,
+                            gstAmount: 0,
+                            totalAmount: dueAmount,
+                            date: new Date().toISOString(),
+                            payments: [],
+                        };
+                        dispatch({ type: 'ADD_SALE', payload: newSale });
+                    }
+                    importedCount++;
+                }
+                setImportStatus({type: 'success', message: `Successfully imported ${importedCount} customer records.`});
+                showToast(`Imported ${importedCount} records.`);
+            } catch (error) {
+                console.error("CSV Import Error:", error);
+                setImportStatus({type: 'error', message: `An error occurred during import: ${(error as Error).message}`});
+            } finally {
+                 if (csvInputRef.current) csvInputRef.current.value = "";
+            }
+        };
+
+        reader.readAsText(file);
+    };
+    
+    const StatusNotification = () => {
+        if (!importStatus) return null;
+        const variants = {
+            info: 'bg-blue-100 text-blue-800',
+            success: 'bg-green-100 text-green-800',
+            error: 'bg-red-100 text-red-800',
+        };
+        return (
+            <div className={`p-3 rounded-md mt-4 text-sm flex justify-between items-start ${variants[importStatus.type]}`}>
+                <span>{importStatus.message}</span>
+                <button onClick={() => setImportStatus(null)} className="font-bold text-lg leading-none ml-4">&times;</button>
+            </div>
+        );
+    };
+
     return (
         <div className="space-y-4">
             <h1 className="text-2xl font-bold text-primary">Reports</h1>
@@ -200,6 +312,23 @@ const ReportsPage: React.FC = () => {
                         <Button onClick={handleClearFilters} variant="danger" className="ml-auto"><XCircle className="w-4 h-4 mr-2" />Clear Filters</Button>
                     </div>
                 </div>
+            </Card>
+
+            <Card title="Import Customer Dues from CSV">
+                <p className="text-sm text-gray-600 mb-2">
+                    Upload a CSV file to add new customers and their outstanding balances. The CSV must have these columns: <code>id,name,phone,address,area,dueamount</code>.
+                </p>
+                <input
+                    type="file"
+                    accept=".csv"
+                    className="hidden"
+                    ref={csvInputRef}
+                    onChange={handleImportCSV}
+                />
+                <Button onClick={() => csvInputRef.current?.click()}>
+                    <Upload className="w-4 h-4 mr-2" /> Import from CSV
+                </Button>
+                <StatusNotification />
             </Card>
 
             <Card title="Customer Dues Collection List">

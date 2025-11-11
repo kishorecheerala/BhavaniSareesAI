@@ -24,6 +24,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     const [view, setView] = useState<'list' | 'add_supplier' | 'add_purchase'>('list');
     const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const csvInputRef = useRef<HTMLInputElement>(null);
 
     // State for 'add_supplier' view
     const [newSupplier, setNewSupplier] = useState({ id: '', name: '', phone: '', location: '', reference: '', account1: '', account2: '', upi: '' });
@@ -222,6 +223,94 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             setIsAddingProduct(true);
             setNewProduct(prev => ({ ...prev, id: decodedText }));
         }
+    };
+
+    const handleImportCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        if (purchaseItems.length > 0) {
+            if (!window.confirm("Importing from CSV will replace all items currently in the purchase. Are you sure you want to continue?")) {
+                if (csvInputRef.current) csvInputRef.current.value = "";
+                return;
+            }
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const text = e.target?.result as string;
+            if (!text) {
+                alert('Could not read the file content.');
+                return;
+            }
+
+            try {
+                const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '');
+                if (lines.length < 2) {
+                    throw new Error('CSV file must have a header row and at least one data row.');
+                }
+
+                const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, ''));
+                const requiredHeaders = ['id', 'name', 'quantity', 'purchaseprice', 'saleprice', 'gstpercent'];
+                const missingHeaders = requiredHeaders.filter(rh => !headers.includes(rh));
+
+                if (missingHeaders.length > 0) {
+                     throw new Error(`CSV is missing required columns: ${missingHeaders.join(', ')}. Header must contain: id, name, quantity, purchaseprice, saleprice, gstpercent.`);
+                }
+                
+                const newItems: PurchaseItem[] = [];
+                const existingProductIds = new Set([...state.products.map(p => p.id.toLowerCase()), ...newItems.map(i => i.productId.toLowerCase())]);
+
+                for (let i = 1; i < lines.length; i++) {
+                    const values = lines[i].split(',');
+                    const row = headers.reduce((obj, header, index) => {
+                        obj[header] = values[index]?.trim() || '';
+                        return obj;
+                    }, {} as any);
+                    
+                    const id = row.id?.trim();
+                    if (!id) {
+                        console.warn(`Skipping row ${i+1}: missing 'id'`);
+                        continue;
+                    }
+
+                    if (existingProductIds.has(id.toLowerCase())) {
+                        throw new Error(`Product ID "${id}" from CSV (row ${i+1}) already exists in your stock or is duplicated in the CSV. Please use 'Select Existing Product' for existing items or ensure IDs in the CSV are unique for new products.`);
+                    }
+
+                    const quantity = parseInt(row.quantity, 10);
+                    const purchasePrice = parseFloat(row.purchaseprice);
+                    const salePrice = parseFloat(row.saleprice);
+                    const gstPercent = parseFloat(row.gstpercent);
+
+                    if (!row.name || isNaN(quantity) || isNaN(purchasePrice) || isNaN(salePrice) || isNaN(gstPercent) || quantity <= 0) {
+                        console.warn(`Skipping row ${i+1} due to invalid or missing data.`);
+                        continue;
+                    }
+
+                    newItems.push({
+                        productId: id,
+                        productName: row.name,
+                        quantity,
+                        price: purchasePrice,
+                        saleValue: salePrice,
+                        gstPercent,
+                    });
+                    existingProductIds.add(id.toLowerCase());
+                }
+
+                setPurchaseItems(newItems);
+                showToast(`Successfully imported ${newItems.length} items from CSV.`);
+
+            } catch (error) {
+                console.error("CSV Import Error:", error);
+                alert(`An error occurred during import: ${(error as Error).message}`);
+            } finally {
+                 if (csvInputRef.current) csvInputRef.current.value = "";
+            }
+        };
+
+        reader.readAsText(file);
     };
     
     const totalPurchaseAmount = purchaseItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -511,6 +600,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     if (view === 'add_purchase') {
         return (
             <div className="space-y-4">
+                 <input type="file" accept=".csv" ref={csvInputRef} onChange={handleImportCSV} className="hidden" />
                  {isScanning && <QRScannerModal />}
                  {isSelectingProduct && <ProductSearchModal />}
                  {isAddingProduct && <NewProductModal />}
@@ -525,10 +615,11 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                     </div>
                  </Card>
                  <Card title="Purchase Items">
-                    <div className="flex flex-col sm:flex-row gap-2 mb-4">
-                        <Button onClick={() => setIsAddingProduct(true)} className="w-full"><Plus size={16}/> Add New Product</Button>
-                        <Button onClick={() => setIsSelectingProduct(true)} variant="secondary" className="w-full"><Search size={16}/> Select Existing Product</Button>
-                        <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full"><QrCode size={16}/> Scan Product</Button>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+                        <Button onClick={() => setIsAddingProduct(true)}><Plus size={16} className="mr-2"/> Add New Product</Button>
+                        <Button onClick={() => setIsSelectingProduct(true)} variant="secondary"><Search size={16} className="mr-2"/> Select Existing</Button>
+                        <Button onClick={() => setIsScanning(true)} variant="secondary"><QrCode size={16} className="mr-2"/> Scan Product</Button>
+                        <Button onClick={() => csvInputRef.current?.click()} variant="secondary"><Upload size={16} className="mr-2"/> Import from CSV</Button>
                     </div>
                     <div className="space-y-2">
                         {purchaseItems.map(item => (
