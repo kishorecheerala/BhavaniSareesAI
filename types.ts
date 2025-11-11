@@ -70,6 +70,7 @@ export interface Purchase {
   totalAmount: number;
   date: string; // ISO string
   invoiceUrl?: string; // For uploaded invoice
+  supplierInvoiceId?: string; // Manual invoice ID from supplier
   payments: Payment[];
 }
 

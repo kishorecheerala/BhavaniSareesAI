@@ -31,6 +31,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     const [newSupplier, setNewSupplier] = useState<Omit<Supplier, 'id'>>({ name: '', phone: '', location: '' });
     
     const [supplierId, setSupplierId] = useState('');
+    const [supplierInvoiceId, setSupplierInvoiceId] = useState('');
     const [items, setItems] = useState<PurchaseItem[]>([]);
     const [newItem, setNewItem] = useState<{ productId: string, productName: string, quantity: string, price: string, gstPercent: string, saleValue: string }>({ productId: '', productName: '', quantity: '1', price: '', gstPercent: '5', saleValue: '' });
     const [paymentAmount, setPaymentAmount] = useState('');
@@ -54,7 +55,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         if (view === 'add_supplier') {
             formIsDirty = !!(newSupplier.name || newSupplier.phone || newSupplier.location);
         } else if (view === 'add_purchase') {
-            formIsDirty = !!supplierId || items.length > 0 || !!paymentAmount;
+            formIsDirty = !!supplierId || !!supplierInvoiceId || items.length > 0 || !!paymentAmount;
         } else if (selectedSupplier) {
             formIsDirty = isEditing;
         }
@@ -63,7 +64,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         return () => {
             setIsDirty(false);
         };
-    }, [view, newSupplier, supplierId, items, paymentAmount, isEditing, selectedSupplier, setIsDirty]);
+    }, [view, newSupplier, supplierId, supplierInvoiceId, items, paymentAmount, isEditing, selectedSupplier, setIsDirty]);
 
     useEffect(() => {
         if (selectedSupplier) {
@@ -132,6 +133,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
 
     const resetPurchaseForm = () => {
         setSupplierId('');
+        setSupplierInvoiceId('');
         setItems([]);
         setPaymentAmount('');
         setPaymentMethod('CASH');
@@ -166,6 +168,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         const newPurchase: Purchase = {
             id: `PUR-${Date.now()}`,
             supplierId,
+            supplierInvoiceId: supplierInvoiceId.trim(),
             items,
             totalAmount,
             date: new Date().toISOString(),
@@ -601,6 +604,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                         <div className="flex justify-between items-start mb-2">
                                             <div>
                                                 <p className="font-semibold">{new Date(purchase.date).toLocaleString()}</p>
+                                                {purchase.supplierInvoiceId && <p className="text-xs text-gray-500">Supplier Invoice: {purchase.supplierInvoiceId}</p>}
                                                 <p className={`text-sm font-bold ${isPaid ? 'text-green-600' : 'text-red-600'}`}>
                                                     {isPaid ? 'Paid' : `Due: ₹${dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
                                                 </p>
@@ -774,11 +778,26 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             {view === 'add_purchase' && (
                  <div className="space-y-4">
                      <Card>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
-                        <select value={supplierId} onChange={e => setSupplierId(e.target.value)} className="w-full p-2 border rounded custom-select">
-                            <option value="">Select Supplier</option>
-                            {state.suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                        </select>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
+                                <select value={supplierId} onChange={e => setSupplierId(e.target.value)} className="w-full p-2 border rounded custom-select">
+                                    <option value="">Select Supplier</option>
+                                    {state.suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                </select>
+                            </div>
+                             <div>
+                                <label htmlFor="supplierInvoiceId" className="block text-sm font-medium text-gray-700 mb-1">Supplier Invoice ID (Optional)</label>
+                                <input
+                                    id="supplierInvoiceId"
+                                    type="text"
+                                    value={supplierInvoiceId}
+                                    onChange={e => setSupplierInvoiceId(e.target.value)}
+                                    placeholder="e.g., INV-12345"
+                                    className="w-full p-2 border rounded"
+                                />
+                            </div>
+                        </div>
                     </Card>
                     <Card>
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">

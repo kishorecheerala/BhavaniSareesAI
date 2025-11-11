@@ -261,6 +261,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                                         <div className="flex justify-between items-start mb-2">
                                             <div>
                                                 <p className="font-semibold">{new Date(sale.date).toLocaleString()}</p>
+                                                <p className="text-xs text-gray-500">Invoice ID: {sale.id}</p>
                                                 <p className={`text-sm font-bold ${isPaid ? 'text-green-600' : 'text-red-600'}`}>
                                                     {isPaid ? 'Paid' : `Due: ₹${dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
                                                 </p>
