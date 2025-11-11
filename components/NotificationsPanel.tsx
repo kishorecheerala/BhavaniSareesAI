@@ -39,11 +39,21 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, onClose
     const { notifications } = state;
 
     const handleMarkAllAsRead = () => {
-        dispatch({ type: 'MARK_ALL_NOTIFICATIONS_AS_READ' });
+        // Iterate through notifications and only mark the non-backup ones as read.
+        notifications.forEach(n => {
+            if (n.type !== 'backup' && !n.read) {
+                dispatch({ type: 'MARK_NOTIFICATION_AS_READ', payload: n.id });
+            }
+        });
     };
 
-    const handleNotificationClick = (id: string, actionLink?: Page) => {
-        dispatch({ type: 'MARK_NOTIFICATION_AS_READ', payload: id });
+    const handleNotificationClick = (id: string, type: 'backup' | 'info', actionLink?: Page) => {
+        // Only mark non-backup notifications as read upon click.
+        // The backup notification is cleared automatically when a backup is performed.
+        if (type !== 'backup') {
+            dispatch({ type: 'MARK_NOTIFICATION_AS_READ', payload: id });
+        }
+        
         if (actionLink) {
             onNavigate(actionLink);
         }
@@ -71,7 +81,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, onClose
                         {notifications.map(notification => (
                             <div
                                 key={notification.id}
-                                onClick={() => handleNotificationClick(notification.id, notification.actionLink)}
+                                onClick={() => handleNotificationClick(notification.id, notification.type, notification.actionLink)}
                                 className={`p-3 flex items-start gap-3 transition-colors ${notification.actionLink ? 'cursor-pointer' : ''} ${!notification.read ? 'bg-purple-50 hover:bg-purple-100' : 'hover:bg-gray-50'}`}
                             >
                                 <NotificationIcon type={notification.type} />
