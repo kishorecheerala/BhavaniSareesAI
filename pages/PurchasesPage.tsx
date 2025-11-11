@@ -23,6 +23,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     const { state, dispatch, showToast } = useAppContext();
     const [view, setView] = useState<'list' | 'add_supplier' | 'add_purchase'>('list');
     const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
     // State for 'add_supplier' view
     const [newSupplier, setNewSupplier] = useState({ id: '', name: '', phone: '', location: '', reference: '', account1: '', account2: '', upi: '' });
@@ -50,6 +51,16 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     const [paymentModalState, setPaymentModalState] = useState<{ isOpen: boolean, purchaseId: string | null }>({ isOpen: false, purchaseId: null });
     const [paymentDetails, setPaymentDetails] = useState({ amount: '', method: 'CASH' as 'CASH' | 'UPI' | 'CHEQUE', date: getLocalDateString() });
     const [confirmModalState, setConfirmModalState] = useState<{ isOpen: boolean, purchaseIdToDelete: string | null }>({ isOpen: false, purchaseIdToDelete: null });
+    
+    useEffect(() => {
+        if (state.selection && state.selection.page === 'PURCHASES') {
+            const supplierToSelect = state.suppliers.find(s => s.id === state.selection.id);
+            if (supplierToSelect) {
+                setSelectedSupplier(supplierToSelect);
+            }
+            dispatch({ type: 'CLEAR_SELECTION' });
+        }
+    }, [state.selection, state.suppliers, dispatch]);
     
     useEffect(() => {
         const addSupplierDirty = view === 'add_supplier' && !!(newSupplier.id || newSupplier.name || newSupplier.phone || newSupplier.location);
@@ -547,6 +558,12 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     }
 
     // Default 'list' view
+    const filteredSuppliers = state.suppliers.filter(supplier =>
+        supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        supplier.phone.includes(searchTerm) ||
+        supplier.location.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     return (
         <div className="space-y-4">
             <h1 className="text-2xl font-bold text-primary">Purchases & Suppliers</h1>
@@ -560,10 +577,21 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                     Add New Supplier
                 </Button>
             </div>
+            
+            <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                <input
+                    type="text"
+                    placeholder="Search suppliers by name, phone, or location..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full p-2 pl-10 border rounded-lg"
+                />
+            </div>
 
             <Card title="All Suppliers">
                 <div className="space-y-3">
-                    {state.suppliers.map(supplier => {
+                    {filteredSuppliers.map(supplier => {
                         const supplierPurchases = state.purchases.filter(p => p.supplierId === supplier.id);
                         const totalSpent = supplierPurchases.reduce((sum, p) => sum + p.totalAmount, 0);
                         const totalPaid = supplierPurchases.reduce((sum, p) => sum + (p.payments || []).reduce((pSum, payment) => pSum + payment.amount, 0), 0);

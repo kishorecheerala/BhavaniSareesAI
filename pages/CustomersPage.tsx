@@ -38,6 +38,16 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
     const [confirmModalState, setConfirmModalState] = useState<{ isOpen: boolean, saleIdToDelete: string | null }>({ isOpen: false, saleIdToDelete: null });
 
     useEffect(() => {
+        if (state.selection && state.selection.page === 'CUSTOMERS') {
+            const customerToSelect = state.customers.find(c => c.id === state.selection.id);
+            if (customerToSelect) {
+                setSelectedCustomer(customerToSelect);
+            }
+            dispatch({ type: 'CLEAR_SELECTION' });
+        }
+    }, [state.selection, state.customers, dispatch]);
+
+    useEffect(() => {
         // FIX: Coerce the potentially string result of the logical OR to a boolean using `!!`
         const formIsDirty = (isAdding && !!(newCustomer.id || newCustomer.name || newCustomer.phone || newCustomer.address || newCustomer.area)) || isEditing;
         setIsDirty(formIsDirty);

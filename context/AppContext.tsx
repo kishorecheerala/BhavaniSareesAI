@@ -1,6 +1,7 @@
 import React, { createContext, useReducer, useContext, useEffect, ReactNode, useState } from 'react';
 import { Customer, Supplier, Product, Sale, Purchase, Return, Payment } from '../types';
 import * as db from '../utils/db';
+import { Page } from '../App';
 
 interface ToastState {
   message: string;
@@ -21,10 +22,11 @@ export interface AppState {
   returns: Return[];
   app_metadata: AppMetadata[];
   toast: ToastState;
+  selection: { page: Page; id: string } | null;
 }
 
 type Action =
-  | { type: 'SET_STATE'; payload: Omit<AppState, 'toast'> }
+  | { type: 'SET_STATE'; payload: Omit<AppState, 'toast' | 'selection'> }
   | { type: 'ADD_CUSTOMER'; payload: Customer }
   | { type: 'UPDATE_CUSTOMER'; payload: Customer }
   | { type: 'ADD_SUPPLIER'; payload: Supplier }
@@ -41,7 +43,9 @@ type Action =
   | { type: 'ADD_PAYMENT_TO_PURCHASE'; payload: { purchaseId: string; payment: Payment } }
   | { type: 'SHOW_TOAST'; payload: string }
   | { type: 'HIDE_TOAST' }
-  | { type: 'SET_LAST_BACKUP_DATE'; payload: string };
+  | { type: 'SET_LAST_BACKUP_DATE'; payload: string }
+  | { type: 'SET_SELECTION'; payload: { page: Page; id: string } }
+  | { type: 'CLEAR_SELECTION' };
 
 
 const initialState: AppState = {
@@ -53,6 +57,7 @@ const initialState: AppState = {
   returns: [],
   app_metadata: [],
   toast: { message: '', show: false },
+  selection: null,
 };
 
 const appReducer = (state: AppState, action: Action): AppState => {
@@ -199,6 +204,10 @@ const appReducer = (state: AppState, action: Action): AppState => {
         ...state,
         app_metadata: [{ id: 'lastBackup', date: action.payload }]
       };
+    case 'SET_SELECTION':
+      return { ...state, selection: action.payload };
+    case 'CLEAR_SELECTION':
+      return { ...state, selection: null };
     default:
       return state;
   }
@@ -234,7 +243,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           db.getAll('app_metadata'),
         ]);
 
-        const validatedState: Omit<AppState, 'toast'> = {
+        const validatedState: Omit<AppState, 'toast' | 'selection'> = {
             customers: Array.isArray(customers) ? customers : [],
             suppliers: Array.isArray(suppliers) ? suppliers : [],
             products: Array.isArray(products) ? products : [],

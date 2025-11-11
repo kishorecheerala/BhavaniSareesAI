@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes } from 'lucide-react';
+import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search } from 'lucide-react';
 
 import { AppProvider, useAppContext } from './context/AppContext';
 import Dashboard from './pages/Dashboard';
@@ -9,8 +9,9 @@ import PurchasesPage from './pages/PurchasesPage';
 import ReportsPage from './pages/ReportsPage';
 import ReturnsPage from './pages/ReturnsPage';
 import ProductsPage from './pages/ProductsPage';
+import UniversalSearch from './components/UniversalSearch';
 
-type Page = 'DASHBOARD' | 'CUSTOMERS' | 'SALES' | 'PURCHASES' | 'REPORTS' | 'RETURNS' | 'PRODUCTS';
+export type Page = 'DASHBOARD' | 'CUSTOMERS' | 'SALES' | 'PURCHASES' | 'REPORTS' | 'RETURNS' | 'PRODUCTS';
 
 const Toast = () => {
     const { state, dispatch } = useAppContext();
@@ -29,6 +30,8 @@ const MainApp: React.FC = () => {
     () => (sessionStorage.getItem('currentPage') as Page) || 'DASHBOARD'
   );
   const [isDirty, setIsDirty] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const { dispatch } = useAppContext();
   const currentPageRef = useRef(currentPage);
   currentPageRef.current = currentPage;
 
@@ -49,6 +52,12 @@ const MainApp: React.FC = () => {
     } else {
       _setCurrentPage(page);
     }
+  };
+
+  const handleSearchResultClick = (page: Page, id: string) => {
+    dispatch({ type: 'SET_SELECTION', payload: { page, id } });
+    _setCurrentPage(page);
+    setIsSearchOpen(false);
   };
 
   useEffect(() => {
@@ -87,9 +96,9 @@ const MainApp: React.FC = () => {
     }
   };
   
-  const NavItem = ({ page, label, icon: Icon }: { page: Page; label: string; icon: React.ElementType }) => (
+  const NavItem = ({ page, label, icon: Icon, action }: { page?: Page; label: string; icon: React.ElementType, action?: () => void }) => (
     <button
-      onClick={() => setCurrentPage(page)}
+      onClick={() => page ? setCurrentPage(page) : action?.()}
       className={`flex flex-col items-center justify-center w-full pt-2 pb-1 text-xs transition-colors duration-200 ${
         currentPage === page ? 'text-white scale-105' : 'text-purple-200 hover:text-white'
       }`}
@@ -102,6 +111,11 @@ const MainApp: React.FC = () => {
   return (
     <div className="flex flex-col h-screen font-sans text-text bg-background">
       <Toast />
+      <UniversalSearch 
+        isOpen={isSearchOpen} 
+        onClose={() => setIsSearchOpen(false)} 
+        onNavigate={handleSearchResultClick} 
+      />
       <header className="bg-primary text-white shadow-md p-4 flex items-center justify-center">
           <h1 className="text-xl font-bold">Bhavani Sarees</h1>
       </header>
@@ -115,9 +129,9 @@ const MainApp: React.FC = () => {
           <NavItem page="DASHBOARD" label="Home" icon={Home} />
           <NavItem page="CUSTOMERS" label="Customers" icon={Users} />
           <NavItem page="SALES" label="Sales" icon={ShoppingCart} />
+          <NavItem label="Search" icon={Search} action={() => setIsSearchOpen(true)} />
           <NavItem page="PURCHASES" label="Purchases" icon={Package} />
           <NavItem page="PRODUCTS" label="Products" icon={Boxes} />
-          <NavItem page="RETURNS" label="Returns" icon={Undo2} />
           <NavItem page="REPORTS" label="Reports" icon={FileText} />
         </div>
       </nav>

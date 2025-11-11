@@ -18,6 +18,16 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
     const [newQuantity, setNewQuantity] = useState<string>('');
     
     useEffect(() => {
+        if (state.selection && state.selection.page === 'PRODUCTS') {
+            const productToSelect = state.products.find(p => p.id === state.selection.id);
+            if (productToSelect) {
+                setSelectedProduct(productToSelect);
+            }
+            dispatch({ type: 'CLEAR_SELECTION' });
+        }
+    }, [state.selection, state.products, dispatch]);
+    
+    useEffect(() => {
         let formIsDirty = false;
         if (selectedProduct) {
             const quantityChanged = newQuantity !== '' && parseInt(newQuantity, 10) !== selectedProduct.quantity;
