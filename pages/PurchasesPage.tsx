@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Plus, Upload, IndianRupee, Edit, Save, X, Trash2, Search, QrCode, Package, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, Upload, IndianRupee, Edit, Save, X, Trash2, Search, QrCode, Package } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Supplier, Product, Purchase, PurchaseItem, Payment } from '../types';
 import Card from '../components/Card';
@@ -21,7 +21,7 @@ interface PurchasesPageProps {
 
 const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     const { state, dispatch, showToast } = useAppContext();
-    const [view, setView] = useState<'list' | 'add_supplier' | 'add_purchase' | 'supplier_details'>('list');
+    const [view, setView] = useState<'list' | 'add_supplier' | 'add_purchase'>('list');
     const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
 
     // State for 'add_supplier' view
@@ -33,92 +33,104 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     const [supplierInvoiceId, setSupplierInvoiceId] = useState('');
     const [purchasePaymentAmount, setPurchasePaymentAmount] = useState('');
     const [purchasePaymentMethod, setPurchasePaymentMethod] = useState<'CASH' | 'UPI' | 'CHEQUE'>('CASH');
-    const [purchasePaymentDate, setPurchasePaymentDate] = useState(getLocalDateString());
+    const [purchaseDate, setPurchaseDate] = useState(getLocalDateString());
     
-    // State for modals in purchase view
-    const [isScanning, setIsScanning] = useState(false);
+    // State for modals and interactions
     const [isSelectingProduct, setIsSelectingProduct] = useState(false);
+    const [isAddingProduct, setIsAddingProduct] = useState(false);
+    const [isScanning, setIsScanning] = useState(false);
     const [productSearchTerm, setProductSearchTerm] = useState('');
-    const [addingItem, setAddingItem] = useState<Omit<PurchaseItem, 'productName'> & { isNew: boolean } | null>(null);
 
-    // State for supplier details view
+    // State for new product form in modal
+    const [newProduct, setNewProduct] = useState({ id: '', name: '', purchasePrice: '', salePrice: '', gstPercent: '5', quantity: '' });
+
+    // State for supplier detail view
     const [isEditing, setIsEditing] = useState(false);
     const [editedSupplier, setEditedSupplier] = useState<Supplier | null>(null);
     const [paymentModalState, setPaymentModalState] = useState<{ isOpen: boolean, purchaseId: string | null }>({ isOpen: false, purchaseId: null });
     const [paymentDetails, setPaymentDetails] = useState({ amount: '', method: 'CASH' as 'CASH' | 'UPI' | 'CHEQUE', date: getLocalDateString() });
     const [confirmModalState, setConfirmModalState] = useState<{ isOpen: boolean, purchaseIdToDelete: string | null }>({ isOpen: false, purchaseIdToDelete: null });
-
+    
     useEffect(() => {
-        let isDirty = false;
-        if (view === 'add_supplier') {
-            isDirty = Object.values(newSupplier).some(val => val !== '');
-        } else if (view === 'add_purchase') {
-            isDirty = !!purchaseSupplierId || purchaseItems.length > 0;
-        } else if (view === 'supplier_details') {
-            isDirty = isEditing;
-        }
-        setIsDirty(isDirty);
-
+        const addSupplierDirty = view === 'add_supplier' && !!(newSupplier.id || newSupplier.name || newSupplier.phone || newSupplier.location);
+        const addPurchaseDirty = view === 'add_purchase' && !!(purchaseSupplierId || purchaseItems.length > 0 || purchasePaymentAmount);
+        const detailViewDirty = !!(selectedSupplier && isEditing);
+        setIsDirty(addSupplierDirty || addPurchaseDirty || detailViewDirty);
         return () => setIsDirty(false);
-    }, [view, newSupplier, purchaseSupplierId, purchaseItems, isEditing, setIsDirty]);
+    }, [view, newSupplier, purchaseSupplierId, purchaseItems, purchasePaymentAmount, selectedSupplier, isEditing, setIsDirty]);
     
     useEffect(() => {
         if (selectedSupplier) {
             const currentSupplier = state.suppliers.find(s => s.id === selectedSupplier.id);
             setSelectedSupplier(currentSupplier || null);
             setEditedSupplier(currentSupplier || null);
-            setView('supplier_details');
         } else {
-            setView('list');
             setEditedSupplier(null);
         }
         setIsEditing(false);
     }, [selectedSupplier, state.suppliers, state.purchases]);
-
-
-    const resetSupplierForm = () => {
-        setNewSupplier({ id: '', name: '', phone: '', location: '', reference: '', account1: '', account2: '', upi: '' });
-        setView('list');
-    };
-
-    const resetPurchaseForm = () => {
+    
+    const resetAddPurchaseForm = () => {
         setPurchaseSupplierId('');
         setPurchaseItems([]);
         setSupplierInvoiceId('');
         setPurchasePaymentAmount('');
         setPurchasePaymentMethod('CASH');
-        setPurchasePaymentDate(getLocalDateString());
-        setIsScanning(false);
-        setIsSelectingProduct(false);
-        setProductSearchTerm('');
-        setAddingItem(null);
-        setView('list');
+        setPurchaseDate(getLocalDateString());
     };
 
     const handleAddSupplier = () => {
-        if (!newSupplier.id || !newSupplier.name) {
-            alert('Supplier ID and Name are required.');
-            return;
-        }
-        const finalId = `SUPP-${newSupplier.id.trim()}`;
+        const trimmedId = newSupplier.id.trim();
+        if (!trimmedId) return alert('Supplier ID is required.');
+        if (!newSupplier.name || !newSupplier.phone || !newSupplier.location) return alert('Please fill Name, Phone, and Location.');
+
+        const finalId = `SUPP-${trimmedId}`;
         if (state.suppliers.some(s => s.id.toLowerCase() === finalId.toLowerCase())) {
-            alert(`Supplier ID "${finalId}" is already in use.`);
-            return;
+            return alert(`Supplier ID "${finalId}" is already taken.`);
         }
+
         const supplierToAdd: Supplier = { ...newSupplier, id: finalId };
         dispatch({ type: 'ADD_SUPPLIER', payload: supplierToAdd });
-        showToast('Supplier added successfully!');
-        resetSupplierForm();
+        showToast("Supplier added successfully!");
+        setNewSupplier({ id: '', name: '', phone: '', location: '', reference: '', account1: '', account2: '', upi: '' });
+        setView('list');
     };
-
+    
     const handleUpdateSupplier = () => {
         if (editedSupplier) {
-            dispatch({ type: 'UPDATE_SUPPLIER', payload: editedSupplier });
-            showToast('Supplier details updated.');
-            setIsEditing(false);
+            if (window.confirm('Save changes to this supplier?')) {
+                dispatch({ type: 'UPDATE_SUPPLIER', payload: editedSupplier });
+                showToast("Supplier details updated.");
+                setIsEditing(false);
+            }
         }
     };
     
+    const handleAddPayment = () => {
+        const purchase = state.purchases.find(p => p.id === paymentModalState.purchaseId);
+        if (!purchase || !paymentDetails.amount) return alert("Please enter a valid amount.");
+        
+        const amountPaid = (purchase.payments || []).reduce((sum, p) => sum + p.amount, 0);
+        const dueAmount = purchase.totalAmount - amountPaid;
+        const newPaymentAmount = parseFloat(paymentDetails.amount);
+
+        if(newPaymentAmount > dueAmount + 0.01) {
+            return alert(`Payment exceeds due amount of ₹${dueAmount.toLocaleString('en-IN')}.`);
+        }
+
+        const payment: Payment = {
+            id: `PAY-P-${Date.now()}`,
+            amount: newPaymentAmount,
+            method: paymentDetails.method,
+            date: new Date(paymentDetails.date).toISOString()
+        };
+
+        dispatch({ type: 'ADD_PAYMENT_TO_PURCHASE', payload: { purchaseId: purchase.id, payment } });
+        showToast("Payment added successfully.");
+        setPaymentModalState({ isOpen: false, purchaseId: null });
+        setPaymentDetails({ amount: '', method: 'CASH', date: getLocalDateString() });
+    };
+
     const handleDeletePurchase = (purchaseId: string) => {
         setConfirmModalState({ isOpen: true, purchaseIdToDelete: purchaseId });
     };
@@ -130,433 +142,429 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             setConfirmModalState({ isOpen: false, purchaseIdToDelete: null });
         }
     };
+    
+    const handleAddItemManually = () => {
+        const { id, name, purchasePrice, salePrice, gstPercent, quantity } = newProduct;
+        if (!id || !name || !purchasePrice || !salePrice || !quantity) return alert('All fields are required.');
+        
+        const trimmedId = id.trim();
+        const existingInCart = purchaseItems.some(item => item.productId.toLowerCase() === trimmedId.toLowerCase());
+        const existingInDb = state.products.some(p => p.id.toLowerCase() === trimmedId.toLowerCase());
+        if(existingInCart) return alert(`Product with ID "${trimmedId}" is already in this purchase.`);
+        if(existingInDb) return alert(`Product with ID "${trimmedId}" already exists in stock. Please select it from the list instead of creating a new one.`);
 
-    const handleAddPayment = () => {
-        const purchase = state.purchases.find(p => p.id === paymentModalState.purchaseId);
-        if (!purchase || !paymentDetails.amount) {
-            alert("Please enter a valid amount.");
-            return;
-        }
-
-        const amountPaid = purchase.payments.reduce((sum, p) => sum + p.amount, 0);
-        const dueAmount = purchase.totalAmount - amountPaid;
-        const newPaymentAmount = parseFloat(paymentDetails.amount);
-
-        if(newPaymentAmount > dueAmount + 0.01) {
-            alert(`Payment of ₹${newPaymentAmount.toLocaleString('en-IN')} exceeds due amount of ₹${dueAmount.toLocaleString('en-IN')}.`);
-            return;
-        }
-
-        const payment: Payment = {
-            id: `PAY-P-${Date.now()}`,
-            amount: newPaymentAmount,
-            method: paymentDetails.method,
-            date: new Date(paymentDetails.date).toISOString()
+        const item: PurchaseItem = {
+            productId: trimmedId,
+            productName: name,
+            price: parseFloat(purchasePrice),
+            saleValue: parseFloat(salePrice),
+            gstPercent: parseFloat(gstPercent),
+            quantity: parseInt(quantity)
         };
-
-        dispatch({ type: 'ADD_PAYMENT_TO_PURCHASE', payload: { purchaseId: purchase.id, payment } });
-        setPaymentModalState({ isOpen: false, purchaseId: null });
-        setPaymentDetails({ amount: '', method: 'CASH', date: getLocalDateString() });
+        setPurchaseItems([...purchaseItems, item]);
+        setIsAddingProduct(false);
+        setNewProduct({ id: '', name: '', purchasePrice: '', salePrice: '', gstPercent: '5', quantity: '' });
     };
     
-     // --- Purchase Form Logic ---
-    const totalPurchaseAmount = useMemo(() =>
-        purchaseItems.reduce((sum, item) => {
-            const itemTotal = item.price * item.quantity;
-            const gst = itemTotal * (item.gstPercent / 100);
-            return sum + itemTotal + gst;
-        }, 0), [purchaseItems]);
+    const handleSelectProduct = (product: Product) => {
+        const quantityStr = prompt(`Enter quantity for ${product.name}:`, '1');
+        if (!quantityStr) return;
+        
+        const quantity = parseInt(quantityStr, 10);
+        if(isNaN(quantity) || quantity <= 0) return alert('Please enter a valid quantity.');
 
-    const handleProductSelected = (product: Product) => {
-        setAddingItem({
-            productId: product.id,
-            quantity: 1,
-            price: product.purchasePrice,
-            gstPercent: product.gstPercent,
-            saleValue: product.salePrice,
-            isNew: false
-        });
+        const existingItemIndex = purchaseItems.findIndex(item => item.productId === product.id);
+
+        if (existingItemIndex > -1) {
+            const updatedItems = [...purchaseItems];
+            updatedItems[existingItemIndex].quantity += quantity;
+            setPurchaseItems(updatedItems);
+        } else {
+            const newItem: PurchaseItem = {
+                productId: product.id,
+                productName: product.name,
+                price: product.purchasePrice,
+                saleValue: product.salePrice,
+                gstPercent: product.gstPercent,
+                quantity,
+            };
+            setPurchaseItems([...purchaseItems, newItem]);
+        }
+        
+        setIsSelectingProduct(false);
+        setProductSearchTerm('');
     };
 
     const handleProductScanned = (decodedText: string) => {
         const product = state.products.find(p => p.id.toLowerCase() === decodedText.toLowerCase());
         if (product) {
-            handleProductSelected(product);
+            handleSelectProduct(product);
         } else {
-            setAddingItem({
-                productId: decodedText,
-                quantity: 1,
-                price: 0,
-                gstPercent: 5,
-                saleValue: 0,
-                isNew: true
-            });
+            alert("Product not found. You can add it as a new product.");
+            setIsAddingProduct(true);
+            setNewProduct(prev => ({ ...prev, id: decodedText }));
         }
     };
     
-    const handleSavePurchaseItem = () => {
-        if (!addingItem) return;
-
-        const { productId, quantity, price, gstPercent, saleValue, isNew } = addingItem;
-        
-        if (!productId || quantity <= 0 || price <= 0 || saleValue <= 0) {
-            alert("Please fill all item details with valid values.");
-            return;
-        }
-        
-        const productName = isNew ? prompt("Enter new product name:") : state.products.find(p => p.id === productId)?.name;
-        if (!productName) {
-            alert("Product name is required.");
-            return;
-        }
-
-        const newItem: PurchaseItem = { productId, productName, quantity, price, gstPercent, saleValue };
-        setPurchaseItems([...purchaseItems.filter(i => i.productId !== productId), newItem]);
-        setAddingItem(null);
-        setIsSelectingProduct(false);
-    };
+    const totalPurchaseAmount = purchaseItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
     const handleCompletePurchase = () => {
         if (!purchaseSupplierId || purchaseItems.length === 0) {
-            alert("Please select a supplier and add at least one item.");
-            return;
+            return alert("Please select a supplier and add at least one item.");
         }
-
+        
+        const paidAmount = parseFloat(purchasePaymentAmount) || 0;
+        if(paidAmount > totalPurchaseAmount + 0.01) {
+            return alert("Paid amount cannot be greater than the total amount.");
+        }
+        
         const now = new Date();
-        const purchaseId = `PUR-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}-${now.getHours()}${now.getMinutes()}${now.getSeconds()}`;
+        const purchaseId = `PUR-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}-${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
 
+        const payments: Payment[] = paidAmount > 0 ? [{
+            id: `PAY-P-${Date.now()}`,
+            amount: paidAmount,
+            method: purchasePaymentMethod,
+            date: new Date(purchaseDate).toISOString(),
+        }] : [];
+        
         const newPurchase: Purchase = {
             id: purchaseId,
             supplierId: purchaseSupplierId,
             items: purchaseItems,
             totalAmount: totalPurchaseAmount,
             date: now.toISOString(),
-            supplierInvoiceId: supplierInvoiceId,
-            payments: [],
+            supplierInvoiceId: supplierInvoiceId.trim() || undefined,
+            payments
         };
 
-        const paidAmount = parseFloat(purchasePaymentAmount);
-        if (paidAmount > 0) {
-            newPurchase.payments.push({
-                id: `PAY-P-${Date.now()}`,
-                amount: paidAmount,
-                method: purchasePaymentMethod,
-                date: new Date(purchasePaymentDate).toISOString(),
-            });
-        }
-        
         dispatch({ type: 'ADD_PURCHASE', payload: newPurchase });
-
+        
         purchaseItems.forEach(item => {
-            const newProduct: Product = {
-                id: item.productId,
-                name: item.productName,
-                quantity: item.quantity,
-                purchasePrice: item.price,
-                salePrice: item.saleValue,
-                gstPercent: item.gstPercent,
-            };
-            dispatch({ type: 'ADD_PRODUCT', payload: newProduct });
+            dispatch({
+                type: 'ADD_PRODUCT',
+                payload: {
+                    id: item.productId,
+                    name: item.productName,
+                    quantity: item.quantity,
+                    purchasePrice: item.price,
+                    salePrice: item.saleValue,
+                    gstPercent: item.gstPercent,
+                }
+            });
         });
 
-        showToast("Purchase recorded successfully! Stock updated.");
-        resetPurchaseForm();
+        showToast("Purchase recorded successfully! Inventory updated.");
+        resetAddPurchaseForm();
+        setView('list');
+    };
+    
+    const QRScannerModal: React.FC = () => {
+        const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
+
+        useEffect(() => {
+            html5QrCodeRef.current = new Html5Qrcode("qr-reader-purchase");
+            
+            const qrCodeSuccessCallback = (decodedText: string) => {
+                if (html5QrCodeRef.current?.isScanning) {
+                    html5QrCodeRef.current.stop().then(() => {
+                        setIsScanning(false);
+                        handleProductScanned(decodedText);
+                    }).catch(err => console.error("Error stopping scanner", err));
+                }
+            };
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            html5QrCodeRef.current.start({ facingMode: "environment" }, config, qrCodeSuccessCallback, undefined)
+                .catch(err => alert("Camera permission is required. Please allow and try again."));
+            
+            return () => {
+                if (html5QrCodeRef.current?.isScanning) {
+                    html5QrCodeRef.current.stop().catch(err => console.log("Failed to stop scanner on cleanup.", err));
+                }
+            };
+        }, []);
+
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+                <Card title="Scan Product" className="w-full max-w-md relative">
+                    <button onClick={() => setIsScanning(false)} className="absolute top-4 right-4 p-2"><X size={20}/></button>
+                    <div id="qr-reader-purchase" className="w-full mt-4"></div>
+                </Card>
+            </div>
+        );
     };
 
-    // --- RENDER METHODS ---
-
-    const renderListView = () => (
-        <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row gap-4">
-                <Button onClick={() => setView('add_purchase')} className="w-full">
-                    <Plus className="w-4 h-4 mr-2" /> Create New Purchase
-                </Button>
-                <Button onClick={() => setView('add_supplier')} variant="secondary" className="w-full">
-                    <Plus className="w-4 h-4 mr-2" /> Add New Supplier
-                </Button>
-            </div>
-            
-            <h2 className="text-xl font-bold text-primary border-t pt-4">All Suppliers</h2>
-            <div className="space-y-3">
-                {state.suppliers.map(supplier => {
-                    const supplierPurchases = state.purchases.filter(p => p.supplierId === supplier.id);
-                    const totalPurchased = supplierPurchases.reduce((sum, p) => sum + p.totalAmount, 0);
-                    const totalPaid = supplierPurchases.reduce((sum, p) => sum + (p.payments || []).reduce((pSum, payment) => pSum + payment.amount, 0), 0);
-                    const totalDue = totalPurchased - totalPaid;
-                    return (
-                        <Card key={supplier.id} className="cursor-pointer hover:shadow-lg" onClick={() => setSelectedSupplier(supplier)}>
-                             <div className="flex justify-between items-start">
-                                <div>
-                                    <p className="font-bold text-lg text-primary">{supplier.name}</p>
-                                    <p className="text-sm text-gray-600">{supplier.location}</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="font-semibold text-green-600">Total: ₹{totalPurchased.toLocaleString('en-IN')}</p>
-                                    <p className={`font-semibold ${totalDue > 0 ? 'text-red-600' : 'text-gray-600'}`}>
-                                        Due: ₹{totalDue.toLocaleString('en-IN')}
-                                    </p>
-                                </div>
-                            </div>
-                        </Card>
-                    )
-                })}
-            </div>
-        </div>
+    const ProductSearchModal = () => (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <Card className="w-full max-w-lg">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-bold">Select Existing Product</h2>
+            <button onClick={() => setIsSelectingProduct(false)}><X size={20}/></button>
+          </div>
+          <input type="text" placeholder="Search products..." value={productSearchTerm} onChange={e => setProductSearchTerm(e.target.value)} className="w-full p-2 border rounded-lg mb-4" autoFocus/>
+          <div className="max-h-80 overflow-y-auto space-y-2">
+            {state.products.filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase())).map(p => (
+              <div key={p.id} onClick={() => handleSelectProduct(p)} className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-purple-100">
+                <p className="font-semibold">{p.name}</p>
+                <p className="text-sm text-gray-500">Code: {p.id} | Stock: {p.quantity}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
     );
     
-    const renderAddSupplierView = () => (
-        <Card title="Add New Supplier">
-            <div className="space-y-4">
-                <div className="flex items-center">
-                    <span className="px-3 py-2 bg-gray-100 border border-r-0 rounded-l-md">SUPP-</span>
-                    <input type="text" placeholder="Supplier ID" value={newSupplier.id} onChange={e => setNewSupplier({ ...newSupplier, id: e.target.value })} className="w-full p-2 border rounded-r-md" />
-                </div>
-                <input type="text" placeholder="Name" value={newSupplier.name} onChange={e => setNewSupplier({ ...newSupplier, name: e.target.value })} className="w-full p-2 border rounded" />
-                <input type="text" placeholder="Phone" value={newSupplier.phone} onChange={e => setNewSupplier({ ...newSupplier, phone: e.target.value })} className="w-full p-2 border rounded" />
-                <input type="text" placeholder="Location" value={newSupplier.location} onChange={e => setNewSupplier({ ...newSupplier, location: e.target.value })} className="w-full p-2 border rounded" />
-                <input type="text" placeholder="Reference (Optional)" value={newSupplier.reference} onChange={e => setNewSupplier({ ...newSupplier, reference: e.target.value })} className="w-full p-2 border rounded" />
-                <input type="text" placeholder="Account 1 (Optional)" value={newSupplier.account1} onChange={e => setNewSupplier({ ...newSupplier, account1: e.target.value })} className="w-full p-2 border rounded" />
-                <input type="text" placeholder="Account 2 (Optional)" value={newSupplier.account2} onChange={e => setNewSupplier({ ...newSupplier, account2: e.target.value })} className="w-full p-2 border rounded" />
-                <input type="text" placeholder="UPI (Optional)" value={newSupplier.upi} onChange={e => setNewSupplier({ ...newSupplier, upi: e.target.value })} className="w-full p-2 border rounded" />
+    const NewProductModal = () => (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <Card title="Add New Product to Purchase" className="w-full max-w-md">
+            <div className="space-y-3">
+                <input type="text" placeholder="Product ID (Unique)" value={newProduct.id} onChange={e => setNewProduct({...newProduct, id: e.target.value})} className="w-full p-2 border rounded" autoFocus />
+                <input type="text" placeholder="Product Name" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="w-full p-2 border rounded" />
+                <input type="number" placeholder="Quantity" value={newProduct.quantity} onChange={e => setNewProduct({...newProduct, quantity: e.target.value})} className="w-full p-2 border rounded" />
+                <input type="number" placeholder="Purchase Price (per item)" value={newProduct.purchasePrice} onChange={e => setNewProduct({...newProduct, purchasePrice: e.target.value})} className="w-full p-2 border rounded" />
+                <input type="number" placeholder="Sale Price (per item)" value={newProduct.salePrice} onChange={e => setNewProduct({...newProduct, salePrice: e.target.value})} className="w-full p-2 border rounded" />
+                <input type="number" placeholder="GST %" value={newProduct.gstPercent} onChange={e => setNewProduct({...newProduct, gstPercent: e.target.value})} className="w-full p-2 border rounded" />
                 <div className="flex gap-2">
-                    <Button onClick={handleAddSupplier} className="w-full">Save Supplier</Button>
-                    <Button onClick={resetSupplierForm} variant="secondary" className="w-full">Cancel</Button>
+                    <Button onClick={handleAddItemManually} className="w-full">Add to Purchase</Button>
+                    <Button onClick={() => setIsAddingProduct(false)} variant="secondary" className="w-full">Cancel</Button>
                 </div>
             </div>
         </Card>
+      </div>
     );
 
-    const renderAddPurchaseView = () => {
-         const QRScannerModal = () => (
-            <div className="fixed inset-0 bg-black bg-opacity-75 flex flex-col items-center justify-center z-50 p-4">
-                <Card title="Scan Product QR" className="w-full max-w-md relative">
-                    <button onClick={() => setIsScanning(false)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100"><X size={20}/></button>
-                    <div id="qr-reader-purchase" className="w-full mt-4"></div>
-                    <Button onClick={() => {
-                        const html5QrCode = new Html5Qrcode("qr-reader-purchase");
-                        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
-                            (decodedText) => {
-                                html5QrCode.stop();
-                                setIsScanning(false);
-                                handleProductScanned(decodedText);
-                            }, 
-                            () => {}
-                        ).catch(err => alert("Failed to start scanner: " + err));
-                    }} className="w-full mt-2">Start Scan</Button>
-                </Card>
-            </div>
-        );
+    const PaymentModal = () => {
+        const purchase = state.purchases.find(p => p.id === paymentModalState.purchaseId);
+        if (!paymentModalState.isOpen || !purchase) return null;
+        
+        const amountPaid = (purchase.payments || []).reduce((sum, p) => sum + p.amount, 0);
+        const dueAmount = purchase.totalAmount - amountPaid;
 
-        const ProductSearchModal = () => (
-             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <Card className="w-full max-w-lg">
-                    <h2 className="text-lg font-bold mb-2">Select Product</h2>
-                    <input type="text" placeholder="Search..." value={productSearchTerm} onChange={e => setProductSearchTerm(e.target.value)} className="w-full p-2 border rounded mb-2"/>
-                    <div className="max-h-60 overflow-y-auto">
-                        {state.products.filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase())).map(p => (
-                            <div key={p.id} onClick={() => handleProductSelected(p)} className="p-2 hover:bg-gray-100 cursor-pointer">{p.name}</div>
-                        ))}
-                    </div>
-                    <Button onClick={() => setIsSelectingProduct(false)} variant="secondary" className="w-full mt-2">Close</Button>
-                </Card>
-            </div>
-        );
-
-        const AddItemModal = () => (
+        return (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <Card title={addingItem?.isNew ? "Add New Product" : "Edit Purchase Item"} className="w-full max-w-md">
-                    <div className="space-y-2">
-                        <p><strong>Product Code:</strong> {addingItem?.productId}</p>
-                        <label>Quantity</label><input type="number" value={addingItem?.quantity} onChange={e => setAddingItem({...addingItem!, quantity: +e.target.value})} className="w-full p-2 border rounded"/>
-                        <label>Purchase Price (per item, excl. GST)</label><input type="number" value={addingItem?.price} onChange={e => setAddingItem({...addingItem!, price: +e.target.value})} className="w-full p-2 border rounded"/>
-                        <label>GST %</label><input type="number" value={addingItem?.gstPercent} onChange={e => setAddingItem({...addingItem!, gstPercent: +e.target.value})} className="w-full p-2 border rounded"/>
-                        <label>Sale Price (per item, incl. GST)</label><input type="number" value={addingItem?.saleValue} onChange={e => setAddingItem({...addingItem!, saleValue: +e.target.value})} className="w-full p-2 border rounded"/>
-                    </div>
-                    <div className="flex gap-2 mt-4">
-                        <Button onClick={handleSavePurchaseItem} className="w-full">Save Item</Button>
-                        <Button onClick={() => setAddingItem(null)} variant="secondary" className="w-full">Cancel</Button>
+                <Card title="Add Payment" className="w-full max-w-sm">
+                    <div className="space-y-4">
+                        <p>Invoice Total: <span className="font-bold">₹{purchase.totalAmount.toLocaleString('en-IN')}</span></p>
+                        <p>Amount Due: <span className="font-bold text-red-600">₹{dueAmount.toLocaleString('en-IN')}</span></p>
+                        <input type="number" placeholder="Enter amount" value={paymentDetails.amount} onChange={e => setPaymentDetails({ ...paymentDetails, amount: e.target.value })} className="w-full p-2 border rounded" autoFocus/>
+                        <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any })} className="w-full p-2 border rounded custom-select">
+                            <option value="CASH">Cash</option>
+                            <option value="UPI">UPI</option>
+                            <option value="CHEQUE">Cheque</option>
+                        </select>
+                         <input type="date" value={paymentDetails.date} onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} className="w-full p-2 border rounded" />
+                        <div className="flex gap-2">
+                           <Button onClick={handleAddPayment} className="w-full">Save Payment</Button>
+                           <Button onClick={() => setPaymentModalState({isOpen: false, purchaseId: null})} variant="secondary" className="w-full">Cancel</Button>
+                        </div>
                     </div>
                 </Card>
             </div>
-        );
+        )
+    };
+    
+    if (selectedSupplier) {
+        const supplierPurchases = state.purchases.filter(p => p.supplierId === selectedSupplier.id);
+        const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+            if (editedSupplier) {
+                setEditedSupplier({ ...editedSupplier, [e.target.name]: e.target.value });
+            }
+        };
 
         return (
             <div className="space-y-4">
-                {isScanning && <QRScannerModal />}
-                {isSelectingProduct && <ProductSearchModal />}
-                {addingItem && <AddItemModal />}
-
-                <Card title="New Purchase Order">
-                    <select value={purchaseSupplierId} onChange={e => setPurchaseSupplierId(e.target.value)} className="w-full p-2 border rounded custom-select mb-2">
-                        <option value="">Select Supplier</option>
-                        {state.suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
-                    <input type="text" placeholder="Supplier Invoice ID (Optional)" value={supplierInvoiceId} onChange={e => setSupplierInvoiceId(e.target.value)} className="w-full p-2 border rounded" />
-                </Card>
-
-                <Card title="Items">
-                    <div className="flex flex-col sm:flex-row gap-2">
-                        <Button onClick={() => setIsSelectingProduct(true)} className="w-full"><Search size={16} /> Select Existing Product</Button>
-                        <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full"><QrCode size={16} /> Scan/Enter New Product</Button>
-                    </div>
-                    <div className="mt-4 space-y-2">
-                        {purchaseItems.map(item => (
-                            <div key={item.productId} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                                <div><p className="font-semibold">{item.productName}</p><p className="text-sm">{item.quantity} x ₹{item.price}</p></div>
-                                <div className="flex items-center gap-2">
-                                    <p>₹{(item.quantity * item.price).toLocaleString('en-IN')}</p>
-                                    <DeleteButton variant="remove" onClick={() => setPurchaseItems(purchaseItems.filter(i => i.productId !== item.productId))} />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </Card>
-
-                <Card title="Billing">
-                    <div className="p-4 bg-purple-50 rounded-lg text-center mb-4">
-                        <p className="text-sm font-semibold text-gray-600">Grand Total (incl. GST)</p>
-                        <p className="text-4xl font-bold text-primary">₹{totalPurchaseAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium">Amount Paid Now</label>
-                            <input type="number" value={purchasePaymentAmount} onChange={e => setPurchasePaymentAmount(e.target.value)} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium">Payment Method</label>
-                            <select value={purchasePaymentMethod} onChange={e => setPurchasePaymentMethod(e.target.value as any)} className="w-full p-2 border rounded custom-select">
-                                <option value="CASH">Cash</option><option value="UPI">UPI</option><option value="CHEQUE">Cheque</option>
-                            </select>
-                        </div>
-                         <div className="md:col-span-2">
-                            <label className="block text-sm font-medium">Payment Date</label>
-                            <input type="date" value={purchasePaymentDate} onChange={e => setPurchasePaymentDate(e.target.value)} className="w-full p-2 border rounded" />
-                        </div>
-                    </div>
-                </Card>
-                <div className="flex gap-2">
-                    <Button onClick={handleCompletePurchase} className="w-full">Complete Purchase</Button>
-                    <Button onClick={resetPurchaseForm} variant="secondary" className="w-full">Cancel</Button>
-                </div>
-            </div>
-        );
-    };
-
-    const renderSupplierDetailsView = () => {
-         if (!selectedSupplier || !editedSupplier) return null;
-
-         const supplierPurchases = state.purchases.filter(p => p.supplierId === selectedSupplier.id);
-         const PaymentModal = () => {
-             const purchase = state.purchases.find(p => p.id === paymentModalState.purchaseId);
-             if (!paymentModalState.isOpen || !purchase) return null;
-             const amountPaid = purchase.payments.reduce((sum, p) => sum + p.amount, 0);
-             const dueAmount = purchase.totalAmount - amountPaid;
-
-             return (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <Card title="Add Payment" className="w-full max-w-sm">
-                        <div className="space-y-4">
-                            <p>Due Amount: <span className="font-bold text-red-600">₹{dueAmount.toLocaleString('en-IN')}</span></p>
-                            <input type="number" placeholder="Enter amount" value={paymentDetails.amount} onChange={e => setPaymentDetails({ ...paymentDetails, amount: e.target.value })} className="w-full p-2 border rounded" autoFocus/>
-                            <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any })} className="w-full p-2 border rounded custom-select">
-                                <option value="CASH">Cash</option><option value="UPI">UPI</option><option value="CHEQUE">Cheque</option>
-                            </select>
-                            <input type="date" value={paymentDetails.date} onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} className="w-full p-2 border rounded"/>
-                            <div className="flex gap-2">
-                               <Button onClick={handleAddPayment} className="w-full">Save Payment</Button>
-                               <Button onClick={() => setPaymentModalState({isOpen: false, purchaseId: null})} variant="secondary" className="w-full">Cancel</Button>
-                            </div>
-                        </div>
-                    </Card>
-                </div>
-            )
-         };
-
-         return (
-             <div className="space-y-4">
-                 <ConfirmationModal isOpen={confirmModalState.isOpen} onClose={() => setConfirmModalState({ isOpen: false, purchaseIdToDelete: null })} onConfirm={confirmDeletePurchase} title="Confirm Purchase Deletion">
-                    Are you sure you want to delete this purchase record? This will remove the items from your stock.
-                 </ConfirmationModal>
-                 {paymentModalState.isOpen && <PaymentModal />}
-                 <Button onClick={() => setSelectedSupplier(null)}><ArrowLeft size={16} /> Back to List</Button>
-                 
-                 <Card>
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-lg font-bold text-primary">{selectedSupplier.name}</h2>
+                <ConfirmationModal isOpen={confirmModalState.isOpen} onClose={() => setConfirmModalState({isOpen: false, purchaseIdToDelete: null})} onConfirm={confirmDeletePurchase} title="Confirm Purchase Deletion">
+                    Are you sure you want to delete this purchase? This will remove the items from your stock. This action cannot be undone.
+                </ConfirmationModal>
+                {paymentModalState.isOpen && <PaymentModal />}
+                <Button onClick={() => setSelectedSupplier(null)}>&larr; Back to Suppliers</Button>
+                <Card>
+                     <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-lg font-bold text-primary">Supplier Details: {selectedSupplier.name}</h2>
                         {isEditing ? (
-                            <div className="flex gap-2"><Button onClick={handleUpdateSupplier}><Save size={16}/> Save</Button><Button onClick={() => setIsEditing(false)} variant="secondary"><X size={16}/></Button></div>
+                            <div className="flex gap-2 items-center">
+                                <Button onClick={handleUpdateSupplier} className="h-9 px-3"><Save size={16} /> Save</Button>
+                                <button onClick={() => setIsEditing(false)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100"><X size={20}/></button>
+                            </div>
                         ) : (
                             <Button onClick={() => setIsEditing(true)}><Edit size={16}/> Edit</Button>
                         )}
                     </div>
-                    {isEditing ? (
-                        <div className="space-y-2">
-                            <input type="text" value={editedSupplier.name} onChange={e => setEditedSupplier({...editedSupplier, name: e.target.value})} className="w-full p-2 border rounded"/>
-                            {/* Add other fields here */}
+                    {isEditing && editedSupplier ? (
+                        <div className="space-y-3">
+                            <div><label className="text-sm font-medium">Name</label><input type="text" name="name" value={editedSupplier.name} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
+                            <div><label className="text-sm font-medium">Phone</label><input type="text" name="phone" value={editedSupplier.phone} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
+                            <div><label className="text-sm font-medium">Location</label><input type="text" name="location" value={editedSupplier.location} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
                         </div>
                     ) : (
                         <div className="space-y-1 text-gray-700">
                              <p><strong>ID:</strong> {selectedSupplier.id}</p>
-                             <p><strong>Phone:</strong> {selectedSupplier.phone}</p>
-                             <p><strong>Location:</strong> {selectedSupplier.location}</p>
+                            <p><strong>Phone:</strong> {selectedSupplier.phone}</p>
+                            <p><strong>Location:</strong> {selectedSupplier.location}</p>
                         </div>
                     )}
-                 </Card>
-
-                 <Card title="Purchase History">
+                </Card>
+                <Card title="Purchase History">
                     {supplierPurchases.length > 0 ? (
                         <div className="space-y-4">
                             {supplierPurchases.slice().reverse().map(purchase => {
-                                const amountPaid = purchase.payments.reduce((sum, p) => sum + p.amount, 0);
+                                const amountPaid = (purchase.payments || []).reduce((sum, p) => sum + p.amount, 0);
                                 const dueAmount = purchase.totalAmount - amountPaid;
+                                const isPaid = dueAmount <= 0.01;
+
                                 return (
                                 <div key={purchase.id} className="p-3 bg-gray-50 rounded-lg border">
                                     <div className="flex justify-between items-start">
-                                      <div>
-                                        <p className="font-semibold">{new Date(purchase.date).toLocaleString()}</p>
-                                        <p className="text-xs text-gray-500">Invoice ID: {purchase.id}</p>
-                                        {purchase.supplierInvoiceId && <p className="text-xs text-gray-500">Supplier Invoice: {purchase.supplierInvoiceId}</p>}
-                                        <p className={`text-sm font-bold ${dueAmount <= 0.01 ? 'text-green-600' : 'text-red-600'}`}>Due: ₹{dueAmount.toLocaleString('en-IN')}</p>
+                                      <div className="flex-grow">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <p className="font-semibold">{new Date(purchase.date).toLocaleString()}</p>
+                                                <p className="text-xs text-gray-500">Internal ID: {purchase.id}</p>
+                                                {purchase.supplierInvoiceId && <p className="text-xs text-gray-500">Supplier Invoice: {purchase.supplierInvoiceId}</p>}
+                                                <p className={`text-sm font-bold ${isPaid ? 'text-green-600' : 'text-red-600'}`}>{isPaid ? 'Paid' : `Due: ₹${dueAmount.toLocaleString('en-IN')}`}</p>
+                                            </div>
+                                            <p className="font-bold text-lg text-primary">₹{purchase.totalAmount.toLocaleString('en-IN')}</p>
+                                        </div>
                                       </div>
-                                      <div className="text-right">
-                                        <p className="font-bold text-lg text-primary">₹{purchase.totalAmount.toLocaleString('en-IN')}</p>
-                                        <DeleteButton variant="delete" onClick={(e) => { e.stopPropagation(); handleDeletePurchase(purchase.id); }} />
-                                      </div>
+                                      <DeleteButton variant="delete" onClick={() => handleDeletePurchase(purchase.id)} className="ml-4" />
                                     </div>
-                                     <div className="pl-4 mt-2 border-l-2 border-purple-200 space-y-3">
-                                         <div>
-                                             <h4 className="font-semibold text-sm">Items:</h4>
-                                             <ul className="list-disc list-inside text-sm">{purchase.items.map((item, i) => <li key={i}>{item.productName} (x{item.quantity})</li>)}</ul>
-                                         </div>
-                                         {purchase.payments.length > 0 && <div>
-                                             <h4 className="font-semibold text-sm">Payments:</h4>
-                                             <ul className="list-disc list-inside text-sm">{purchase.payments.map(p => <li key={p.id}>₹{p.amount.toLocaleString('en-IN')} via {p.method} on {new Date(p.date).toLocaleDateString()}</li>)}</ul>
-                                         </div>}
-                                         {dueAmount > 0.01 && <Button onClick={() => setPaymentModalState({ isOpen: true, purchaseId: purchase.id })}><Plus size={16}/> Add Payment</Button>}
-                                     </div>
+                                    <div className="pl-4 mt-2 border-l-2 border-purple-200 space-y-3">
+                                        <div>
+                                            <h4 className="font-semibold text-sm">Items:</h4>
+                                            <ul className="list-disc list-inside text-sm">
+                                                {purchase.items.map((item, index) => <li key={index}>{item.productName} (x{item.quantity}) @ ₹{item.price.toLocaleString('en-IN')}</li>)}
+                                            </ul>
+                                        </div>
+                                        {(purchase.payments || []).length > 0 && (
+                                            <div>
+                                                <h4 className="font-semibold text-sm">Payments:</h4>
+                                                <ul className="list-disc list-inside text-sm">
+                                                    {(purchase.payments || []).map(p => <li key={p.id}>₹{p.amount.toLocaleString('en-IN')} via {p.method} on {new Date(p.date).toLocaleDateString()}</li>)}
+                                                </ul>
+                                            </div>
+                                        )}
+                                        {!isPaid && <Button onClick={() => setPaymentModalState({ isOpen: true, purchaseId: purchase.id })}><Plus size={16}/> Add Payment</Button>}
+                                    </div>
                                 </div>
                             )})}
                         </div>
-                    ) : <p>No purchases recorded.</p>}
-                 </Card>
-             </div>
-         );
+                    ) : <p className="text-gray-500">No purchases recorded for this supplier.</p>}
+                </Card>
+            </div>
+        );
     }
     
-    let content;
-    switch(view) {
-        case 'add_supplier': content = renderAddSupplierView(); break;
-        case 'add_purchase': content = renderAddPurchaseView(); break;
-        case 'supplier_details': content = renderSupplierDetailsView(); break;
-        default: content = renderListView();
+    if (view === 'add_supplier') {
+        return (
+            <div className="space-y-4">
+                 <Button onClick={() => setView('list')}>&larr; Back to List</Button>
+                 <Card title="Add New Supplier">
+                     <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium">Supplier ID</label>
+                            <div className="flex items-center mt-1">
+                                <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 bg-gray-50 text-gray-500 text-sm">SUPP-</span>
+                                <input type="text" placeholder="Enter unique ID" value={newSupplier.id} onChange={e => setNewSupplier({ ...newSupplier, id: e.target.value })} className="w-full p-2 border rounded-r-md" autoFocus />
+                            </div>
+                        </div>
+                        <input type="text" placeholder="Name" value={newSupplier.name} onChange={e => setNewSupplier({ ...newSupplier, name: e.target.value })} className="w-full p-2 border rounded" />
+                        <input type="text" placeholder="Phone" value={newSupplier.phone} onChange={e => setNewSupplier({ ...newSupplier, phone: e.target.value })} className="w-full p-2 border rounded" />
+                        <input type="text" placeholder="Location" value={newSupplier.location} onChange={e => setNewSupplier({ ...newSupplier, location: e.target.value })} className="w-full p-2 border rounded" />
+                        <Button onClick={handleAddSupplier} className="w-full">Save Supplier</Button>
+                     </div>
+                 </Card>
+            </div>
+        );
     }
-
+    
+    if (view === 'add_purchase') {
+        return (
+            <div className="space-y-4">
+                 {isScanning && <QRScannerModal />}
+                 {isSelectingProduct && <ProductSearchModal />}
+                 {isAddingProduct && <NewProductModal />}
+                 <Button onClick={() => setView('list')}>&larr; Back to List</Button>
+                 <Card title="New Purchase Order">
+                    <div className="space-y-4">
+                        <select value={purchaseSupplierId} onChange={e => setPurchaseSupplierId(e.target.value)} className="w-full p-2 border rounded custom-select">
+                            <option value="">Select a Supplier</option>
+                            {state.suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
+                        <input type="text" placeholder="Supplier Invoice ID (Optional)" value={supplierInvoiceId} onChange={e => setSupplierInvoiceId(e.target.value)} className="w-full p-2 border rounded" />
+                        <input type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} className="w-full p-2 border rounded" />
+                    </div>
+                 </Card>
+                 <Card title="Purchase Items">
+                    <div className="flex flex-col sm:flex-row gap-2">
+                        <Button onClick={() => setIsAddingProduct(true)} className="w-full"><Plus size={16}/> Add New Product</Button>
+                        <Button onClick={() => setIsSelectingProduct(true)} variant="secondary" className="w-full"><Search size={16}/> Select Existing</Button>
+                        <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full"><QrCode size={16}/> Scan Product</Button>
+                    </div>
+                     {purchaseItems.length > 0 && (
+                        <div className="mt-4 space-y-2">
+                            {purchaseItems.map(item => (
+                                <div key={item.productId} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                                    <div><p className="font-semibold">{item.productName}</p><p className="text-sm">{item.quantity} x ₹{item.price.toLocaleString('en-IN')}</p></div>
+                                    <div className="flex items-center gap-2">
+                                        <p>₹{(item.quantity * item.price).toLocaleString('en-IN')}</p>
+                                        <DeleteButton variant="remove" onClick={() => setPurchaseItems(purchaseItems.filter(i => i.productId !== item.productId))} />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                 </Card>
+                  <Card title="Billing & Payment">
+                     <div className="p-4 bg-purple-50 rounded-lg text-center mb-4">
+                        <p className="text-sm font-semibold">Total Amount</p>
+                        <p className="text-4xl font-bold text-primary">₹{totalPurchaseAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input type="number" placeholder="Amount Paid Now" value={purchasePaymentAmount} onChange={e => setPurchasePaymentAmount(e.target.value)} className="w-full p-2 border rounded" />
+                        <select value={purchasePaymentMethod} onChange={e => setPurchasePaymentMethod(e.target.value as any)} className="w-full p-2 border rounded custom-select">
+                             <option value="CASH">Cash</option>
+                             <option value="UPI">UPI</option>
+                             <option value="CHEQUE">Cheque</option>
+                        </select>
+                    </div>
+                 </Card>
+                 <Button onClick={handleCompletePurchase} className="w-full">Complete Purchase</Button>
+            </div>
+        );
+    }
+    
     return (
         <div className="space-y-4">
-             <h1 className="text-2xl font-bold text-primary flex items-center gap-2">
-                <Package /> Purchases & Suppliers
-            </h1>
-            {content}
+            <h1 className="text-2xl font-bold text-primary">Purchases & Suppliers</h1>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Button onClick={() => setView('add_purchase')} className="w-full h-16"><Package className="w-5 h-5 mr-2"/>Create New Purchase</Button>
+                <Button onClick={() => setView('add_supplier')} className="w-full h-16"><Plus className="w-5 h-5 mr-2"/>Add New Supplier</Button>
+            </div>
+            <Card title="All Suppliers">
+                <div className="space-y-3">
+                    {state.suppliers.map(supplier => {
+                        const purchases = state.purchases.filter(p => p.supplierId === supplier.id);
+                        const totalBilled = purchases.reduce((sum, p) => sum + p.totalAmount, 0);
+                        const totalPaid = purchases.reduce((sum, p) => sum + (p.payments || []).reduce((pSum, pay) => pSum + pay.amount, 0), 0);
+                        const totalDue = totalBilled - totalPaid;
+
+                        return (
+                            <Card key={supplier.id} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setSelectedSupplier(supplier)}>
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <p className="font-bold text-lg text-primary">{supplier.name}</p>
+                                        <p className="text-sm text-gray-500">{supplier.location}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className={`font-semibold ${totalDue > 0 ? 'text-red-600' : 'text-gray-600'}`}>Due: ₹{totalDue.toLocaleString('en-IN')}</p>
+                                    </div>
+                                </div>
+                            </Card>
+                        );
+                    })}
+                     {state.suppliers.length === 0 && <p className="text-center text-gray-500">No suppliers added yet.</p>}
+                </div>
+            </Card>
         </div>
     );
 };
