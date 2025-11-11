@@ -16,9 +16,6 @@ const getLocalDateString = (date = new Date()) => {
   return `${year}-${month}-${day}`;
 };
 
-// FIX: Replaced the corrupted and incomplete Base64 string with a valid one to fix the syntax error.
-const logoBase64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABAAAAAJQAQMAAADoVsdmAAAAA1BMVEWAgICQdD0xAAAAlElEQVR42u3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgZ1UAAAFWkt6mAAAAAElFTkSuQmCC';
-
 interface SalesPageProps {
   setIsDirty: (isDirty: boolean) => void;
 }
@@ -184,29 +181,19 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
           const maxLineWidth = pageWidth - margin * 2;
           let y = 5;
 
-          const imgWidth = 60; 
-          const imgHeight = imgWidth / (696 / 392); // Maintain aspect ratio from 696x392
-          const imgX = (pageWidth - imgWidth) / 2;
+          // Always render text header for invoice
+          y = 10;
+          doc.setFont('Times', 'italic');
+          doc.setFontSize(12);
+          doc.setTextColor('#000000');
+          doc.text('Om Namo Venkatesaya', centerX, y, { align: 'center' });
+          y += 7;
           
-          try {
-            doc.addImage(logoBase64, 'PNG', imgX, y, imgWidth, imgHeight);
-            y += imgHeight + 2; // Add spacing after image
-          } catch (err) {
-            console.error('Failed to add header image:', err);
-            // Fallback to text if image fails
-            y = 10;
-            doc.setFont('Times', 'italic');
-            doc.setFontSize(12);
-            doc.setTextColor('#000000');
-            doc.text('Om Namo Venkatesaya', centerX, y, { align: 'center' });
-            y += 7;
-            
-            doc.setFont('Times', 'bold');
-            doc.setFontSize(16);
-            doc.setTextColor('#6a0dad');
-            doc.text('Bhavani Sarees', centerX, y, { align: 'center' });
-            y += 7;
-          }
+          doc.setFont('Times', 'bold');
+          doc.setFontSize(16);
+          doc.setTextColor('#6a0dad');
+          doc.text('Bhavani Sarees', centerX, y, { align: 'center' });
+          y += 7;
 
           doc.setDrawColor('#cccccc');
           doc.line(margin, y, pageWidth - margin, y);
