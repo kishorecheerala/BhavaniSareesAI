@@ -132,6 +132,7 @@ const MainApp: React.FC = () => {
           <NavItem label="Search" icon={Search} action={() => setIsSearchOpen(true)} />
           <NavItem page="PURCHASES" label="Purchases" icon={Package} />
           <NavItem page="PRODUCTS" label="Products" icon={Boxes} />
+          <NavItem page="RETURNS" label="Returns" icon={Undo2} />
           <NavItem page="REPORTS" label="Reports" icon={FileText} />
         </div>
       </nav>
