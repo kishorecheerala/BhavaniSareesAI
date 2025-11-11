@@ -217,12 +217,14 @@ interface AppContextType {
     state: AppState;
     dispatch: React.Dispatch<Action>;
     showToast: (message: string) => void;
+    isDbLoaded: boolean;
 }
 
 const AppContext = createContext<AppContextType>({
   state: initialState,
   dispatch: () => null,
   showToast: () => null,
+  isDbLoaded: false,
 });
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -280,7 +282,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }, 3000);
   };
 
-  return <AppContext.Provider value={{ state, dispatch, showToast }}>{children}</AppContext.Provider>;
+  return <AppContext.Provider value={{ state, dispatch, showToast, isDbLoaded }}>{children}</AppContext.Provider>;
 };
 
 export const useAppContext = () => useContext(AppContext);

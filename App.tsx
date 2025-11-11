@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle } from 'lucide-react';
 
@@ -12,6 +13,7 @@ import ReturnsPage from './pages/ReturnsPage';
 import ProductsPage from './pages/ProductsPage';
 import UniversalSearch from './components/UniversalSearch';
 import HelpModal from './components/HelpModal';
+import AppSkeletonLoader from './components/AppSkeletonLoader';
 
 export type Page = 'DASHBOARD' | 'CUSTOMERS' | 'SALES' | 'PURCHASES' | 'REPORTS' | 'RETURNS' | 'PRODUCTS';
 
@@ -150,9 +152,18 @@ const MainApp: React.FC = () => {
   );
 };
 
+const AppContent: React.FC = () => {
+    const { isDbLoaded } = useAppContext();
+
+    if (!isDbLoaded) {
+        return <AppSkeletonLoader />;
+    }
+    return <MainApp />;
+};
+
 const App: React.FC = () => (
     <AppProvider>
-        <MainApp />
+        <AppContent />
     </AppProvider>
 );
 
