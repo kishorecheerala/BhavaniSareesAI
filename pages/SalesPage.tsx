@@ -9,6 +9,71 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import DeleteButton from '../components/DeleteButton';
 
+
+// --- Divine Symbols (Detailed and Respectful SVG) ---
+const tirunamamSvg = `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <path d="M42 20 C42 40, 30 55, 25 70 C20 85, 20 95, 20 95" stroke="#6a0dad" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M58 20 C58 40, 70 55, 75 70 C80 85, 80 95, 80 95" stroke="#6a0dad" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M50 20 V 70" stroke="red" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M48 70 H 52" stroke="red" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M40 95 A 10 10 0 0 1 60 95" stroke="#6a0dad" stroke-width="4" fill="none"/>
+</svg>`;
+
+const sankuSvg = `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <path d="M50,95 C70,95 85,80 85,60 C85,40 70,25 50,25 C30,25 15,40 15,60 C15,80 30,95 50,95 Z" fill="#f3e5f5" stroke="#6a0dad" stroke-width="4"/>
+  <path d="M50,25 C40,25 30,20 30,10 C30,0 40,5 50,5 C60,5 70,0 70,10 C70,20 60,25 50,25" fill="#f3e5f5" stroke="#6a0dad" stroke-width="4"/>
+  <path d="M30,60 C30,50 40,45 50,45 C60,45 70,50 70,60" fill="none" stroke="#6a0dad" stroke-width="3"/>
+  <path d="M35,75 C35,68 42,65 50,65 C58,65 65,68 65,75" fill="none" stroke="#6a0dad" stroke-width="3"/>
+</svg>`;
+
+const chakraSvg = `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="50" cy="50" r="35" fill="#f3e5f5" stroke="#6a0dad" stroke-width="4"/>
+  <circle cx="50" cy="50" r="10" fill="#6a0dad"/>
+  <g transform="translate(50,50)">
+    <line x1="0" y1="-35" x2="0" y2="35" stroke="#6a0dad" stroke-width="3"/>
+    <line x1="-35" y1="0" x2="35" y2="0" stroke="#6a0dad" stroke-width="3"/>
+    <line x1="-24.7" y1="-24.7" x2="24.7" y2="24.7" stroke="#6a0dad" stroke-width="3"/>
+    <line x1="-24.7" y1="24.7" x2="24.7" y2="-24.7" stroke="#6a0dad" stroke-width="3"/>
+  </g>
+  <g transform="translate(50,50)">
+    <path d="M0 -35 L -5 -45 L 5 -45 Z" fill="#6a0dad"/>
+    <path d="M0 35 L -5 45 L 5 45 Z" fill="#6a0dad" transform="rotate(180)"/>
+    <path d="M0 -35 L -5 -45 L 5 -45 Z" fill="#6a0dad" transform="rotate(90)"/>
+    <path d="M0 35 L -5 45 L 5 45 Z" fill="#6a0dad" transform="rotate(270)"/>
+  </g>
+</svg>`;
+
+// Helper to convert SVG string to PNG data URL
+const svgToPng = (svgString: string, width: number, height: number): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        
+        const image = new Image();
+        image.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.drawImage(image, 0, 0, width, height);
+                const pngDataUrl = canvas.toDataURL('image/png');
+                URL.revokeObjectURL(url);
+                resolve(pngDataUrl);
+            } else {
+                URL.revokeObjectURL(url);
+                reject(new Error('Could not get canvas context'));
+            }
+        };
+        image.onerror = (e) => {
+            URL.revokeObjectURL(url);
+            reject(new Error('Failed to load SVG image for PDF conversion.'));
+        };
+        image.src = url;
+    });
+};
+
+
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
   const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -30,6 +95,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     const [amountPaid, setAmountPaid] = useState('');
     const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'UPI' | 'CHEQUE'>('CASH');
     const [paymentDate, setPaymentDate] = useState(getLocalDateString());
+    const [paymentReference, setPaymentReference] = useState('');
 
     // UI/Modal state
     const [isSelectingProduct, setIsSelectingProduct] = useState(false);
@@ -37,6 +103,26 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     const [productSearchTerm, setProductSearchTerm] = useState('');
     const [isAddingCustomer, setIsAddingCustomer] = useState(false);
     const [newCustomer, setNewCustomer] = useState({ id: '', name: '', phone: '', address: '', area: '' });
+
+    // State for pre-rendered PDF images
+    const [logoImages, setLogoImages] = useState({ tirunamam: '', sanku: '', chakra: '' });
+
+    // Pre-render images on component mount for synchronous PDF generation later
+    useEffect(() => {
+        const convertImages = async () => {
+            try {
+                const [tirunamam, sanku, chakra] = await Promise.all([
+                    svgToPng(tirunamamSvg, 100, 100),
+                    svgToPng(sankuSvg, 100, 100),
+                    svgToPng(chakraSvg, 100, 100)
+                ]);
+                setLogoImages({ tirunamam, sanku, chakra });
+            } catch (error) {
+                console.error("Failed to pre-convert logo images for PDF:", error);
+            }
+        };
+        convertImages();
+    }, []);
 
     useEffect(() => {
         const formIsDirty = !!customerId || cart.length > 0 || !!discount || !!amountPaid;
@@ -52,6 +138,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         setAmountPaid('');
         setPaymentMethod('CASH');
         setPaymentDate(getLocalDateString());
+        setPaymentReference('');
     };
 
     const handleCustomerChange = (id: string) => {
@@ -156,90 +243,115 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
 
     const totalAmount = subTotal - (parseFloat(discount) || 0);
 
-    const generateInvoicePDF = async (sale: Sale, customer: Customer, isShare = false) => {
-        const doc = new jsPDF();
+    const generateInvoicePDF = (sale: Sale, customer: Customer, isShare = false) => {
+        // This function is now synchronous and uses pre-loaded images
+        const doc = new jsPDF({
+            unit: 'mm',
+            format: [80, 297] // Thermal printer size
+        });
         const date = new Date(sale.date).toLocaleString();
+        
+        if (logoImages.tirunamam) {
+            doc.addImage(logoImages.tirunamam, 'PNG', 32.5, 5, 15, 15);
+        }
 
-        doc.setFontSize(18);
-        doc.text('Tax Invoice', 105, 15, { align: 'center' });
-        doc.setFontSize(14);
-        doc.text('Bhavani Sarees', 105, 22, { align: 'center' });
+        doc.setFont('times', 'bold');
+        doc.setFontSize(12);
+        doc.text('OM namo venkatesaya', 40, 26, { align: 'center' });
+        
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(16);
+        doc.text('Bhavani Sarees', 40, 34, { align: 'center' });
+        
+        if (logoImages.sanku) doc.addImage(logoImages.sanku, 'PNG', 12, 29, 8, 8);
+        if (logoImages.chakra) doc.addImage(logoImages.chakra, 'PNG', 60, 29, 8, 8);
 
-        doc.setFontSize(10);
-        doc.text(`Invoice ID: ${sale.id}`, 14, 35);
-        doc.text(`Date: ${date}`, 14, 40);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.text(`Invoice: ${sale.id}`, 5, 45);
+        doc.text(`Date: ${date}`, 5, 50);
 
-        doc.text(`Customer: ${customer.name}`, 14, 50);
-        doc.text(`Phone: ${customer.phone}`, 14, 55);
-        if (customer.address) doc.text(`Address: ${customer.address}, ${customer.area}`, 14, 60);
+        doc.text(`Billed To:`, 5, 57);
+        doc.setFont('helvetica', 'bold');
+        doc.text(customer.name, 5, 62);
+        doc.setFont('helvetica', 'normal');
+        if (customer.address) doc.text(customer.address, 5, 67);
+
 
         autoTable(doc, {
-            startY: 70,
-            head: [['#', 'Item', 'Qty', 'Price', 'Amount']],
-            body: sale.items.map((item, index) => [
-                index + 1,
+            startY: 75,
+            head: [['Item', 'Qty', 'Price', 'Total']],
+            body: sale.items.map(item => [
                 item.productName,
                 item.quantity,
                 item.price.toFixed(2),
                 (item.price * item.quantity).toFixed(2),
             ]),
-            theme: 'striped',
-            headStyles: { fillColor: [106, 13, 173] },
-            columnStyles: { 3: { halign: 'right' }, 4: { halign: 'right' } }
+            theme: 'plain',
+            styles: { fontSize: 8, cellPadding: 1 },
+            headStyles: { fontStyle: 'bold' },
+            columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' } }
         });
 
-        let finalY = (doc as any).lastAutoTable.finalY + 10;
-        const rightAlignX = 196;
+        let finalY = (doc as any).lastAutoTable.finalY + 5;
+        const rightAlignX = 75;
 
-        doc.setFontSize(10);
-        doc.text(`Subtotal:`, rightAlignX - 30, finalY);
-        doc.text(`${subTotal.toFixed(2)}`, rightAlignX, finalY, { align: 'right' });
+        doc.setFontSize(9);
+        doc.text(`Subtotal:`, rightAlignX - 25, finalY);
+        doc.text(`Rs. ${subTotal.toFixed(2)}`, rightAlignX, finalY, { align: 'right' });
 
         if (sale.discount > 0) {
             finalY += 5;
-            doc.text(`Discount:`, rightAlignX - 30, finalY);
-            doc.text(`-${sale.discount.toFixed(2)}`, rightAlignX, finalY, { align: 'right' });
+            doc.text(`Discount:`, rightAlignX - 25, finalY);
+            doc.text(`Rs. -${sale.discount.toFixed(2)}`, rightAlignX, finalY, { align: 'right' });
         }
-
+        
         finalY += 5;
+        doc.text(`GST Included:`, rightAlignX - 25, finalY);
+        doc.text(`Rs. ${sale.gstAmount.toFixed(2)}`, rightAlignX, finalY, { align: 'right' });
+        
+        finalY += 2;
+        doc.line(5, finalY, 75, finalY); // separator
+        finalY += 5;
+
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
-        doc.text(`Total Amount:`, rightAlignX - 30, finalY);
-        doc.text(`₹ ${sale.totalAmount.toFixed(2)}`, rightAlignX, finalY, { align: 'right' });
+        doc.text(`Total:`, rightAlignX - 25, finalY);
+        doc.text(`Rs. ${sale.totalAmount.toFixed(2)}`, rightAlignX, finalY, { align: 'right' });
         
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(10);
+        doc.setFontSize(9);
 
         const amountPaidInSale = sale.payments.reduce((sum, p) => sum + p.amount, 0);
         if (amountPaidInSale > 0) {
             finalY += 5;
-            doc.text(`Amount Paid:`, rightAlignX - 30, finalY);
-            doc.text(`${amountPaidInSale.toFixed(2)}`, rightAlignX, finalY, { align: 'right' });
+            doc.text(`Paid:`, rightAlignX - 25, finalY);
+            doc.text(`Rs. ${amountPaidInSale.toFixed(2)}`, rightAlignX, finalY, { align: 'right' });
         }
         
         const dueInSale = sale.totalAmount - amountPaidInSale;
         if(dueInSale > 0.01) {
             finalY += 5;
             doc.setFont('helvetica', 'bold');
-            doc.text(`Balance Due:`, rightAlignX - 30, finalY);
-            doc.text(`${dueInSale.toFixed(2)}`, rightAlignX, finalY, { align: 'right' });
+            doc.text(`Due:`, rightAlignX - 25, finalY);
+            doc.text(`Rs. ${dueInSale.toFixed(2)}`, rightAlignX, finalY, { align: 'right' });
         }
 
 
         if (isShare && navigator.share) {
             const blob = doc.output('blob');
             const file = new File([blob], `invoice-${sale.id}.pdf`, { type: 'application/pdf' });
-            try {
-                await navigator.share({
-                    title: `Invoice ${sale.id}`,
-                    text: `Invoice from Bhavani Sarees for ${customer.name}`,
-                    files: [file],
-                });
-            } catch (error) {
-                console.error('Error sharing:', error);
-                alert("Could not share the file. It will be downloaded instead.");
-                doc.save(`invoice-${sale.id}.pdf`);
-            }
+            navigator.share({
+                title: `Invoice ${sale.id}`,
+                text: `Invoice from Bhavani Sarees for ${customer.name}`,
+                files: [file],
+            }).catch((error) => {
+                if (error.name !== 'AbortError') {
+                    console.error('Error sharing:', error);
+                    alert("Sharing failed, downloading PDF instead.");
+                    doc.save(`invoice-${sale.id}.pdf`);
+                }
+            });
         } else {
             doc.save(`invoice-${sale.id}.pdf`);
         }
@@ -266,7 +378,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             amount: paid,
             method: paymentMethod,
             date: new Date(paymentDate).toISOString(),
-            reference: 'Sale Payment'
+            reference: paymentReference || undefined,
         } : null;
 
         const newSale: Sale = {
@@ -287,7 +399,11 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         });
         
         showToast("Sale created successfully!");
-        generateInvoicePDF(newSale, customer, true);
+        if (logoImages.tirunamam) {
+            generateInvoicePDF(newSale, customer, true);
+        } else {
+            alert("Generating PDF... Logos are still loading. Please try again in a moment.");
+        }
         resetForm();
     };
 
@@ -315,7 +431,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                     amount: paymentForThisSale,
                     method: paymentMethod,
                     date: new Date(paymentDate).toISOString(),
-                    reference: 'Due Payment'
+                    reference: paymentReference || 'Due Payment',
                 };
                 dispatch({ type: 'ADD_PAYMENT_TO_SALE', payload: { saleId: sale.id, payment } });
                 remainingPayment -= paymentForThisSale;
@@ -343,6 +459,8 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
         useEffect(() => {
+            if (!isScanning) return;
+            
             html5QrCodeRef.current = new Html5Qrcode("qr-reader-sales");
             
             const qrCodeSuccessCallback = (decodedText: string) => {
@@ -361,7 +479,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                     html5QrCodeRef.current.stop().catch(err => console.log("Failed to stop scanner on cleanup.", err));
                 }
             };
-        }, []);
+        }, [isScanning]);
 
         return (
             <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
@@ -389,7 +507,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                   <p className="font-semibold">{p.name}</p>
                   <p className="text-sm text-gray-500">Code: {p.id} | Stock: {p.quantity}</p>
                 </div>
-            ))}
+              ))}
           </div>
         </Card>
       </div>
@@ -397,112 +515,137 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     
     const NewCustomerModal = () => (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
-          <Card title="Add New Customer" className="w-full max-w-md animate-scale-in">
-              <div className="space-y-3">
-                  <div className="flex items-center">
-                    <span className="px-3 py-2 bg-gray-100 border rounded-l-md">CUST-</span>
-                    <input type="text" placeholder="Unique ID" value={newCustomer.id} onChange={e => setNewCustomer({...newCustomer, id: e.target.value})} className="w-full p-2 border rounded-r-md" autoFocus />
-                  </div>
-                  <input type="text" placeholder="Name" value={newCustomer.name} onChange={e => setNewCustomer({...newCustomer, name: e.target.value})} className="w-full p-2 border rounded" />
-                  <input type="text" placeholder="Phone" value={newCustomer.phone} onChange={e => setNewCustomer({...newCustomer, phone: e.target.value})} className="w-full p-2 border rounded" />
-                  <input type="text" placeholder="Address" value={newCustomer.address} onChange={e => setNewCustomer({...newCustomer, address: e.target.value})} className="w-full p-2 border rounded" />
-                  <input type="text" placeholder="Area" value={newCustomer.area} onChange={e => setNewCustomer({...newCustomer, area: e.target.value})} className="w-full p-2 border rounded" />
-                  <div className="flex gap-2">
-                      <Button onClick={handleAddCustomer} className="w-full">Add Customer</Button>
-                      <Button onClick={() => setIsAddingCustomer(false)} variant="secondary" className="w-full">Cancel</Button>
-                  </div>
-              </div>
-          </Card>
+            <Card title="Add New Customer" className="w-full max-w-md animate-scale-in">
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium">Customer ID</label>
+                        <div className="flex items-center mt-1">
+                            <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 bg-gray-50 text-gray-500 text-sm">CUST-</span>
+                            <input type="text" placeholder="Enter unique ID" value={newCustomer.id} onChange={e => setNewCustomer({ ...newCustomer, id: e.target.value })} className="w-full p-2 border rounded-r-md" autoFocus />
+                        </div>
+                    </div>
+                    <input type="text" placeholder="Name" value={newCustomer.name} onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })} className="w-full p-2 border rounded" />
+                    <input type="text" placeholder="Phone" value={newCustomer.phone} onChange={e => setNewCustomer({ ...newCustomer, phone: e.target.value })} className="w-full p-2 border rounded" />
+                    <input type="text" placeholder="Address" value={newCustomer.address} onChange={e => setNewCustomer({ ...newCustomer, address: e.target.value })} className="w-full p-2 border rounded" />
+                    <input type="text" placeholder="Area/Location" value={newCustomer.area} onChange={e => setNewCustomer({ ...newCustomer, area: e.target.value })} className="w-full p-2 border rounded" />
+                    <div className="flex gap-2">
+                        <Button onClick={handleAddCustomer} className="w-full">Save Customer</Button>
+                        <Button onClick={() => setIsAddingCustomer(false)} variant="secondary" className="w-full">Cancel</Button>
+                    </div>
+                </div>
+            </Card>
         </div>
     );
 
-
     return (
         <div className="space-y-4">
-             {isScanning && <QRScannerModal />}
-             {isSelectingProduct && <ProductSearchModal />}
-             {isAddingCustomer && <NewCustomerModal />}
-
-             <h1 className="text-2xl font-bold text-primary">New Sale</h1>
-             <Card>
-                <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="flex-grow">
-                        <label className="block text-sm font-medium text-gray-700">Customer</label>
-                        <select value={customerId} onChange={e => handleCustomerChange(e.target.value)} className="w-full p-2 border rounded custom-select">
-                            <option value="">Select a Customer</option>
+            {isAddingCustomer && <NewCustomerModal />}
+            {isScanning && <QRScannerModal />}
+            {isSelectingProduct && <ProductSearchModal />}
+            
+            <h1 className="text-2xl font-bold text-primary">New Sale / Payment</h1>
+            
+            <Card title="Customer">
+                <div className="flex flex-col sm:flex-row gap-4 items-end">
+                    <div className="w-full">
+                        <label className="block text-sm font-medium text-gray-700">Select a Customer</label>
+                        <select value={customerId} onChange={e => handleCustomerChange(e.target.value)} className="w-full p-2 border rounded-lg custom-select">
+                            <option value="">-- Select a Customer --</option>
                             {state.customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.area}</option>)}
                         </select>
                     </div>
-                    <div className="flex-shrink-0 self-end">
-                        <Button onClick={() => setIsAddingCustomer(true)} variant="secondary"><UserPlus size={16} className="mr-2"/> New</Button>
-                    </div>
+                    <Button onClick={() => setIsAddingCustomer(true)} variant="secondary" className="w-full sm:w-auto flex-shrink-0">
+                        <UserPlus className="w-4 h-4 mr-2" /> New Customer
+                    </Button>
                 </div>
-                {customerId && (
-                    <div className="mt-2 text-sm text-red-600 font-semibold">
-                        Current Dues: ₹{selectedCustomerDues.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                 {customerId && (
+                    <div className="mt-4 p-3 bg-purple-50 rounded-lg text-sm">
+                        <p className="font-semibold text-red-600">Total Outstanding Dues: ₹{selectedCustomerDues.toLocaleString('en-IN')}</p>
                     </div>
                 )}
-             </Card>
-             <Card title="Items in Cart">
+            </Card>
+
+            <Card title="Sale Items">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
-                    <Button onClick={() => setIsSelectingProduct(true)}><Search size={16} className="mr-2"/> Select Product</Button>
-                    <Button onClick={() => setIsScanning(true)} variant="secondary"><QrCode size={16} className="mr-2"/> Scan Product</Button>
+                     <Button onClick={() => setIsSelectingProduct(true)} className="w-full"><Search className="w-4 h-4 mr-2"/> Select Product from Stock</Button>
+                     <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full"><QrCode className="w-4 h-4 mr-2"/> Scan Product QR</Button>
                 </div>
-                <div className="space-y-2">
-                    {cart.map(item => (
-                        <div key={item.productId} className="flex items-center p-2 bg-gray-50 rounded">
-                            <div className="flex-grow">
-                                <p className="font-semibold">{item.productName}</p>
-                                <p className="text-sm text-gray-500">@ ₹{item.price.toLocaleString('en-IN')}</p>
+                {cart.length > 0 && (
+                    <div className="space-y-2">
+                        {cart.map(item => (
+                            <div key={item.productId} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                                <div>
+                                    <p className="font-semibold">{item.productName}</p>
+                                    <p className="text-sm text-gray-600">@ ₹{item.price.toLocaleString('en-IN')}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <input type="number" value={item.quantity} onChange={e => handleQuantityChange(item.productId, e.target.value)} className="w-16 p-1 text-center border rounded"/>
+                                    <span>x</span>
+                                    <span className="font-semibold w-20 text-right">₹{(item.price * item.quantity).toLocaleString('en-IN')}</span>
+                                    <DeleteButton variant="remove" onClick={() => handleRemoveItem(item.productId)} />
+                                </div>
                             </div>
-                            <input 
-                                type="number" 
-                                value={item.quantity} 
-                                onChange={e => handleQuantityChange(item.productId, e.target.value)}
-                                className="w-16 p-1 border rounded text-center mx-2"
-                            />
-                            <p className="w-24 text-right font-medium">₹{(item.price * item.quantity).toLocaleString('en-IN')}</p>
-                            <DeleteButton variant="remove" onClick={() => handleRemoveItem(item.productId)} />
+                        ))}
+                    </div>
+                )}
+            </Card>
+
+            <Card title="Billing & Payment">
+                <div className="space-y-3">
+                    <div className="flex justify-between items-center text-lg">
+                        <span>Subtotal:</span>
+                        <span className="font-semibold">₹{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                     <div className="flex justify-between items-center">
+                        <span>Discount:</span>
+                        <input type="number" placeholder="0" value={discount} onChange={e => setDiscount(e.target.value)} className="w-24 p-1 text-right border rounded"/>
+                    </div>
+                    <div className="flex justify-between items-center text-sm text-gray-500">
+                        <span>GST Included:</span>
+                        <span>₹{totalGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <hr/>
+                    <div className="flex justify-between items-center text-2xl font-bold text-primary">
+                        <span>Total:</span>
+                        <span>₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+                        <div>
+                            <label className="block text-sm font-medium">Amount Paid</label>
+                            <input type="number" placeholder={`Total is ₹${totalAmount.toLocaleString('en-IN')}`} value={amountPaid} onChange={e => setAmountPaid(e.target.value)} className="w-full p-2 border-2 border-green-300 rounded-lg shadow-inner focus:ring-green-500 focus:border-green-500" />
                         </div>
-                    ))}
-                    {cart.length === 0 && <p className="text-center text-gray-500">Cart is empty.</p>}
-                </div>
-             </Card>
-             <Card title="Billing Summary">
-                 <div className="space-y-2 text-right">
-                     <p>Subtotal: <span className="font-semibold">₹{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></p>
-                     <div className="flex justify-end items-center gap-2">
-                        <label className="text-sm font-medium">Discount:</label>
-                        <input type="number" placeholder="0.00" value={discount} onChange={e => setDiscount(e.target.value)} className="w-32 p-1 border rounded text-right" />
-                     </div>
-                     <p className="text-2xl font-bold text-primary">Total: <span >₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></p>
-                 </div>
-             </Card>
-             <Card title="Payment Details">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium">Amount Paid Now</label>
-                        <input type="number" placeholder={`Total is ₹${totalAmount.toLocaleString('en-IN')}`} value={amountPaid} onChange={e => setAmountPaid(e.target.value)} className="w-full p-2 border-2 border-green-300 rounded-lg shadow-inner focus:ring-green-500 focus:border-green-500" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium">Payment Method</label>
-                        <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as any)} className="w-full p-2 border rounded custom-select">
-                            <option value="CASH">Cash</option>
-                            <option value="UPI">UPI</option>
-                            <option value="CHEQUE">Cheque</option>
-                        </select>
-                    </div>
-                    <div>
-                         <label className="block text-sm font-medium">Date</label>
-                         <input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} className="w-full p-2 border rounded" />
+                        <div>
+                            <label className="block text-sm font-medium">Payment Method</label>
+                            <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as any)} className="w-full p-2 border rounded custom-select">
+                                <option value="CASH">Cash</option>
+                                <option value="UPI">UPI</option>
+                                <option value="CHEQUE">Cheque</option>
+                            </select>
+                        </div>
+                         <div>
+                            <label className="block text-sm font-medium">Payment Date</label>
+                            <input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} className="w-full p-2 border rounded" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium">Payment Reference (Optional)</label>
+                            <input type="text" placeholder="e.g. Transaction ID, Cheque No." value={paymentReference} onChange={e => setPaymentReference(e.target.value)} className="w-full p-2 border rounded" />
+                        </div>
                     </div>
                 </div>
-             </Card>
-             <div className="flex flex-col sm:flex-row gap-4">
-                <Button onClick={handleCreateSale} className="w-full" disabled={cart.length === 0 || !customerId}>Create Sale & Share Invoice</Button>
-                <Button onClick={handleStandalonePayment} variant="secondary" className="w-full" disabled={cart.length > 0 || !customerId || !amountPaid}>Record Standalone Payment</Button>
-             </div>
-             <Button onClick={resetForm} variant="danger" className="w-full">Clear Form</Button>
+            </Card>
+
+            <div className="space-y-2">
+                <Button onClick={handleCreateSale} className="w-full" disabled={cart.length === 0}>
+                   <ShoppingCart className="w-4 h-4 mr-2"/> Create Sale & Share Invoice
+                </Button>
+                <Button onClick={handleStandalonePayment} variant="secondary" className="w-full" disabled={cart.length > 0 || !customerId}>
+                   <IndianRupee className="w-4 h-4 mr-2"/> Record Standalone Payment for Dues
+                </Button>
+                <Button onClick={resetForm} variant="danger" className="w-full bg-gray-600 hover:bg-gray-700 focus:ring-gray-500">
+                    Clear Form
+                </Button>
+            </div>
         </div>
     );
 };
