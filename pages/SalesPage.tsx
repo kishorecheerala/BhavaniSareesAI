@@ -159,7 +159,9 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
 
     const generateAndSharePDF = async (sale: Sale, customer: Customer, paidAmountOnSale: number) => {
       try {
-        const VENKATESHWARA_LOGO_BASE64 = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA2MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTAgNUMxMCAzMCAzMCA3NSAzMCA3NUMzMCA3NSA1MCAzMCA1MCA1IiBzdHJva2U9IiM2YTBkYWQiIHN0cm9rZS13aWR0aD0iMyIgZmlsbD0id2hpdGUiLz48bGluZSB4MT0iMzAiIHkxPSI4IiB4Mj0iMzAiIHkyPSI3MiIgc3Ryb2tlPSIjRTUzOTM1IiBzdHJva2Utd2lkdGg9IjYiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxwYXRoIGQ9Ik01IDc4SDU1TDMwIDcwTDUgNzhaIiBmaWxsPSIjRkZCRjAwIi8+PC9zdmc+';
+        const VENKATESHWARA_LOGO_BASE64 = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNTAiIHZpZXdCb3g9IjAgMCA0MCA1MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNNCA1QzQgMjAgMjAgNDggMjAgNDhDMjAgNDggMzYgMjAgMzYgNSIgc3Ryb2tlPSIjNmEwZGFkIiBzdHJva2Utd2lkdGg9IjMiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxsaW5lIHgxPSIyMCIgeTE9IjEwIiB4Mj0iMjAiIHkyPSI0NSIgc3Ryb2tlPSIjRkZCRjAwIiBzdHJva2Utd2lkdGg9IjYiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxsaW5lIHgxPSIyMCIgeTE9IjEwIiB4Mj0iMjAiIHkyPSI0NSIgc3Ryb2tlPSIjQzQxRTNBIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvc3ZnPg==';
+        const SANKU_LOGO_BASE64 = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNNi4zMjAxOCAxMy44QzQuOTYwMTggMTAuMyA3LjQxMDE4IDQuMjMgMTIuMzcwMiAzLjMyQzE3LjMzMDIgMi40MSAyMS4yMTAyIDYuNjQgMjAuMTYwMiAxMS42MkMxOS4xMTAyIDE2LjYgMTMuMjEwMiAxOS43OCA4LjM3MDE4IDE4LjY2IiBzdHJva2U9IiM2YTBkYWQiIHN0cm9rZS1widthPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xMy45OCAzLjVDMTMuMzMgNS4wOCAxMi41MyA2LjU3IDExLjU5IDcuOTYiIHN0cm9rZT0iIzZhMGRhZCIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xOC4zMDAyIDE2LjA2QzE5LjU5MDIgMTcuNjUgMjAuNTAwMiAxOS4yOSAyMS4wMDAyIDIxIiBzdHJva2U9IiM2YTBkYWQiIHN0cm9rZS1widthPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg==';
+        const CHAKRA_LOGO_BASE64 = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTIgMjFDMTYuOTcwNiAyMSAyMSAxNi45NzA2IDIxIDEyQzIxIDcuMDI5NDQgMTYuOTcwNiAzIDEyIDNDNy4wMjk0NCAzIDMgNy4wMjk0NCAzIDEyQzMgMTYuOTcwNiA3LjAyOTQ0IDIxIDEyIDIxWiIgc3Ryb2tlPSIjNmEwZGFkIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PHBhdGggZD0iTTEyIDE1QzEzLjY1NjkgMTUgMTUgMTMuNjU2OSAxNSAxMkMxNSAxMC4zNDMxIDEzLjY1NjkgOSAxMiA5QzEwLjM0MzEgOSAxMCAxMC4zNDMxIDEwIDEyQzEwIDEzLjY1NjkgMTAuMzQzMSAxNSAxMiAxNVoiIHN0cm9rZT0iIzZhMGRhZCIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xOS4wNyA0LjkzMDA1TDE3IDcuMDAwMDVNNC45MyAxOS4wN0w3IDE3TTE5LjA3IDE5LjA3TDE3IDE3TTQuOTMgNC45MzAwNUw3IDcuMDAwMDUiIHN0cm9rZT0iIzZhMGRhZCIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg==';
 
         const renderContentOnDoc = (doc: jsPDF) => {
           doc.addFont('Times-Roman', 'Times', 'normal');
@@ -171,21 +173,30 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
           const maxLineWidth = pageWidth - margin * 2;
           let y = 8;
           
-          doc.addImage(VENKATESHWARA_LOGO_BASE64, 'SVG', centerX - 10, y, 20, 26.67);
-          y += 30;
+          doc.addImage(VENKATESHWARA_LOGO_BASE64, 'SVG', centerX - 10, y, 20, 25);
+          y += 28;
 
           doc.setFont('Times', 'bold');
           doc.setFontSize(11);
           doc.setTextColor('#333333');
           doc.text('OM namo venkatesaya', centerX, y, { align: 'center' });
           y += 6;
-
+          
           doc.setFont('Helvetica', 'bold');
           doc.setFontSize(20);
           doc.setTextColor('#6a0dad');
-          doc.text('Bhavani Sarees', centerX, y, { align: 'center' });
-          y += 10;
+          
+          const businessName = 'Bhavani Sarees';
+          const businessNameWidth = doc.getTextWidth(businessName);
+          const businessNameX = centerX - (businessNameWidth / 2);
+          const sankuX = businessNameX - 12; // 10 for image width + 2 for padding
+          const chakraX = businessNameX + businessNameWidth + 2;
 
+          doc.addImage(SANKU_LOGO_BASE64, 'SVG', sankuX, y - 8, 10, 10);
+          doc.text(businessName, centerX, y, { align: 'center' });
+          doc.addImage(CHAKRA_LOGO_BASE64, 'SVG', chakraX, y - 8, 10, 10);
+          y += 10;
+          
           doc.setDrawColor('#cccccc');
           doc.line(margin, y, pageWidth - margin, y);
           y += 6;
