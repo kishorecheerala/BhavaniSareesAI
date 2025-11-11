@@ -305,11 +305,13 @@ const ReportsPage: React.FC = () => {
                             <input id="endDate" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full p-2 border rounded-lg" />
                         </div>
                     </div>
-                     <div className="flex items-center gap-4">
+                     <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                         <p className="text-sm font-medium text-gray-700">Actions:</p>
-                        <Button onClick={generatePDF}><Download className="w-4 h-4 mr-2" />Export Dues (PDF)</Button>
-                        <Button onClick={generateCSV} variant="secondary"><Download className="w-4 h-4 mr-2" />Export Dues (CSV)</Button>
-                        <Button onClick={handleClearFilters} variant="danger" className="ml-auto"><XCircle className="w-4 h-4 mr-2" />Clear Filters</Button>
+                        <div className="flex flex-wrap gap-2">
+                          <Button onClick={generatePDF}><Download className="w-4 h-4 mr-2" />Export Dues (PDF)</Button>
+                          <Button onClick={generateCSV} variant="secondary"><Download className="w-4 h-4 mr-2" />Export Dues (CSV)</Button>
+                        </div>
+                        <Button onClick={handleClearFilters} variant="danger" className="w-full sm:w-auto sm:ml-auto"><XCircle className="w-4 h-4 mr-2" />Clear Filters</Button>
                     </div>
                 </div>
             </Card>

@@ -1,5 +1,6 @@
+
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { IndianRupee, UserCheck, AlertTriangle, Download, Upload, ShoppingCart, Package, XCircle, CheckCircle, Info, Calendar, ShieldCheck, ShieldAlert, ShieldX } from 'lucide-react';
+import { IndianRupee, UserCheck, AlertTriangle, Download, Upload, ShoppingCart, Package, XCircle, CheckCircle, Info, Calendar, ShieldCheck, ShieldAlert, ShieldX, Archive } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import * as db from '../utils/db';
 import Card from '../components/Card';
@@ -35,7 +36,9 @@ const Dashboard: React.FC = () => {
         return sum + (due > 0 ? due : 0);
     }, 0);
 
-    const lowStockProducts = state.products.filter(p => p.quantity > 0 && p.quantity <= 5).length;
+    const totalInventoryValue = state.products.reduce((sum, product) => {
+        return sum + (product.purchasePrice * product.quantity);
+    }, 0);
     
     const totalSales = state.sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
     const totalPurchases = state.purchases.reduce((sum, purchase) => sum + purchase.totalAmount, 0);
@@ -263,25 +266,32 @@ const Dashboard: React.FC = () => {
                     icon={ShoppingCart} 
                     title="Total Sales (All Time)" 
                     value={totalSales} 
-                    color="bg-gradient-to-br from-purple-600 to-amber-400 shadow-lg" 
+                    color="bg-purple-600 shadow-lg" 
                 />
                  <MetricCard 
                     icon={Package} 
                     title="Total Purchases (All Time)" 
                     value={totalPurchases} 
-                    color="bg-gradient-to-br from-green-500 to-lime-400 shadow-lg" 
+                    color="bg-green-500 shadow-lg" 
                 />
                 <MetricCard 
                     icon={IndianRupee} 
                     title="Customer Dues" 
                     value={totalCustomerDues} 
-                    color="bg-gradient-to-br from-red-500 to-rose-600 shadow-lg" 
+                    color="bg-red-500 shadow-lg" 
                 />
                 <MetricCard 
                     icon={IndianRupee} 
                     title="Purchase Dues" 
                     value={totalPurchaseDues} 
-                    color="bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg"
+                    color="bg-amber-500 shadow-lg"
+                />
+                 <MetricCard 
+                    icon={Archive} 
+                    title="Total Inventory Value" 
+                    value={totalInventoryValue} 
+                    color="bg-sky-500 shadow-lg"
+                    unit="₹"
                 />
                 <Card title="Monthly Sales Report" className="md:col-span-2">
                     <div className="flex flex-col sm:flex-row gap-4 mb-4">
@@ -311,13 +321,6 @@ const Dashboard: React.FC = () => {
                         </p>
                     </div>
                 </Card>
-                 <MetricCard 
-                    icon={AlertTriangle} 
-                    title="Low Stock Items" 
-                    value={lowStockProducts} 
-                    color="bg-gradient-to-br from-orange-500 to-amber-600 shadow-lg"
-                    unit=""
-                />
             </div>
             
             <Card title="Backup & Restore">
