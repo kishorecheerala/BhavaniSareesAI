@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, X, User, Package, Boxes, ShoppingCart } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
-import { Page } from '../App';
+import { Page } from '../types';
 import { Customer, Supplier, Product, Sale, Purchase } from '../types';
 
 interface SearchResults {

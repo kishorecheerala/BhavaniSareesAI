@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
-import { Page } from "./App";
+
+export type Page = 'DASHBOARD' | 'CUSTOMERS' | 'SALES' | 'PURCHASES' | 'REPORTS' | 'RETURNS' | 'PRODUCTS';
 
 export interface Payment {
   id: string;

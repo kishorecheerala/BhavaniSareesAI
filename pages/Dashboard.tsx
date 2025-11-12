@@ -1,12 +1,18 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { IndianRupee, UserCheck, AlertTriangle, Download, Upload, ShoppingCart, Package, XCircle, CheckCircle, Info, Calendar, ShieldCheck, ShieldAlert, ShieldX, Archive } from 'lucide-react';
+import { IndianRupee, User, AlertTriangle, Download, Upload, ShoppingCart, Package, XCircle, CheckCircle, Info, Calendar, ShieldCheck, ShieldAlert, ShieldX, Archive } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import * as db from '../utils/db';
 import Card from '../components/Card';
 import Button from '../components/Button';
+import { Page } from '../types';
+import { Customer } from '../types';
 
-const Dashboard: React.FC = () => {
+interface DashboardProps {
+    setCurrentPage: (page: Page) => void;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
     const { state, dispatch } = useAppContext();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [restoreStatus, setRestoreStatus] = useState<{ type: 'info' | 'success' | 'error', message: string } | null>(null);
@@ -167,6 +173,99 @@ const Dashboard: React.FC = () => {
         dispatch({ type: 'SET_INSTALL_PROMPT_EVENT', payload: null });
     };
 
+    const handleNavigateToCustomer = (customerId: string) => {
+        dispatch({ type: 'SET_SELECTION', payload: { page: 'CUSTOMERS', id: customerId } });
+        setCurrentPage('CUSTOMERS');
+    };
+
+    const OverdueDuesCard = () => {
+        const overdueCustomersArray = useMemo(() => {
+            const overdueCustomers: { [key: string]: { customer: Customer; totalOverdue: number; oldestOverdueDate: string } } = {};
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+            state.sales.forEach(sale => {
+                const saleDate = new Date(sale.date);
+
+                if (saleDate < thirtyDaysAgo) {
+                    const amountPaid = (sale.payments || []).reduce((sum, p) => sum + p.amount, 0);
+                    const dueAmount = sale.totalAmount - amountPaid;
+
+                    if (dueAmount > 0.01) {
+                        const customerId = sale.customerId;
+                        if (!overdueCustomers[customerId]) {
+                            const customer = state.customers.find(c => c.id === customerId);
+                            if (customer) {
+                                overdueCustomers[customerId] = {
+                                    customer: customer,
+                                    totalOverdue: 0,
+                                    oldestOverdueDate: sale.date
+                                };
+                            }
+                        }
+
+                        if (overdueCustomers[customerId]) {
+                            overdueCustomers[customerId].totalOverdue += dueAmount;
+                            if (new Date(sale.date) < new Date(overdueCustomers[customerId].oldestOverdueDate)) {
+                                overdueCustomers[customerId].oldestOverdueDate = sale.date;
+                            }
+                        }
+                    }
+                }
+            });
+
+            return Object.values(overdueCustomers);
+        }, [state.sales, state.customers]);
+
+        if (overdueCustomersArray.length === 0) {
+            return (
+                <Card className="border-l-4 border-green-500 bg-green-50">
+                    <div className="flex items-center">
+                        <ShieldCheck className="w-8 h-8 text-green-600 mr-4" />
+                        <div>
+                            <p className="font-bold text-green-800">No Overdue Dues</p>
+                            <p className="text-sm text-green-700">All customer payments older than 30 days are settled.</p>
+                        </div>
+                    </div>
+                </Card>
+            );
+        }
+
+        return (
+            <Card className="border-l-4 border-amber-500 bg-amber-50">
+                <div className="flex items-center mb-4">
+                    <AlertTriangle className="w-6 h-6 text-amber-600 mr-3" />
+                    <h2 className="text-lg font-bold text-amber-800">Overdue Dues Alert</h2>
+                </div>
+                <p className="text-sm text-amber-700 mb-4">The following customers have dues from sales older than 30 days. Please follow up.</p>
+                <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                    {overdueCustomersArray.sort((a, b) => b.totalOverdue - a.totalOverdue).map(({ customer, totalOverdue, oldestOverdueDate }) => (
+                        <div
+                            key={customer.id}
+                            className="p-3 bg-white rounded-lg shadow-sm cursor-pointer hover:bg-amber-100 transition-colors flex justify-between items-center"
+                            onClick={() => handleNavigateToCustomer(customer.id)}
+                            role="button"
+                            tabIndex={0}
+                            aria-label={`View details for ${customer.name}`}
+                        >
+                            <div className="flex items-center gap-3">
+                                <User className="w-6 h-6 text-amber-700 flex-shrink-0" />
+                                <div>
+                                    <p className="font-bold text-amber-900">{customer.name}</p>
+                                    <p className="text-xs text-gray-500">{customer.area}</p>
+                                </div>
+                            </div>
+                            <div className="text-right flex-shrink-0 ml-2">
+                                <p className="font-bold text-lg text-red-600">₹{totalOverdue.toLocaleString('en-IN')}</p>
+                                <p className="text-xs text-gray-500">Oldest: {new Date(oldestOverdueDate).toLocaleDateString()}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </Card>
+        );
+    };
+
 
     const MetricCard = ({ icon: Icon, title, value, color, unit = '₹' }: {icon: React.ElementType, title: string, value: string | number, color: string, unit?: string}) => (
         <Card className={`flex items-center p-4 ${color}`}>
@@ -293,35 +392,38 @@ const Dashboard: React.FC = () => {
                     color="bg-sky-500 shadow-lg"
                     unit="₹"
                 />
-                <Card title="Monthly Sales Report" className="md:col-span-2">
-                    <div className="flex flex-col sm:flex-row gap-4 mb-4">
-                        <select
-                            value={selectedMonth}
-                            onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                            className="w-full p-2 border rounded-lg custom-select"
-                        >
-                            {monthNames.map((month, index) => (
-                                <option key={month} value={index}>{month}</option>
-                            ))}
-                        </select>
-                        <select
-                            value={selectedYear}
-                            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                            className="w-full p-2 border rounded-lg custom-select"
-                        >
-                            {availableYears.map(year => (
-                                <option key={year} value={year}>{year}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="text-center p-4 bg-purple-50 rounded-lg">
-                        <p className="text-lg font-semibold text-primary">Sales for {monthNames[selectedMonth]} {selectedYear}</p>
-                        <p className="text-3xl font-bold text-primary mt-2">
-                            ₹{monthlySalesTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                        </p>
-                    </div>
-                </Card>
             </div>
+
+            <OverdueDuesCard />
+            
+            <Card title="Monthly Sales Report">
+                <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                    <select
+                        value={selectedMonth}
+                        onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                        className="w-full p-2 border rounded-lg custom-select"
+                    >
+                        {monthNames.map((month, index) => (
+                            <option key={month} value={index}>{month}</option>
+                        ))}
+                    </select>
+                    <select
+                        value={selectedYear}
+                        onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                        className="w-full p-2 border rounded-lg custom-select"
+                    >
+                        {availableYears.map(year => (
+                            <option key={year} value={year}>{year}</option>
+                        ))}
+                    </select>
+                </div>
+                <div className="text-center p-4 bg-purple-50 rounded-lg">
+                    <p className="text-lg font-semibold text-primary">Sales for {monthNames[selectedMonth]} {selectedYear}</p>
+                    <p className="text-3xl font-bold text-primary mt-2">
+                        ₹{monthlySalesTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </p>
+                </div>
+            </Card>
             
             <Card title="Backup & Restore">
                 <div className="space-y-4">

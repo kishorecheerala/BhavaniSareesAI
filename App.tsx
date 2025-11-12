@@ -15,9 +15,8 @@ import AppSkeletonLoader from './components/AppSkeletonLoader';
 import NotificationsPanel from './components/NotificationsPanel';
 import MenuPanel from './components/MenuPanel';
 import ProfileModal from './components/ProfileModal';
-import { BeforeInstallPromptEvent, Notification } from './types';
-
-export type Page = 'DASHBOARD' | 'CUSTOMERS' | 'SALES' | 'PURCHASES' | 'REPORTS' | 'RETURNS' | 'PRODUCTS';
+import { BeforeInstallPromptEvent, Notification, Page } from './types';
+import { useOnClickOutside } from './hooks/useOnClickOutside';
 
 const Toast = () => {
     const { state } = useAppContext();
@@ -49,6 +48,11 @@ const MainApp: React.FC = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const { state, dispatch, isDbLoaded } = useAppContext();
   const canExitApp = useRef(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const notificationsRef = useRef<HTMLDivElement>(null);
+
+  useOnClickOutside(menuRef, () => setIsMenuOpen(false));
+  useOnClickOutside(notificationsRef, () => setIsNotificationsOpen(false));
 
   const lastBackupDate = state.app_metadata.find(m => m.id === 'lastBackup')?.date;
 
@@ -202,7 +206,7 @@ const MainApp: React.FC = () => {
     const commonProps = { setIsDirty };
     switch (currentPage) {
       case 'DASHBOARD':
-        return <Dashboard />;
+        return <Dashboard setCurrentPage={_setCurrentPage} />;
       case 'CUSTOMERS':
         return <CustomersPage {...commonProps} />;
       case 'SALES':
@@ -216,7 +220,7 @@ const MainApp: React.FC = () => {
       case 'PRODUCTS':
         return <ProductsPage {...commonProps} />;
       default:
-        return <Dashboard />;
+        return <Dashboard setCurrentPage={_setCurrentPage} />;
     }
   };
   
@@ -246,7 +250,7 @@ const MainApp: React.FC = () => {
       />
       <header className="bg-gradient-to-r from-primary to-secondary text-white shadow-md p-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="relative">
+            <div className="relative" ref={menuRef}>
               <button onClick={() => setIsMenuOpen(prev => !prev)} className="p-1 rounded-full hover:bg-white/20 transition-colors" aria-label="Open menu">
                   <Menu className="w-6 h-6" />
               </button>
@@ -265,7 +269,7 @@ const MainApp: React.FC = () => {
           </div>
           <h1 className="text-xl font-bold text-center">Bhavani Sarees</h1>
           <div className="flex items-center gap-2">
-            <div className="relative">
+            <div className="relative" ref={notificationsRef}>
                  <button onClick={() => setIsNotificationsOpen(prev => !prev)} className="p-1 rounded-full hover:bg-white/20 transition-colors" aria-label="Open notifications">
                     <Bell className="w-6 h-6" />
                 </button>

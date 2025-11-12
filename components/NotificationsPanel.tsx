@@ -2,7 +2,7 @@ import React from 'react';
 import { Bell, ShieldAlert } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import Button from './Button';
-import { Page } from '../App';
+import { Page } from '../types';
 
 interface NotificationsPanelProps {
   isOpen: boolean;
