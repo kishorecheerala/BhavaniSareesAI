@@ -97,7 +97,15 @@ const helpContent = {
               <li>Go to the "Customer Return" tab.</li>
               <li>Select the customer and the original sales invoice.</li>
               <li>Enter the quantity of the items being returned.</li>
-              <li>Enter the refund amount. The stock will be automatically added back to your inventory.</li>
+              <li>Enter the refund amount. The stock will be automatically added back to your inventory, and a credit will be applied to the customer's account for that sale.</li>
+            </ol>
+             <h4 className="font-semibold mt-2">Return to Supplier:</h4>
+            <ol className="list-decimal list-inside pl-4">
+              <li>Go to the "Return to Supplier" tab.</li>
+              <li>Select the supplier and the original purchase invoice.</li>
+              <li>Enter the quantity of items being returned.</li>
+              <li>Enter the credit note value. This will generate a <strong>Debit Note PDF</strong>.</li>
+              <li>The stock will be automatically deducted from your inventory, and a credit will be applied to your account for that purchase.</li>
             </ol>
           </div>
         )
@@ -119,11 +127,38 @@ const helpContent = {
         title: 'Universal Search',
         content: (
           <div className="space-y-2 text-sm">
-             <p>The search button in the bottom navigation bar allows you to find anything in the app quickly.</p>
+             <p>The search button in the top header allows you to find anything in the app quickly.</p>
             <ol className="list-decimal list-inside pl-4">
                 <li>Tap the <strong>Search</strong> icon.</li>
                 <li>Type a customer name, product name, invoice ID, etc.</li>
                 <li>Tap on a result to navigate directly to that page.</li>
+            </ol>
+          </div>
+        )
+      },
+      {
+        title: 'My Business Profile',
+        content: (
+          <div className="space-y-2 text-sm">
+            <p>Set up your business details to be used on official documents.</p>
+            <ol className="list-decimal list-inside pl-4">
+                <li>Click the <strong>Menu</strong> icon (three horizontal lines) in the top-left corner.</li>
+                <li>Select "My Business Profile".</li>
+                <li>Fill in your business name, address, phone, and GST number.</li>
+                <li>This information will automatically appear on documents like the <strong>Debit Note</strong> you generate when returning items to a supplier.</li>
+            </ol>
+          </div>
+        )
+      },
+      {
+        title: 'Notifications',
+        content: (
+          <div className="space-y-2 text-sm">
+            <p>The app provides important reminders and alerts.</p>
+            <ol className="list-decimal list-inside pl-4">
+                <li>Click the <strong>Bell</strong> icon in the top-right corner to view your notifications.</li>
+                <li>A red dot indicates you have unread notifications.</li>
+                <li>You will receive alerts for things like daily backup reminders.</li>
             </ol>
           </div>
         )
@@ -219,7 +254,15 @@ const helpContent = {
               <li>"Customer Return" ట్యాబ్‌కు వెళ్లండి.</li>
               <li>కస్టమర్‌ను మరియు అసలు అమ్మకాల ఇన్‌వాయిస్‌ను ఎంచుకోండి.</li>
               <li>వాపసు చేయబడుతున్న వస్తువుల పరిమాణాన్ని నమోదు చేయండి.</li>
-              <li>తిరిగి చెల్లించే మొత్తాన్ని నమోదు చేయండి. స్టాక్ స్వయంచాలకంగా మీ ఇన్వెంటరీకి తిరిగి జోడించబడుతుంది.</li>
+              <li>తిరిగి చెల్లించే మొత్తాన్ని నమోదు చేయండి. స్టాక్ స్వయంచాలకంగా మీ ఇన్వెంటరీకి తిరిగి జోడించబడుతుంది మరియు ఆ అమ్మకం కోసం కస్టమర్ ఖాతాకు క్రెడిట్ వర్తింపజేయబడుతుంది.</li>
+            </ol>
+            <h4 className="font-semibold mt-2">సరఫరాదారునికి వాపసు:</h4>
+            <ol className="list-decimal list-inside pl-4">
+              <li>"Return to Supplier" ట్యాబ్‌కు వెళ్లండి.</li>
+              <li>సరఫరాదారుని మరియు అసలు కొనుగోలు ఇన్‌వాయిస్‌ను ఎంచుకోండి.</li>
+              <li>వాపసు చేయబడుతున్న వస్తువుల పరిమాణాన్ని నమోదు చేయండి.</li>
+              <li>క్రెడిట్ నోట్ విలువను నమోదు చేయండి. ఇది ఒక <strong>డెబిట్ నోట్ PDF</strong>ని రూపొందిస్తుంది.</li>
+              <li>స్టాక్ స్వయంచాలకంగా మీ ఇన్వెంటరీ నుండి తీసివేయబడుతుంది మరియు ఆ కొనుగోలు కోసం మీ ఖాతాకు క్రెడిట్ వర్తింపజేయబడుతుంది.</li>
             </ol>
           </div>
         )
@@ -241,11 +284,38 @@ const helpContent = {
         title: 'యూనివర్సల్ సెర్చ్',
         content: (
           <div className="space-y-2 text-sm">
-             <p>దిగువ నావిగేషన్ బార్‌లోని సెర్చ్ బటన్ యాప్‌లో ఏదైనా త్వరగా కనుగొనడానికి మిమ్మల్ని అనుమతిస్తుంది.</p>
+             <p>ఎగువ హెడర్‌లోని సెర్చ్ బటన్ యాప్‌లో ఏదైనా త్వరగా కనుగొనడానికి మిమ్మల్ని అనుమతిస్తుంది.</p>
             <ol className="list-decimal list-inside pl-4">
                 <li><strong>సెర్చ్</strong> ఐకాన్‌పై నొక్కండి.</li>
                 <li>కస్టమర్ పేరు, ఉత్పత్తి పేరు, ఇన్‌వాయిస్ ID మొదలైనవి టైప్ చేయండి.</li>
                 <li>ఆ పేజీకి నేరుగా నావిగేట్ చేయడానికి ఫలితంపై నొక్కండి.</li>
+            </ol>
+          </div>
+        )
+      },
+      {
+        title: 'నా వ్యాపార ప్రొఫైల్',
+        content: (
+          <div className="space-y-2 text-sm">
+            <p>అధికారిక పత్రాలలో ఉపయోగించడానికి మీ వ్యాపార వివరాలను సెటప్ చేయండి.</p>
+            <ol className="list-decimal list-inside pl-4">
+                <li>ఎగువ-ఎడమ మూలలో ఉన్న <strong>మెనూ</strong> ఐకాన్ (మూడు అడ్డ గీతలు) పై క్లిక్ చేయండి.</li>
+                <li>"My Business Profile" ఎంచుకోండి.</li>
+                <li>మీ వ్యాపారం పేరు, చిరునామా, ఫోన్ మరియు GST నంబర్‌ను పూరించండి.</li>
+                <li>ఈ సమాచారం మీరు సరఫరాదారునికి వస్తువులను వాపసు చేసేటప్పుడు రూపొందించే <strong>డెబిట్ నోట్</strong> వంటి పత్రాలపై స్వయంచాలకంగా కనిపిస్తుంది.</li>
+            </ol>
+          </div>
+        )
+      },
+      {
+        title: 'నోటిఫికేషన్‌లు',
+        content: (
+          <div className="space-y-2 text-sm">
+            <p>యాప్ ముఖ్యమైన రిమైండర్‌లు మరియు హెచ్చరికలను అందిస్తుంది.</p>
+            <ol className="list-decimal list-inside pl-4">
+                <li>మీ నోటిఫికేషన్‌లను వీక్షించడానికి ఎగువ-కుడి మూలలో ఉన్న <strong>గంట</strong> ఐకాన్‌పై క్లిక్ చేయండి.</li>
+                <li>ఎరుపు చుక్క మీకు చదవని నోటిఫికేషన్‌లు ఉన్నాయని సూచిస్తుంది.</li>
+                <li>మీరు రోజువారీ బ్యాకప్ రిమైండర్‌ల వంటి వాటి కోసం హెచ్చరికలను అందుకుంటారు.</li>
             </ol>
           </div>
         )
