@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle, Bell, Menu, Plus } from 'lucide-react';
 
@@ -319,14 +320,14 @@ const MainApp: React.FC = () => {
       <nav className="fixed bottom-0 left-0 right-0 bg-primary shadow-lg z-50">
         {/* Desktop nav */}
         <div className="hidden md:flex justify-around max-w-2xl mx-auto">
-            {/* FIX: Pass props explicitly to NavItem to resolve TypeScript error. */}
-            {allNavItems.map(item => <NavItem key={item.page} page={item.page} label={item.label} icon={item.icon} />)}
+            {/* FIX: Use spread syntax to pass props to NavItem to resolve TypeScript error. */}
+            {allNavItems.map(item => <NavItem key={item.page} {...item} />)}
         </div>
 
         {/* Mobile nav */}
         <div className="flex md:hidden justify-around max-w-2xl mx-auto">
-            {/* FIX: Pass props explicitly to NavItem to resolve TypeScript error. */}
-            {mainNavItems.map(item => <NavItem key={item.page} page={item.page} label={item.label} icon={item.icon} />)}
+            {/* FIX: Use spread syntax to pass props to NavItem to resolve TypeScript error. */}
+            {mainNavItems.map(item => <NavItem key={item.page} {...item} />)}
             <div className="relative flex flex-col items-center justify-center w-full pt-2 pb-1" ref={moreMenuRef}>
                  <button
                     onClick={() => setIsMoreMenuOpen(prev => !prev)}

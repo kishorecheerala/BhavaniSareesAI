@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, User, Phone, MapPin, Search, Edit, Save, X, Trash2, IndianRupee, ShoppingCart } from 'lucide-react';
+import { Plus, User, Phone, MapPin, Search, Edit, Save, X, Trash2, IndianRupee, ShoppingCart, Download, Share2 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Customer, Payment, Sale } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import ConfirmationModal from '../components/ConfirmationModal';
 import DeleteButton from '../components/DeleteButton';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -162,6 +164,217 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
         setPaymentDetails({ amount: '', method: 'CASH', date: getLocalDateString(), reference: '' });
     };
 
+    const handleDownloadInvoice = (sale: Sale) => {
+        if (!selectedCustomer) return;
+
+        const renderContentOnDoc = (doc: jsPDF) => {
+            const customer = selectedCustomer;
+            const subTotal = sale.totalAmount + sale.discount;
+            const paidAmountOnSale = sale.payments.reduce((sum, p) => sum + p.amount, 0);
+            const dueAmountOnSale = sale.totalAmount - paidAmountOnSale;
+
+            doc.addFont('Times-Roman', 'Times', 'normal');
+            doc.addFont('Times-Bold', 'Times', 'bold');
+            doc.addFont('Times-Italic', 'Times', 'italic');
+
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const centerX = pageWidth / 2;
+            const margin = 5;
+            const maxLineWidth = pageWidth - margin * 2;
+            let y = 5;
+
+            y = 10;
+            doc.setFont('Times', 'italic');
+            doc.setFontSize(12);
+            doc.setTextColor('#000000');
+            doc.text('Om Namo Venkatesaya', centerX, y, { align: 'center' });
+            y += 7;
+            
+            doc.setFont('Times', 'bold');
+            doc.setFontSize(16);
+            doc.setTextColor('#6a0dad'); // Primary Color
+            doc.text('Bhavani Sarees', centerX, y, { align: 'center' });
+            y += 7;
+
+            doc.setDrawColor('#cccccc');
+            doc.line(margin, y, pageWidth - margin, y);
+            y += 6;
+
+            doc.setFont('Helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor('#000000');
+            
+            doc.text(`Invoice: ${sale.id}`, margin, y);
+            y += 4;
+            doc.text(`Date: ${new Date(sale.date).toLocaleString()}`, margin, y);
+            y += 5;
+            
+            doc.setFont('Helvetica', 'bold');
+            doc.text('Billed To:', margin, y);
+            y += 4;
+            doc.setFont('Helvetica', 'normal');
+            doc.text(customer.name, margin, y);
+            y += 4;
+            const addressLines = doc.splitTextToSize(customer.address, maxLineWidth);
+            doc.text(addressLines, margin, y);
+            y += (addressLines.length * 4);
+            y += 2;
+
+            doc.setDrawColor('#000000');
+            doc.line(margin, y, pageWidth - margin, y); 
+            y += 5;
+            doc.setFont('Helvetica', 'bold');
+            doc.text('Purchase Details', centerX, y, { align: 'center' });
+            y += 5;
+            doc.line(margin, y, pageWidth - margin, y); 
+            y += 5;
+
+            doc.setFont('Helvetica', 'bold');
+            doc.text('Item', margin, y);
+            doc.text('Total', pageWidth - margin, y, { align: 'right' });
+            y += 2;
+            doc.setDrawColor('#cccccc');
+            doc.line(margin, y, pageWidth - margin, y);
+            y += 5;
+            
+            doc.setFont('Helvetica', 'normal');
+            sale.items.forEach(item => {
+                const itemTotal = item.price * item.quantity;
+                doc.setFontSize(9);
+                const splitName = doc.splitTextToSize(item.productName, maxLineWidth - 20);
+                doc.text(splitName, margin, y);
+                doc.text(`Rs. ${itemTotal.toLocaleString('en-IN')}`, pageWidth - margin, y, { align: 'right' });
+                y += (splitName.length * 4);
+                doc.setFontSize(7);
+                doc.setTextColor('#666666');
+                doc.text(`(x${item.quantity} @ Rs. ${item.price.toLocaleString('en-IN')})`, margin, y);
+                y += 6;
+                doc.setTextColor('#000000');
+            });
+            
+            y -= 2;
+            doc.setDrawColor('#cccccc');
+            doc.line(margin, y, pageWidth - margin, y); 
+            y += 5;
+
+            const totals = [
+                { label: 'Subtotal', value: subTotal },
+                { label: 'GST', value: sale.gstAmount },
+                { label: 'Discount', value: -sale.discount },
+                { label: 'Total', value: sale.totalAmount, bold: true },
+                { label: 'Paid', value: paidAmountOnSale },
+                { label: 'Due', value: dueAmountOnSale, bold: true },
+            ];
+            
+            const totalsX = pageWidth - margin;
+            totals.forEach(({label, value, bold = false}) => {
+                doc.setFont('Helvetica', bold ? 'bold' : 'normal');
+                doc.setFontSize(bold ? 10 : 8);
+                doc.text(label, totalsX - 25, y, { align: 'right' });
+                doc.text(`Rs. ${value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, y, { align: 'right' });
+                y += (bold ? 5 : 4);
+            });
+          
+            return y;
+        };
+        
+        const dummyDoc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, 500] });
+        const finalY = renderContentOnDoc(dummyDoc);
+
+        const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, finalY + 5] });
+        renderContentOnDoc(doc);
+        
+        doc.save(`${sale.id}.pdf`);
+    };
+
+    const handleShareDuesSummary = async () => {
+        if (!selectedCustomer) return;
+
+        const overdueSales = state.sales.filter(s => {
+            const paid = (s.payments || []).reduce((sum, p) => sum + p.amount, 0);
+            return s.customerId === selectedCustomer.id && (s.totalAmount - paid) > 0.01;
+        });
+
+        if (overdueSales.length === 0) {
+            alert(`${selectedCustomer.name} has no outstanding dues.`);
+            return;
+        }
+
+        const totalDue = overdueSales.reduce((total, sale) => {
+            const paid = (sale.payments || []).reduce((sum, p) => sum + p.amount, 0);
+            return total + (sale.totalAmount - paid);
+        }, 0);
+        
+        const doc = new jsPDF();
+        const profile = state.profile;
+        let currentY = 15;
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(20);
+        doc.setTextColor('#6a0dad'); // Primary color
+        doc.text('Customer Dues Summary', 105, currentY, { align: 'center' });
+        currentY += 8;
+        
+        if (profile) {
+            doc.setFontSize(12);
+            doc.setTextColor('#333333');
+            doc.text(profile.name, 105, currentY, { align: 'center' });
+            currentY += 5;
+        }
+        
+        currentY += 5;
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor('#000000');
+        doc.text(`Billed To: ${selectedCustomer.name}`, 14, currentY);
+        currentY += 6;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, currentY);
+        currentY += 10;
+
+        autoTable(doc, {
+            startY: currentY,
+            head: [['Invoice ID', 'Date', 'Total', 'Paid', 'Due']],
+            body: overdueSales.map(sale => {
+                const paid = (sale.payments || []).reduce((sum, p) => sum + p.amount, 0);
+                const due = sale.totalAmount - paid;
+                return [
+                    sale.id,
+                    new Date(sale.date).toLocaleDateString(),
+                    `Rs. ${sale.totalAmount.toLocaleString('en-IN')}`,
+                    `Rs. ${paid.toLocaleString('en-IN')}`,
+                    `Rs. ${due.toLocaleString('en-IN')}`
+                ];
+            }),
+            theme: 'grid',
+            headStyles: { fillColor: [106, 13, 173] }, // Primary color
+            columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } }
+        });
+        
+        currentY = (doc as any).lastAutoTable.finalY + 15;
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor('#6a0dad');
+        doc.text(
+            `Total Outstanding Due: Rs. ${totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+            196, currentY, { align: 'right' }
+        );
+
+        const pdfBlob = doc.output('blob');
+        const pdfFile = new File([pdfBlob], `Dues-Summary-${selectedCustomer.id}.pdf`, { type: 'application/pdf' });
+
+        if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
+          await navigator.share({
+            title: `Bhavani Sarees - Dues Summary for ${selectedCustomer.name}`,
+            files: [pdfFile],
+          });
+        } else {
+          doc.save(`Dues-Summary-${selectedCustomer.id}.pdf`);
+        }
+    };
+
+
     const filteredCustomers = state.customers.filter(c =>
         c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         c.phone.includes(searchTerm) ||
@@ -243,18 +456,22 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                 {paymentModalState.isOpen && <PaymentModal />}
                 <Button onClick={() => setSelectedCustomer(null)}>&larr; Back to List</Button>
                 <Card>
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-lg font-bold text-primary">Customer Details: {selectedCustomer.name}</h2>
-                        {isEditing ? (
-                            <div className="flex gap-2 items-center">
-                                <Button onClick={handleUpdateCustomer} className="h-9 px-3"><Save size={16} /> Save</Button>
-                                <button onClick={() => setIsEditing(false)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
-                                    <X size={20}/>
-                                </button>
-                            </div>
-                        ) : (
-                            <Button onClick={() => setIsEditing(true)}><Edit size={16}/> Edit</Button>
-                        )}
+                    <div className="flex justify-between items-start mb-4">
+                        <div>
+                            <h2 className="text-lg font-bold text-primary">Customer Details: {selectedCustomer.name}</h2>
+                        </div>
+                        <div className="flex gap-2 items-center flex-shrink-0">
+                            {isEditing ? (
+                                <>
+                                    <Button onClick={handleUpdateCustomer} className="h-9 px-3"><Save size={16} /> Save</Button>
+                                    <button onClick={() => setIsEditing(false)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
+                                        <X size={20}/>
+                                    </button>
+                                </>
+                            ) : (
+                                <Button onClick={() => setIsEditing(true)}><Edit size={16}/> Edit</Button>
+                            )}
+                        </div>
                     </div>
                     {isEditing ? (
                         <div className="space-y-3">
@@ -273,6 +490,12 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                             {selectedCustomer.reference && <p><strong>Reference:</strong> {selectedCustomer.reference}</p>}
                         </div>
                     )}
+                     <div className="mt-4 pt-4 border-t">
+                        <Button onClick={handleShareDuesSummary} className="w-full">
+                            <Share2 size={16} className="mr-2" />
+                            Share Dues Summary
+                        </Button>
+                    </div>
                 </Card>
                 <Card title="Sales History">
                     {customerSales.length > 0 ? (
@@ -299,11 +522,13 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                                             </p>
                                         </div>
                                       </div>
-                                      <DeleteButton 
-                                        variant="delete" 
-                                        onClick={(e) => { e.stopPropagation(); handleDeleteSale(sale.id); }} 
-                                        className="ml-4" 
-                                      />
+                                      <div className="flex items-center ml-2">
+                                        <button onClick={() => handleDownloadInvoice(sale)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Download Invoice"><Download size={16} /></button>
+                                        <DeleteButton 
+                                            variant="delete" 
+                                            onClick={(e) => { e.stopPropagation(); handleDeleteSale(sale.id); }} 
+                                        />
+                                      </div>
                                     </div>
                                     <div className="pl-4 mt-2 border-l-2 border-purple-200 space-y-3">
                                         <div>

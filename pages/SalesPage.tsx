@@ -199,7 +199,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
           
           doc.setFont('Times', 'bold');
           doc.setFontSize(16);
-          doc.setTextColor('#6a0dad');
+          doc.setTextColor('#6a0dad'); // Primary Color
           doc.text('Bhavani Sarees', centerX, y, { align: 'center' });
           y += 7;
 
