@@ -92,6 +92,8 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             const supplierToSelect = state.suppliers.find(s => s.id === state.selection.id);
             if (supplierToSelect) {
                 setSelectedSupplier(supplierToSelect);
+            } else {
+                 setView('add_purchase');
             }
             dispatch({ type: 'CLEAR_SELECTION' });
         }

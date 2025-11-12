@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle, Bell, Menu } from 'lucide-react';
+import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle, Bell, Menu, Plus } from 'lucide-react';
 
 import { AppProvider, useAppContext } from './context/AppContext';
 import Dashboard from './pages/Dashboard';
@@ -46,13 +46,17 @@ const MainApp: React.FC = () => {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+
   const { state, dispatch, isDbLoaded } = useAppContext();
   const canExitApp = useRef(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
 
   useOnClickOutside(menuRef, () => setIsMenuOpen(false));
   useOnClickOutside(notificationsRef, () => setIsNotificationsOpen(false));
+  useOnClickOutside(moreMenuRef, () => setIsMoreMenuOpen(false));
 
   const lastBackupDate = state.app_metadata.find(m => m.id === 'lastBackup')?.date;
 
@@ -224,9 +228,9 @@ const MainApp: React.FC = () => {
     }
   };
   
-  const NavItem = ({ page, label, icon: Icon, action }: { page?: Page; label: string; icon: React.ElementType, action?: () => void }) => (
+  const NavItem = ({ page, label, icon: Icon }: { page: Page; label: string; icon: React.ElementType }) => (
     <button
-      onClick={() => page ? setCurrentPage(page) : action?.()}
+      onClick={() => setCurrentPage(page)}
       className={`flex flex-col items-center justify-center w-full pt-2 pb-1 text-xs transition-colors duration-200 ${
         currentPage === page ? 'text-white scale-[1.02]' : 'text-purple-200 hover:text-white'
       }`}
@@ -237,6 +241,23 @@ const MainApp: React.FC = () => {
   );
   
   const hasUnreadNotifications = state.notifications.some(n => !n.read);
+
+  const mainNavItems = [
+    { page: 'DASHBOARD' as Page, label: 'Home', icon: Home },
+    { page: 'CUSTOMERS' as Page, label: 'Customers', icon: Users },
+    { page: 'SALES' as Page, label: 'Sales', icon: ShoppingCart },
+    { page: 'PURCHASES' as Page, label: 'Purchases', icon: Package },
+  ];
+
+  const moreNavItems = [
+      { page: 'PRODUCTS' as Page, label: 'Products', icon: Boxes },
+      { page: 'RETURNS' as Page, label: 'Returns', icon: Undo2 },
+      { page: 'REPORTS' as Page, label: 'Reports', icon: FileText },
+  ];
+
+  const allNavItems = [...mainNavItems, ...moreNavItems];
+  const isMoreMenuActive = moreNavItems.some(item => item.page === currentPage);
+
 
   return (
     <div className="flex flex-col h-screen font-sans text-text bg-background">
@@ -295,14 +316,49 @@ const MainApp: React.FC = () => {
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-primary shadow-lg z-50">
-        <div className="flex justify-around max-w-2xl mx-auto">
-          <NavItem page="DASHBOARD" label="Home" icon={Home} />
-          <NavItem page="CUSTOMERS" label="Customers" icon={Users} />
-          <NavItem page="SALES" label="Sales" icon={ShoppingCart} />
-          <NavItem page="PURCHASES" label="Purchases" icon={Package} />
-          <NavItem page="PRODUCTS" label="Products" icon={Boxes} />
-          <NavItem page="RETURNS" label="Returns" icon={Undo2} />
-          <NavItem page="REPORTS" label="Reports" icon={FileText} />
+        {/* Desktop nav */}
+        <div className="hidden md:flex justify-around max-w-2xl mx-auto">
+            {/* FIX: Pass props explicitly to NavItem to resolve TypeScript error. */}
+            {allNavItems.map(item => <NavItem key={item.page} page={item.page} label={item.label} icon={item.icon} />)}
+        </div>
+
+        {/* Mobile nav */}
+        <div className="flex md:hidden justify-around max-w-2xl mx-auto">
+            {/* FIX: Pass props explicitly to NavItem to resolve TypeScript error. */}
+            {mainNavItems.map(item => <NavItem key={item.page} page={item.page} label={item.label} icon={item.icon} />)}
+            <div className="relative flex flex-col items-center justify-center w-full pt-2 pb-1" ref={moreMenuRef}>
+                 <button
+                    onClick={() => setIsMoreMenuOpen(prev => !prev)}
+                    className={`flex flex-col items-center justify-center w-full h-full text-xs transition-colors duration-200 ${
+                        isMoreMenuActive ? 'text-white scale-[1.02]' : 'text-purple-200 hover:text-white'
+                    }`}
+                    aria-haspopup="true"
+                    aria-expanded={isMoreMenuOpen}
+                    >
+                    <Plus className="w-6 h-6 mb-1" />
+                    <span>More</span>
+                </button>
+
+                {isMoreMenuOpen && (
+                    <div className="absolute bottom-full right-0 mb-2 w-48 bg-white rounded-lg shadow-xl border text-text z-10 animate-slide-up-fade">
+                        {moreNavItems.map(item => (
+                            <button 
+                                key={item.page} 
+                                onClick={() => {
+                                    setCurrentPage(item.page);
+                                    setIsMoreMenuOpen(false);
+                                }} 
+                                className="w-full flex items-center gap-3 p-3 text-left hover:bg-purple-50 transition-colors"
+                            >
+                                <item.icon className="w-5 h-5 text-primary" />
+                                <span className={`font-semibold text-sm ${currentPage === item.page ? 'text-primary' : ''}`}>
+                                    {item.label}
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
         </div>
       </nav>
     </div>
