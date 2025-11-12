@@ -23,6 +23,7 @@ export interface Supplier {
   name: string;
   phone: string;
   location: string;
+  gstNumber?: string;
   reference?: string;
   account1?: string;
   account2?: string;
@@ -92,6 +93,7 @@ export interface Return {
   returnDate: string; // ISO string
   amount: number; // Amount refunded to customer or credited from supplier
   reason?: string;
+  notes?: string;
 }
 
 export interface BeforeInstallPromptEvent extends Event {
@@ -111,4 +113,12 @@ export interface Notification {
   createdAt: string; // ISO string
   type: 'backup' | 'info';
   actionLink?: Page;
+}
+
+export interface ProfileData {
+  id: 'userProfile'; // a fixed ID for the single profile object
+  name: string;
+  phone: string;
+  address: string;
+  gstNumber: string;
 }

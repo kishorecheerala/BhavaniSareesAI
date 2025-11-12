@@ -1,9 +1,5 @@
-
-
-
-
 import React, { useState, useEffect, useRef } from 'react';
-import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle, Bell } from 'lucide-react';
+import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle, Bell, Menu } from 'lucide-react';
 
 import { AppProvider, useAppContext } from './context/AppContext';
 import Dashboard from './pages/Dashboard';
@@ -17,6 +13,8 @@ import UniversalSearch from './components/UniversalSearch';
 import HelpModal from './components/HelpModal';
 import AppSkeletonLoader from './components/AppSkeletonLoader';
 import NotificationsPanel from './components/NotificationsPanel';
+import MenuPanel from './components/MenuPanel';
+import ProfileModal from './components/ProfileModal';
 import { BeforeInstallPromptEvent, Notification } from './types';
 
 export type Page = 'DASHBOARD' | 'CUSTOMERS' | 'SALES' | 'PURCHASES' | 'REPORTS' | 'RETURNS' | 'PRODUCTS';
@@ -47,6 +45,8 @@ const MainApp: React.FC = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const { state, dispatch, isDbLoaded } = useAppContext();
   const canExitApp = useRef(false);
 
@@ -238,15 +238,31 @@ const MainApp: React.FC = () => {
     <div className="flex flex-col h-screen font-sans text-text bg-background">
       <Toast />
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+      <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
       <UniversalSearch 
         isOpen={isSearchOpen} 
         onClose={closeSearch} 
         onNavigate={handleSearchResultClick} 
       />
       <header className="bg-gradient-to-r from-primary to-secondary text-white shadow-md p-4 flex items-center justify-between">
-          <button onClick={openSearch} className="p-1 rounded-full hover:bg-white/20 transition-colors" aria-label="Open search">
-            <Search className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <button onClick={() => setIsMenuOpen(prev => !prev)} className="p-1 rounded-full hover:bg-white/20 transition-colors" aria-label="Open menu">
+                  <Menu className="w-6 h-6" />
+              </button>
+              <MenuPanel 
+                  isOpen={isMenuOpen}
+                  onClose={() => setIsMenuOpen(false)}
+                  onProfileClick={() => {
+                      setIsMenuOpen(false);
+                      setIsProfileOpen(true);
+                  }}
+              />
+            </div>
+            <button onClick={openSearch} className="p-1 rounded-full hover:bg-white/20 transition-colors" aria-label="Open search">
+              <Search className="w-6 h-6" />
+            </button>
+          </div>
           <h1 className="text-xl font-bold text-center">Bhavani Sarees</h1>
           <div className="flex items-center gap-2">
             <div className="relative">

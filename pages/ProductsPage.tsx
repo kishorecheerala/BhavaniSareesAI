@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Edit, Save, X, Package, IndianRupee, Percent, PackageCheck } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Product } from '../types';
@@ -16,6 +16,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editedProduct, setEditedProduct] = useState<Product | null>(null);
     const [newQuantity, setNewQuantity] = useState<string>('');
+    const isDirtyRef = useRef(false);
     
     useEffect(() => {
         if (state.selection && state.selection.page === 'PRODUCTS') {
@@ -33,12 +34,19 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
             const quantityChanged = newQuantity !== '' && parseInt(newQuantity, 10) !== selectedProduct.quantity;
             formIsDirty = isEditing || quantityChanged;
         }
-        setIsDirty(formIsDirty);
         
+        if (formIsDirty !== isDirtyRef.current) {
+            isDirtyRef.current = formIsDirty;
+            setIsDirty(formIsDirty);
+        }
+    }, [selectedProduct, isEditing, newQuantity, editedProduct, setIsDirty]);
+
+    // On unmount, we must always clean up.
+    useEffect(() => {
         return () => {
             setIsDirty(false);
         };
-    }, [selectedProduct, isEditing, newQuantity, setIsDirty]);
+    }, [setIsDirty]);
 
     useEffect(() => {
         if (selectedProduct) {

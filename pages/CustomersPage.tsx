@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, User, Phone, MapPin, Search, Edit, Save, X, Trash2, IndianRupee, ShoppingCart } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Customer, Payment, Sale } from '../types';
@@ -37,6 +37,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
     });
     
     const [confirmModalState, setConfirmModalState] = useState<{ isOpen: boolean, saleIdToDelete: string | null }>({ isOpen: false, saleIdToDelete: null });
+    const isDirtyRef = useRef(false);
 
     useEffect(() => {
         if (state.selection && state.selection.page === 'CUSTOMERS') {
@@ -49,14 +50,19 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
     }, [state.selection, state.customers, dispatch]);
 
     useEffect(() => {
-        // FIX: Coerce the potentially string result of the logical OR to a boolean using `!!`
-        const formIsDirty = (isAdding && !!(newCustomer.id || newCustomer.name || newCustomer.phone || newCustomer.address || newCustomer.area)) || isEditing;
-        setIsDirty(formIsDirty);
+        const currentlyDirty = (isAdding && !!(newCustomer.id || newCustomer.name || newCustomer.phone || newCustomer.address || newCustomer.area)) || isEditing;
+        if (currentlyDirty !== isDirtyRef.current) {
+            isDirtyRef.current = currentlyDirty;
+            setIsDirty(currentlyDirty);
+        }
+    }, [isAdding, newCustomer, isEditing, setIsDirty]);
 
+    // On unmount, we must always clean up.
+    useEffect(() => {
         return () => {
             setIsDirty(false);
         };
-    }, [isAdding, newCustomer, isEditing, setIsDirty]);
+    }, [setIsDirty]);
 
     useEffect(() => {
         if (selectedCustomer) {

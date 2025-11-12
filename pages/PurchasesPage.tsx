@@ -27,7 +27,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     const csvInputRef = useRef<HTMLInputElement>(null);
 
     // State for 'add_supplier' view
-    const [newSupplier, setNewSupplier] = useState({ id: '', name: '', phone: '', location: '', reference: '', account1: '', account2: '', upi: '' });
+    const [newSupplier, setNewSupplier] = useState({ id: '', name: '', phone: '', location: '', gstNumber: '', reference: '', account1: '', account2: '', upi: '' });
 
     // State for 'add_purchase' view
     const [purchaseSupplierId, setPurchaseSupplierId] = useState('');
@@ -55,7 +55,8 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     const [paymentModalState, setPaymentModalState] = useState<{ isOpen: boolean, purchaseId: string | null }>({ isOpen: false, purchaseId: null });
     const [paymentDetails, setPaymentDetails] = useState({ amount: '', method: 'CASH' as 'CASH' | 'UPI' | 'CHEQUE', date: getLocalDateString(), reference: '' });
     const [confirmModalState, setConfirmModalState] = useState<{ isOpen: boolean, purchaseIdToDelete: string | null }>({ isOpen: false, purchaseIdToDelete: null });
-    
+    const isDirtyRef = useRef(false);
+
     useEffect(() => {
         if (state.selection && state.selection.page === 'PURCHASES') {
             const supplierToSelect = state.suppliers.find(s => s.id === state.selection.id);
@@ -70,9 +71,19 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         const addSupplierDirty = view === 'add_supplier' && !!(newSupplier.id || newSupplier.name || newSupplier.phone || newSupplier.location);
         const addPurchaseDirty = view === 'add_purchase' && !!(purchaseSupplierId || purchaseItems.length > 0 || purchasePaymentDetails.amount);
         const detailViewDirty = !!(selectedSupplier && isEditing);
-        setIsDirty(addSupplierDirty || addPurchaseDirty || detailViewDirty);
-        return () => setIsDirty(false);
+        const currentlyDirty = addSupplierDirty || addPurchaseDirty || detailViewDirty;
+        if (currentlyDirty !== isDirtyRef.current) {
+            isDirtyRef.current = currentlyDirty;
+            setIsDirty(currentlyDirty);
+        }
     }, [view, newSupplier, purchaseSupplierId, purchaseItems, purchasePaymentDetails.amount, selectedSupplier, isEditing, setIsDirty]);
+
+    // On unmount, we must always clean up.
+    useEffect(() => {
+        return () => {
+            setIsDirty(false);
+        };
+    }, [setIsDirty]);
     
     useEffect(() => {
         if (selectedSupplier) {
@@ -110,7 +121,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         const supplierToAdd: Supplier = { ...newSupplier, id: finalId };
         dispatch({ type: 'ADD_SUPPLIER', payload: supplierToAdd });
         showToast("Supplier added successfully!");
-        setNewSupplier({ id: '', name: '', phone: '', location: '', reference: '', account1: '', account2: '', upi: '' });
+        setNewSupplier({ id: '', name: '', phone: '', location: '', gstNumber: '', reference: '', account1: '', account2: '', upi: '' });
         setView('list');
     };
     
@@ -510,12 +521,14 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                             <div><label className="text-sm font-medium">Name</label><input type="text" name="name" value={editedSupplier.name} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
                             <div><label className="text-sm font-medium">Phone</label><input type="text" name="phone" value={editedSupplier.phone} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
                             <div><label className="text-sm font-medium">Location</label><input type="text" name="location" value={editedSupplier.location} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
+                            <div><label className="text-sm font-medium">GST Number</label><input type="text" name="gstNumber" value={editedSupplier.gstNumber || ''} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
                         </div>
                     ) : (
                         <div className="space-y-1 text-gray-700">
                              <p><strong>ID:</strong> {selectedSupplier.id}</p>
                             <p><strong>Phone:</strong> {selectedSupplier.phone}</p>
                             <p><strong>Location:</strong> {selectedSupplier.location}</p>
+                            {selectedSupplier.gstNumber && <p><strong>GSTIN:</strong> {selectedSupplier.gstNumber}</p>}
                         </div>
                     )}
                 </Card>
@@ -590,6 +603,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                         <input type="text" placeholder="Name" value={newSupplier.name} onChange={e => setNewSupplier({ ...newSupplier, name: e.target.value })} className="w-full p-2 border rounded" />
                         <input type="text" placeholder="Phone" value={newSupplier.phone} onChange={e => setNewSupplier({ ...newSupplier, phone: e.target.value })} className="w-full p-2 border rounded" />
                         <input type="text" placeholder="Location" value={newSupplier.location} onChange={e => setNewSupplier({ ...newSupplier, location: e.target.value })} className="w-full p-2 border rounded" />
+                        <input type="text" placeholder="GST Number (Optional)" value={newSupplier.gstNumber} onChange={e => setNewSupplier({ ...newSupplier, gstNumber: e.target.value })} className="w-full p-2 border rounded" />
                         <Button onClick={handleAddSupplier} className="w-full">Save Supplier</Button>
                      </div>
                  </Card>

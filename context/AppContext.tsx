@@ -1,6 +1,5 @@
-
 import React, { createContext, useReducer, useContext, useEffect, ReactNode, useState } from 'react';
-import { Customer, Supplier, Product, Sale, Purchase, Return, Payment, BeforeInstallPromptEvent, Notification } from '../types';
+import { Customer, Supplier, Product, Sale, Purchase, Return, Payment, BeforeInstallPromptEvent, Notification, ProfileData } from '../types';
 import * as db from '../utils/db';
 import { Page } from '../App';
 
@@ -24,14 +23,16 @@ export interface AppState {
   returns: Return[];
   app_metadata: AppMetadata[];
   notifications: Notification[];
+  profile: ProfileData | null;
   toast: ToastState;
   selection: { page: Page; id: string } | null;
   installPromptEvent: BeforeInstallPromptEvent | null;
 }
 
 type Action =
-  | { type: 'SET_STATE'; payload: Omit<AppState, 'toast' | 'selection' | 'installPromptEvent' | 'notifications'> }
+  | { type: 'SET_STATE'; payload: Omit<AppState, 'toast' | 'selection' | 'installPromptEvent' | 'notifications' | 'profile'> }
   | { type: 'SET_NOTIFICATIONS'; payload: Notification[] }
+  | { type: 'SET_PROFILE'; payload: ProfileData | null }
   | { type: 'ADD_CUSTOMER'; payload: Customer }
   | { type: 'UPDATE_CUSTOMER'; payload: Customer }
   | { type: 'ADD_SUPPLIER'; payload: Supplier }
@@ -66,6 +67,7 @@ const initialState: AppState = {
   returns: [],
   app_metadata: [],
   notifications: [],
+  profile: null,
   toast: { message: '', show: false, type: 'info' },
   selection: null,
   installPromptEvent: null,
@@ -77,6 +79,8 @@ const appReducer = (state: AppState, action: Action): AppState => {
         return { ...state, ...action.payload };
     case 'SET_NOTIFICATIONS':
         return { ...state, notifications: action.payload };
+    case 'SET_PROFILE':
+        return { ...state, profile: action.payload };
     case 'ADD_CUSTOMER':
       return { ...state, customers: [...state.customers, action.payload] };
     case 'UPDATE_CUSTOMER':
@@ -266,7 +270,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [customers, suppliers, products, sales, purchases, returns, app_metadata, notifications] = await Promise.all([
+        const [customers, suppliers, products, sales, purchases, returns, app_metadata, notifications, profile] = await Promise.all([
           db.getAll('customers'),
           db.getAll('suppliers'),
           db.getAll('products'),
@@ -275,9 +279,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           db.getAll('returns'),
           db.getAll('app_metadata'),
           db.getAll('notifications'),
+          db.getAll('profile'),
         ]);
 
-        const validatedState: Omit<AppState, 'toast' | 'selection' | 'installPromptEvent' | 'notifications'> = {
+        const validatedState: Omit<AppState, 'toast' | 'selection' | 'installPromptEvent' | 'notifications' | 'profile'> = {
             customers: Array.isArray(customers) ? customers : [],
             suppliers: Array.isArray(suppliers) ? suppliers : [],
             products: Array.isArray(products) ? products : [],
@@ -288,6 +293,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         };
         dispatch({ type: 'SET_STATE', payload: validatedState });
         dispatch({ type: 'SET_NOTIFICATIONS', payload: Array.isArray(notifications) ? notifications : [] });
+        dispatch({ type: 'SET_PROFILE', payload: (Array.isArray(profile) && profile.length > 0) ? profile[0] : null });
       } catch (error) {
         console.error("Could not load data from IndexedDB, using initial state.", error);
       } finally {
@@ -307,6 +313,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => { if (isDbLoaded) db.saveCollection('returns', state.returns); }, [state.returns, isDbLoaded]);
   useEffect(() => { if (isDbLoaded) db.saveCollection('app_metadata', state.app_metadata); }, [state.app_metadata, isDbLoaded]);
   useEffect(() => { if (isDbLoaded) db.saveCollection('notifications', state.notifications); }, [state.notifications, isDbLoaded]);
+  useEffect(() => { if (isDbLoaded && state.profile) db.saveCollection('profile', [state.profile]); }, [state.profile, isDbLoaded]);
 
 
   const showToast = (message: string) => {

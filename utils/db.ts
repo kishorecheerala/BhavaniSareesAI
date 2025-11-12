@@ -1,12 +1,12 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import { Customer, Supplier, Product, Sale, Purchase, Return, Notification } from '../types';
+import { Customer, Supplier, Product, Sale, Purchase, Return, Notification, ProfileData } from '../types';
 import { AppState } from '../context/AppContext';
 
 const DB_NAME = 'bhavani-sarees-db';
-const DB_VERSION = 3; // Bump version for schema change
+const DB_VERSION = 4; // Bump version for schema change
 
-export type StoreName = 'customers' | 'suppliers' | 'products' | 'sales' | 'purchases' | 'returns' | 'app_metadata' | 'notifications';
-const STORE_NAMES: StoreName[] = ['customers', 'suppliers', 'products', 'sales', 'purchases', 'returns', 'app_metadata', 'notifications'];
+export type StoreName = 'customers' | 'suppliers' | 'products' | 'sales' | 'purchases' | 'returns' | 'app_metadata' | 'notifications' | 'profile';
+const STORE_NAMES: StoreName[] = ['customers', 'suppliers', 'products', 'sales', 'purchases', 'returns', 'app_metadata', 'notifications', 'profile'];
 
 interface AppMetadata {
     id: 'lastBackup';
@@ -22,6 +22,7 @@ interface BhavaniSareesDB extends DBSchema {
   returns: { key: string; value: Return; };
   app_metadata: { key: string; value: AppMetadata; };
   notifications: { key: string; value: Notification; };
+  profile: { key: string; value: ProfileData; };
 }
 
 let dbPromise: Promise<IDBPDatabase<BhavaniSareesDB>>;

@@ -39,16 +39,24 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     
     const [isAddingCustomer, setIsAddingCustomer] = useState(false);
     const [newCustomer, setNewCustomer] = useState({ id: '', name: '', phone: '', address: '', area: '', reference: '' });
+    const isDirtyRef = useRef(false);
 
     useEffect(() => {
         const formIsDirty = !!customerId || items.length > 0 || discount !== '0' || !!paymentDetails.amount;
         const newCustomerFormIsDirty = isAddingCustomer && !!(newCustomer.id || newCustomer.name || newCustomer.phone || newCustomer.address || newCustomer.area);
-        setIsDirty(formIsDirty || newCustomerFormIsDirty);
+        const currentlyDirty = formIsDirty || newCustomerFormIsDirty;
+        if (currentlyDirty !== isDirtyRef.current) {
+            isDirtyRef.current = currentlyDirty;
+            setIsDirty(currentlyDirty);
+        }
+    }, [customerId, items, discount, paymentDetails.amount, isAddingCustomer, newCustomer, setIsDirty]);
 
+    // On unmount, we must always clean up.
+    useEffect(() => {
         return () => {
             setIsDirty(false);
         };
-    }, [customerId, items, discount, paymentDetails.amount, isAddingCustomer, newCustomer, setIsDirty]);
+    }, [setIsDirty]);
 
     const resetForm = () => {
         setCustomerId('');

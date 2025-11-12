@@ -1,9 +1,11 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Undo2, Users, Package, Plus, Trash2 } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Undo2, Users, Package, Plus, Trash2, Share2 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Return, ReturnItem, Sale, Purchase } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 type ReturnType = 'CUSTOMER' | 'SUPPLIER';
 
@@ -19,7 +21,7 @@ interface ReturnsPageProps {
 }
 
 const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
-    const { state, dispatch } = useAppContext();
+    const { state, dispatch, showToast } = useAppContext();
     const [activeTab, setActiveTab] = useState<ReturnType>('CUSTOMER');
     const [partyId, setPartyId] = useState<string>('');
     const [referenceId, setReferenceId] = useState<string>('');
@@ -27,15 +29,23 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
     const [returnDate, setReturnDate] = useState(getLocalDateString());
     const [amount, setAmount] = useState('');
     const [reason, setReason] = useState('');
+    const [returnNotes, setReturnNotes] = useState('');
+    const isDirtyRef = useRef(false);
 
     useEffect(() => {
-        const formIsDirty = !!partyId || !!referenceId || itemsToReturn.length > 0;
-        setIsDirty(formIsDirty);
+        const currentlyDirty = !!partyId || !!referenceId || itemsToReturn.length > 0;
+        if (currentlyDirty !== isDirtyRef.current) {
+            isDirtyRef.current = currentlyDirty;
+            setIsDirty(currentlyDirty);
+        }
+    }, [partyId, referenceId, itemsToReturn, setIsDirty]);
 
+    // On unmount, we must always clean up.
+    useEffect(() => {
         return () => {
             setIsDirty(false);
         };
-    }, [partyId, referenceId, itemsToReturn, setIsDirty]);
+    }, [setIsDirty]);
 
     const resetForm = () => {
         setPartyId('');
@@ -44,6 +54,7 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
         setReturnDate(getLocalDateString());
         setAmount('');
         setReason('');
+        setReturnNotes('');
     };
 
     const handleItemQuantityChange = (productId: string, productName: string, price: number, newQuantity: number) => {
@@ -71,7 +82,99 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
         }
     };
     
-    const handleSubmitReturn = () => {
+    const generateSupplierReturnPDF = async (newReturn: Return) => {
+        const profile = state.profile;
+        const supplier = state.suppliers.find(s => s.id === newReturn.partyId);
+
+        if (!profile || !supplier) {
+            alert("Could not generate PDF. Missing profile or supplier information.");
+            return;
+        }
+
+        const doc = new jsPDF();
+        
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(20);
+        doc.text('DEBIT NOTE', 105, 15, { align: 'center' });
+        
+        doc.setFontSize(12);
+        doc.text(profile.name, 14, 25);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        const addressLines = doc.splitTextToSize(profile.address, 80);
+        doc.text(addressLines, 14, 30);
+        let currentY = 30 + (addressLines.length * 5);
+        if (profile.phone) doc.text(`Phone: ${profile.phone}`, 14, currentY);
+        if (profile.gstNumber) { currentY += 5; doc.text(`GSTIN: ${profile.gstNumber}`, 14, currentY); }
+        
+        doc.setFont('helvetica', 'bold');
+        doc.text('To:', 120, 25);
+        doc.setFont('helvetica', 'normal');
+        doc.text(supplier.name, 120, 30);
+        const supplierAddressLines = doc.splitTextToSize(supplier.location, 80);
+        doc.text(supplierAddressLines, 120, 35);
+
+        currentY += 15;
+        doc.setDrawColor(100);
+        doc.line(14, currentY, 196, currentY);
+        currentY += 8;
+
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Debit Note No:`, 14, currentY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(newReturn.id, 55, currentY);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Date:`, 120, currentY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(new Date(newReturn.returnDate).toLocaleDateString(), 135, currentY);
+        currentY += 6;
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Original Inv. No:`, 14, currentY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(newReturn.referenceId, 55, currentY);
+        currentY += 10;
+        
+        autoTable(doc, {
+            startY: currentY,
+            head: [['#', 'Description', 'Qty', 'Rate', 'Amount']],
+            body: newReturn.items.map((item, index) => [
+                index + 1,
+                item.productName,
+                item.quantity,
+                `Rs. ${item.price.toLocaleString('en-IN')}`,
+                `Rs. ${(item.quantity * item.price).toLocaleString('en-IN')}`
+            ]),
+            theme: 'grid',
+            headStyles: { fillColor: [106, 13, 173] },
+            columnStyles: { 3: { halign: 'right' }, 4: { halign: 'right' } }
+        });
+
+        currentY = (doc as any).lastAutoTable.finalY + 10;
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Total Return Value:', 140, currentY, { align: 'right' });
+        doc.text(`Rs. ${newReturn.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 196, currentY, { align: 'right' });
+        
+        if (newReturn.notes) {
+            currentY += 15;
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Notes:', 14, currentY);
+            doc.setFont('helvetica', 'normal');
+            currentY += 5;
+            const notesLines = doc.splitTextToSize(newReturn.notes, 182);
+            doc.text(notesLines, 14, currentY);
+        }
+        
+        currentY = doc.internal.pageSize.height - 30;
+        doc.line(130, currentY, 196, currentY);
+        currentY += 5;
+        doc.text('Authorised Signatory', 163, currentY, { align: 'center' });
+
+        doc.save(`DebitNote-${newReturn.id}.pdf`);
+    };
+    
+    const handleSubmitReturn = async () => {
         if (!partyId || !referenceId || itemsToReturn.length === 0 || !amount) {
             alert('Please fill all required fields: select a party, an invoice, at least one item, and the return amount.');
             return;
@@ -85,11 +188,16 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
             items: itemsToReturn,
             returnDate: new Date(returnDate).toISOString(),
             amount: parseFloat(amount),
-            reason
+            reason,
+            notes: returnNotes,
         };
 
+        if (activeTab === 'SUPPLIER') {
+            await generateSupplierReturnPDF(newReturn);
+        }
+
         dispatch({ type: 'ADD_RETURN', payload: newReturn });
-        alert(`${activeTab === 'CUSTOMER' ? 'Customer' : 'Supplier'} return processed successfully!`);
+        showToast(`${activeTab === 'CUSTOMER' ? 'Customer' : 'Supplier'} return processed successfully!`);
         resetForm();
     };
 
@@ -213,11 +321,24 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                                 <label className="block text-sm font-medium text-gray-700">Reason (Optional)</label>
                                 <input type="text" placeholder="e.g., Damaged item" value={reason} onChange={e => setReason(e.target.value)} className="w-full p-2 border rounded" />
                             </div>
+                             {activeTab === 'SUPPLIER' && (
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700">Return Notes for PDF</label>
+                                    <textarea
+                                        placeholder="Enter any specific details to be included in the return invoice (Debit Note)..."
+                                        value={returnNotes}
+                                        onChange={e => setReturnNotes(e.target.value)}
+                                        className="w-full p-2 border rounded"
+                                        rows={3}
+                                    />
+                                </div>
+                            )}
                         </div>
                     )}
 
                     <Button onClick={handleSubmitReturn} className="w-full" disabled={itemsToReturn.length === 0}>
-                        Process Return
+                        {activeTab === 'SUPPLIER' ? <Share2 size={16} className="mr-2" /> : null}
+                        {activeTab === 'CUSTOMER' ? 'Process Return' : 'Process & Generate Debit Note'}
                     </Button>
                 </div>
             </Card>
