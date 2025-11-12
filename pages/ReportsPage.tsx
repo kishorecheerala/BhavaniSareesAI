@@ -7,6 +7,34 @@ import Button from '../components/Button';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+// More robust CSV line parser that handles quoted fields.
+const parseCsvLine = (line: string): string[] => {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        // Handle escaped quote ""
+        current += '"';
+        i++; // Skip the next quote
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      // Unquoted comma is a delimiter
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim());
+  return result;
+};
+
+
 const ReportsPage: React.FC = () => {
     const { state, dispatch, showToast } = useAppContext();
     const [selectedArea, setSelectedArea] = useState<string>('');
@@ -188,7 +216,7 @@ const ReportsPage: React.FC = () => {
                     return;
                 }
 
-                const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+                const headers = parseCsvLine(lines[0]).map(h => h.trim().toLowerCase());
                 const requiredHeaders = ['id', 'name', 'phone', 'address', 'area', 'dueamount'];
                 const missingHeaders = requiredHeaders.filter(rh => !headers.includes(rh));
 
@@ -201,7 +229,7 @@ const ReportsPage: React.FC = () => {
                 setImportStatus({type: 'info', message: `Processing ${lines.length - 1} records...`});
 
                 for (let i = 1; i < lines.length; i++) {
-                    const values = lines[i].split(',');
+                    const values = parseCsvLine(lines[i]);
                     const row = headers.reduce((obj, header, index) => {
                         obj[header] = values[index]?.trim() || '';
                         return obj;

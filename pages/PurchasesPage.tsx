@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Upload, IndianRupee, Edit, Save, X, Trash2, Search, QrCode, Package } from 'lucide-react';
+import { Plus, Upload, IndianRupee, Edit, Save, X, Trash2, Search, QrCode, Package, Info, CheckCircle, XCircle } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Supplier, Product, Purchase, PurchaseItem, Payment } from '../types';
 import Card from '../components/Card';
@@ -15,6 +15,34 @@ const getLocalDateString = (date = new Date()) => {
   return `${year}-${month}-${day}`;
 };
 
+// More robust CSV line parser that handles quoted fields.
+const parseCsvLine = (line: string): string[] => {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        // Handle escaped quote ""
+        current += '"';
+        i++; // Skip the next quote
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      // Unquoted comma is a delimiter
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim());
+  return result;
+};
+
+
 interface PurchasesPageProps {
   setIsDirty: (isDirty: boolean) => void;
 }
@@ -25,6 +53,8 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const csvInputRef = useRef<HTMLInputElement>(null);
+    const [importStatus, setImportStatus] = useState<{ type: 'info' | 'success' | 'error', message: string } | null>(null);
+
 
     // State for 'add_supplier' view
     const [newSupplier, setNewSupplier] = useState({ id: '', name: '', phone: '', location: '', gstNumber: '', reference: '', account1: '', account2: '', upi: '' });
@@ -106,6 +136,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             date: getLocalDateString(),
             reference: ''
         });
+        setImportStatus(null);
     };
 
     const handleAddSupplier = () => {
@@ -248,10 +279,12 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         }
 
         const reader = new FileReader();
+        setImportStatus({ type: 'info', message: 'Reading file...' });
+
         reader.onload = (e) => {
             const text = e.target?.result as string;
             if (!text) {
-                alert('Could not read the file content.');
+                setImportStatus({ type: 'error', message: 'Could not read the file content.' });
                 return;
             }
 
@@ -261,7 +294,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                     throw new Error('CSV file must have a header row and at least one data row.');
                 }
 
-                const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, ''));
+                const headers = parseCsvLine(lines[0]).map(h => h.trim().toLowerCase().replace(/\s+/g, ''));
                 const requiredHeaders = ['id', 'name', 'quantity', 'purchaseprice', 'saleprice', 'gstpercent'];
                 const missingHeaders = requiredHeaders.filter(rh => !headers.includes(rh));
 
@@ -273,7 +306,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                 const existingProductIds = new Set([...state.products.map(p => p.id.toLowerCase()), ...newItems.map(i => i.productId.toLowerCase())]);
 
                 for (let i = 1; i < lines.length; i++) {
-                    const values = lines[i].split(',');
+                    const values = parseCsvLine(lines[i]);
                     const row = headers.reduce((obj, header, index) => {
                         obj[header] = values[index]?.trim() || '';
                         return obj;
@@ -311,11 +344,11 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                 }
 
                 setPurchaseItems(newItems);
-                showToast(`Successfully imported ${newItems.length} items from CSV.`);
+                setImportStatus({ type: 'success', message: `Successfully imported ${newItems.length} items from CSV.`});
 
             } catch (error) {
                 console.error("CSV Import Error:", error);
-                alert(`An error occurred during import: ${(error as Error).message}`);
+                setImportStatus({ type: 'error', message: `An error occurred during import: ${(error as Error).message}`});
             } finally {
                  if (csvInputRef.current) csvInputRef.current.value = "";
             }
@@ -612,6 +645,29 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     }
     
     if (view === 'add_purchase') {
+        const StatusNotification = () => {
+            if (!importStatus) return null;
+            const variants = {
+                info: 'bg-blue-100 text-blue-800',
+                success: 'bg-green-100 text-green-800',
+                error: 'bg-red-100 text-red-800',
+            };
+             const icons = {
+                info: <Info className="w-5 h-5 mr-3 flex-shrink-0" />,
+                success: <CheckCircle className="w-5 h-5 mr-3 flex-shrink-0" />,
+                error: <XCircle className="w-5 h-5 mr-3 flex-shrink-0" />,
+            };
+            return (
+                <div className={`p-3 rounded-md mt-4 text-sm flex justify-between items-start ${variants[importStatus.type]}`}>
+                    <div className="flex items-start">
+                        {icons[importStatus.type]}
+                        <span>{importStatus.message}</span>
+                    </div>
+                    <button onClick={() => setImportStatus(null)} className="font-bold text-lg leading-none ml-4">&times;</button>
+                </div>
+            );
+        };
+
         return (
             <div className="space-y-4">
                  <input type="file" accept=".csv" ref={csvInputRef} onChange={handleImportCSV} className="hidden" />
@@ -635,7 +691,8 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                         <Button onClick={() => setIsScanning(true)} variant="secondary"><QrCode size={16} className="mr-2"/> Scan Product</Button>
                         <Button onClick={() => csvInputRef.current?.click()} variant="secondary"><Upload size={16} className="mr-2"/> Import from CSV</Button>
                     </div>
-                    <div className="space-y-2">
+                    <StatusNotification />
+                    <div className="space-y-2 mt-4">
                         {purchaseItems.map(item => (
                             <div key={item.productId} className="flex justify-between items-center p-2 bg-gray-50 rounded">
                                 <div>
