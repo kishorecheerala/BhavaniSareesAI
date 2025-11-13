@@ -6,7 +6,7 @@ import Card from '../components/Card';
 import Button from '../components/Button';
 import ConfirmationModal from '../components/ConfirmationModal';
 import DeleteButton from '../components/DeleteButton';
-import AddPurchaseView from '../components/AddPurchaseView';
+import PurchaseForm from '../components/AddPurchaseView';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -23,23 +23,13 @@ interface PurchasesPageProps {
 
 const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     const { state, dispatch, showToast } = useAppContext();
-    const [view, setView] = useState<'list' | 'add_supplier' | 'add_purchase'>('list');
+    const [view, setView] = useState<'list' | 'add_supplier' | 'add_purchase' | 'edit_purchase'>('list');
     const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [purchaseToEdit, setPurchaseToEdit] = useState<Purchase | null>(null);
 
     // State for 'add_supplier' view
     const [newSupplier, setNewSupplier] = useState({ id: '', name: '', phone: '', location: '', gstNumber: '', reference: '', account1: '', account2: '', upi: '' });
-
-    // State for 'add_purchase' view
-    const [purchaseSupplierId, setPurchaseSupplierId] = useState('');
-    const [purchaseItems, setPurchaseItems] = useState<any[]>([]); // Using any for PurchaseItem-like structure before finalization
-    const [supplierInvoiceId, setSupplierInvoiceId] = useState('');
-    const [purchasePaymentDetails, setPurchasePaymentDetails] = useState({
-        amount: '',
-        method: 'CASH' as 'CASH' | 'UPI' | 'CHEQUE',
-        date: getLocalDateString(),
-        reference: '',
-    });
     
     // State for supplier detail view
     const [isEditing, setIsEditing] = useState(false);
@@ -47,7 +37,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     const [paymentModalState, setPaymentModalState] = useState<{ isOpen: boolean, purchaseId: string | null }>({ isOpen: false, purchaseId: null });
     const [paymentDetails, setPaymentDetails] = useState({ amount: '', method: 'CASH' as 'CASH' | 'UPI' | 'CHEQUE', date: getLocalDateString(), reference: '' });
     const [confirmModalState, setConfirmModalState] = useState<{ isOpen: boolean, purchaseIdToDelete: string | null }>({ isOpen: false, purchaseIdToDelete: null });
-    const [expandedPurchaseId, setExpandedPurchaseId] = useState<string | null>(null);
+    
     const isDirtyRef = useRef(false);
 
     useEffect(() => {
@@ -64,14 +54,13 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     
     useEffect(() => {
         const addSupplierDirty = view === 'add_supplier' && !!(newSupplier.id || newSupplier.name || newSupplier.phone || newSupplier.location);
-        const addPurchaseDirty = view === 'add_purchase' && !!(purchaseSupplierId || purchaseItems.length > 0 || purchasePaymentDetails.amount);
         const detailViewDirty = !!(selectedSupplier && isEditing);
-        const currentlyDirty = addSupplierDirty || addPurchaseDirty || detailViewDirty;
+        const currentlyDirty = addSupplierDirty || detailViewDirty;
         if (currentlyDirty !== isDirtyRef.current) {
             isDirtyRef.current = currentlyDirty;
             setIsDirty(currentlyDirty);
         }
-    }, [view, newSupplier, purchaseSupplierId, purchaseItems, purchasePaymentDetails.amount, selectedSupplier, isEditing, setIsDirty]);
+    }, [view, newSupplier, selectedSupplier, isEditing, setIsDirty]);
 
     // On unmount, we must always clean up.
     useEffect(() => {
@@ -89,21 +78,8 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             setEditedSupplier(null);
         }
         setIsEditing(false);
-        setExpandedPurchaseId(null); // Collapse all items when supplier changes
     }, [selectedSupplier, state.suppliers, state.purchases]);
     
-    const resetAddPurchaseForm = () => {
-        setPurchaseSupplierId('');
-        setPurchaseItems([]);
-        setSupplierInvoiceId('');
-        setPurchasePaymentDetails({
-            amount: '',
-            method: 'CASH',
-            date: getLocalDateString(),
-            reference: ''
-        });
-    };
-
     const handleAddSupplier = () => {
         const trimmedId = newSupplier.id.trim();
         if (!trimmedId) return alert('Supplier ID is required.');
@@ -169,41 +145,9 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         }
     };
     
-    const handleCompletePurchase = () => {
-        if (!purchaseSupplierId || purchaseItems.length === 0) {
-            return alert("Please select a supplier and add at least one item.");
-        }
-        
-        const totalPurchaseAmount = purchaseItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-        const paidAmount = parseFloat(purchasePaymentDetails.amount) || 0;
-        if(paidAmount > totalPurchaseAmount + 0.01) {
-            return alert("Paid amount cannot be greater than the total amount.");
-        }
-        
-        const now = new Date();
-        const purchaseId = `PUR-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}-${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
-
-        const payments: Payment[] = paidAmount > 0 ? [{
-            id: `PAY-P-${Date.now()}`,
-            amount: paidAmount,
-            method: purchasePaymentDetails.method,
-            date: new Date(purchasePaymentDetails.date).toISOString(),
-            reference: purchasePaymentDetails.reference.trim() || undefined,
-        }] : [];
-        
-        const newPurchase: Purchase = {
-            id: purchaseId,
-            supplierId: purchaseSupplierId,
-            items: purchaseItems,
-            totalAmount: totalPurchaseAmount,
-            date: now.toISOString(),
-            supplierInvoiceId: supplierInvoiceId.trim() || undefined,
-            payments
-        };
-
-        dispatch({ type: 'ADD_PURCHASE', payload: newPurchase });
-        
-        purchaseItems.forEach(item => {
+    const handleCompletePurchase = (purchaseData: Purchase) => {
+        dispatch({ type: 'ADD_PURCHASE', payload: purchaseData });
+        purchaseData.items.forEach(item => {
             dispatch({
                 type: 'ADD_PRODUCT',
                 payload: {
@@ -218,8 +162,18 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         });
 
         showToast("Purchase recorded successfully! Inventory updated.");
-        resetAddPurchaseForm();
         setView('list');
+    };
+
+    const handleUpdatePurchase = (updatedPurchase: Purchase, oldPurchase?: Purchase) => {
+        if (oldPurchase) {
+            dispatch({ type: 'UPDATE_PURCHASE', payload: { oldPurchase, updatedPurchase } });
+            showToast("Purchase updated successfully!");
+            // After editing, go back to the supplier list and re-select that supplier to see the changes.
+            const supplier = state.suppliers.find(s => s.id === updatedPurchase.supplierId) || null;
+            setSelectedSupplier(supplier);
+            setView('list'); 
+        }
     };
     
     const generateDebitNotePDF = async (newReturn: Return) => {
@@ -322,7 +276,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         const dueAmount = purchase.totalAmount - amountPaid;
 
         return (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+            <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
                 <Card title="Add Payment" className="w-full max-w-sm animate-scale-in">
                     <div className="space-y-4">
                         <p>Invoice Total: <span className="font-bold">₹{purchase.totalAmount.toLocaleString('en-IN')}</span></p>
@@ -411,25 +365,33 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                 const amountPaid = (purchase.payments || []).reduce((sum, p) => sum + p.amount, 0);
                                 const dueAmount = purchase.totalAmount - amountPaid;
                                 const isPaid = dueAmount <= 0.01;
-                                const isExpanded = expandedPurchaseId === purchase.id;
 
                                 return (
                                 <div key={purchase.id} className="p-3 bg-gray-50 rounded-lg border">
-                                    <div className="flex justify-between items-start">
-                                      <div className="flex-grow cursor-pointer" onClick={() => setExpandedPurchaseId(isExpanded ? null : purchase.id)}>
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div>
-                                                <p className="font-semibold">{new Date(purchase.date).toLocaleString()}</p>
-                                                <p className="text-xs text-gray-500">Internal ID: {purchase.id}</p>
-                                                {purchase.supplierInvoiceId && <p className="text-xs text-gray-500">Supplier Invoice: {purchase.supplierInvoiceId}</p>}
-                                                <p className={`text-sm font-bold ${isPaid ? 'text-green-600' : 'text-red-600'}`}>{isPaid ? 'Paid' : `Due: ₹${dueAmount.toLocaleString('en-IN')}`}</p>
+                                    <details>
+                                        <summary className="flex justify-between items-start cursor-pointer">
+                                            <div className="flex-grow">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div>
+                                                        <p className="font-semibold">{new Date(purchase.date).toLocaleString()}</p>
+                                                        <p className="text-xs text-gray-500">Internal ID: {purchase.id}</p>
+                                                        {purchase.supplierInvoiceId && <p className="text-xs text-gray-500">Supplier Invoice: {purchase.supplierInvoiceId}</p>}
+                                                        <p className={`text-sm font-bold ${isPaid ? 'text-green-600' : 'text-red-600'}`}>{isPaid ? 'Paid' : `Due: ₹${dueAmount.toLocaleString('en-IN')}`}</p>
+                                                    </div>
+                                                    <p className="font-bold text-lg text-primary">₹{purchase.totalAmount.toLocaleString('en-IN')}</p>
+                                                </div>
                                             </div>
-                                            <p className="font-bold text-lg text-primary">₹{purchase.totalAmount.toLocaleString('en-IN')}</p>
-                                        </div>
-                                      </div>
-                                      <DeleteButton variant="delete" onClick={(e) => { e.stopPropagation(); handleDeletePurchase(purchase.id); }} className="ml-4" />
-                                    </div>
-                                    {isExpanded && (
+                                            <div className="flex items-center ml-2 flex-shrink-0">
+                                                <Button 
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPurchaseToEdit(purchase); setView('edit_purchase'); }} 
+                                                    variant="secondary"
+                                                    className="h-8 w-8 p-0"
+                                                >
+                                                    <Edit size={14} />
+                                                </Button>
+                                                <DeleteButton variant="delete" onClick={(e) => { e.stopPropagation(); handleDeletePurchase(purchase.id); }} />
+                                            </div>
+                                        </summary>
                                         <div className="pl-4 mt-2 border-l-2 border-purple-200 space-y-3 animate-fade-in-fast">
                                             <div>
                                                 <h4 className="font-semibold text-sm">Items:</h4>
@@ -452,7 +414,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                             )}
                                             {!isPaid && <Button onClick={() => setPaymentModalState({ isOpen: true, purchaseId: purchase.id })}><Plus size={16}/> Add Payment</Button>}
                                         </div>
-                                    )}
+                                    </details>
                                 </div>
                             )})}
                         </div>
@@ -525,22 +487,16 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         );
     }
     
-    if (view === 'add_purchase') {
+    if (view === 'add_purchase' || view === 'edit_purchase') {
        return (
-            <AddPurchaseView
+            <PurchaseForm
+                mode={view === 'add_purchase' ? 'add' : 'edit'}
+                initialData={purchaseToEdit}
                 suppliers={state.suppliers}
                 products={state.products}
-                purchaseSupplierId={purchaseSupplierId}
-                setPurchaseSupplierId={setPurchaseSupplierId}
-                purchaseItems={purchaseItems}
-                setPurchaseItems={setPurchaseItems}
-                supplierInvoiceId={supplierInvoiceId}
-                setSupplierInvoiceId={setSupplierInvoiceId}
-                purchasePaymentDetails={purchasePaymentDetails}
-                setPurchasePaymentDetails={setPurchasePaymentDetails}
-                onCompletePurchase={handleCompletePurchase}
-                onClearForm={resetAddPurchaseForm}
+                onSubmit={view === 'add_purchase' ? handleCompletePurchase : handleUpdatePurchase}
                 onBack={() => setView('list')}
+                setIsDirty={setIsDirty}
             />
         );
     }

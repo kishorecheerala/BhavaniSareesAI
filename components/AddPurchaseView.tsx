@@ -1,13 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Plus, Upload, IndianRupee, Search, QrCode, Info, CheckCircle, XCircle, X } from 'lucide-react';
-import { useAppContext } from '../context/AppContext';
-import { Supplier, Product, PurchaseItem } from '../types';
+import { Supplier, Product, PurchaseItem, Purchase } from '../types';
 import Card from './Card';
 import Button from './Button';
 import { Html5Qrcode } from 'html5-qrcode';
 import DeleteButton from './DeleteButton';
 
-// More robust CSV line parser that handles quoted fields.
+const getLocalDateString = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const parseCsvLine = (line: string): string[] => {
   const result: string[] = [];
   let current = '';
@@ -104,7 +109,8 @@ const NewProductModal: React.FC<{
     initialId?: string;
     existingProducts: Product[];
     currentPurchaseItems: PurchaseItem[];
-}> = ({ isOpen, onClose, onAdd, initialId = '', existingProducts, currentPurchaseItems }) => {
+    mode: 'add' | 'edit';
+}> = ({ isOpen, onClose, onAdd, initialId = '', existingProducts, currentPurchaseItems, mode }) => {
     const [newProduct, setNewProduct] = useState({ id: initialId, name: '', purchasePrice: '', salePrice: '', gstPercent: '5', quantity: '' });
     
     useEffect(() => {
@@ -117,7 +123,8 @@ const NewProductModal: React.FC<{
         
         const trimmedId = id.trim();
         if(currentPurchaseItems.some(item => item.productId.toLowerCase() === trimmedId.toLowerCase())) return alert(`Product with ID "${trimmedId}" is already in this purchase.`);
-        if(existingProducts.some(p => p.id.toLowerCase() === trimmedId.toLowerCase())) return alert(`Product with ID "${trimmedId}" already exists in stock. Please select it from the list instead of creating a new one.`);
+        // In edit mode for a purchase, we don't need to check against existing stock, as we might be adding a new product line to an old invoice.
+        if(mode === 'add' && existingProducts.some(p => p.id.toLowerCase() === trimmedId.toLowerCase())) return alert(`Product with ID "${trimmedId}" already exists in stock. Please select it from the list instead of creating a new one.`);
 
         const item: PurchaseItem = {
             productId: trimmedId,
@@ -170,32 +177,51 @@ const NewProductModal: React.FC<{
     );
 };
 
-// --- Main AddPurchaseView Component ---
+// --- Main PurchaseForm Component ---
 
-interface AddPurchaseViewProps {
+interface PurchaseFormProps {
+    mode: 'add' | 'edit';
+    initialData?: Purchase | null;
     suppliers: Supplier[];
     products: Product[];
-    purchaseSupplierId: string;
-    setPurchaseSupplierId: (id: string) => void;
-    purchaseItems: PurchaseItem[];
-    setPurchaseItems: (items: PurchaseItem[]) => void;
-    supplierInvoiceId: string;
-    setSupplierInvoiceId: (id: string) => void;
-    purchasePaymentDetails: any;
-    setPurchasePaymentDetails: (details: any) => void;
-    onCompletePurchase: () => void;
-    onClearForm: () => void;
+    onSubmit: (purchaseData: Purchase, originalPurchase?: Purchase) => void;
     onBack: () => void;
+    setIsDirty: (isDirty: boolean) => void;
 }
 
-const AddPurchaseView: React.FC<AddPurchaseViewProps> = (props) => {
-    const {
-        suppliers, products, purchaseSupplierId, setPurchaseSupplierId,
-        purchaseItems, setPurchaseItems, supplierInvoiceId, setSupplierInvoiceId,
-        purchasePaymentDetails, setPurchasePaymentDetails, onCompletePurchase, onClearForm, onBack
-    } = props;
+const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, suppliers, products, onSubmit, onBack, setIsDirty }) => {
     
-    // Local state for modals and interactions is encapsulated here
+    const [supplierId, setSupplierId] = useState('');
+    const [items, setItems] = useState<PurchaseItem[]>([]);
+    const [supplierInvoiceId, setSupplierInvoiceId] = useState('');
+    const [purchaseDate, setPurchaseDate] = useState(getLocalDateString());
+
+    const isDirtyRef = useRef(false);
+
+    useEffect(() => {
+        if (mode === 'edit' && initialData) {
+            setSupplierId(initialData.supplierId);
+            setItems(initialData.items);
+            setSupplierInvoiceId(initialData.supplierInvoiceId || '');
+            setPurchaseDate(getLocalDateString(new Date(initialData.date)));
+        }
+    }, [mode, initialData]);
+
+    useEffect(() => {
+        const currentlyDirty = !!supplierId || items.length > 0;
+        if (currentlyDirty !== isDirtyRef.current) {
+            isDirtyRef.current = currentlyDirty;
+            setIsDirty(currentlyDirty);
+        }
+    }, [supplierId, items, setIsDirty]);
+
+    const resetForm = () => {
+        setSupplierId('');
+        setItems([]);
+        setSupplierInvoiceId('');
+        setPurchaseDate(getLocalDateString());
+    };
+
     const [isSelectingProduct, setIsSelectingProduct] = useState(false);
     const [isAddingProduct, setIsAddingProduct] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
@@ -210,12 +236,12 @@ const AddPurchaseView: React.FC<AddPurchaseViewProps> = (props) => {
         const quantity = parseInt(quantityStr, 10);
         if(isNaN(quantity) || quantity <= 0) return alert('Please enter a valid quantity.');
 
-        const existingItemIndex = purchaseItems.findIndex(item => item.productId === product.id);
+        const existingItemIndex = items.findIndex(item => item.productId === product.id);
 
         if (existingItemIndex > -1) {
-            const updatedItems = [...purchaseItems];
+            const updatedItems = [...items];
             updatedItems[existingItemIndex].quantity += quantity;
-            setPurchaseItems(updatedItems);
+            setItems(updatedItems);
         } else {
             const newItem: PurchaseItem = {
                 productId: product.id,
@@ -225,7 +251,7 @@ const AddPurchaseView: React.FC<AddPurchaseViewProps> = (props) => {
                 gstPercent: product.gstPercent,
                 quantity,
             };
-            setPurchaseItems([...purchaseItems, newItem]);
+            setItems([...items, newItem]);
         }
         
         setIsSelectingProduct(false);
@@ -247,7 +273,7 @@ const AddPurchaseView: React.FC<AddPurchaseViewProps> = (props) => {
         const file = event.target.files?.[0];
         if (!file) return;
 
-        if (purchaseItems.length > 0 && !window.confirm("Importing from CSV will replace all current items. Continue?")) {
+        if (items.length > 0 && !window.confirm("Importing from CSV will replace all current items. Continue?")) {
             if (csvInputRef.current) csvInputRef.current.value = "";
             return;
         }
@@ -294,7 +320,7 @@ const AddPurchaseView: React.FC<AddPurchaseViewProps> = (props) => {
                     });
                 }
 
-                setPurchaseItems(newItems);
+                setItems(newItems);
                 setImportStatus({ type: 'success', message: `Successfully imported ${newItems.length} items from CSV.`});
             } catch (error) {
                 setImportStatus({ type: 'error', message: `Import error: ${(error as Error).message}`});
@@ -303,6 +329,29 @@ const AddPurchaseView: React.FC<AddPurchaseViewProps> = (props) => {
             }
         };
         reader.readAsText(file);
+    };
+    
+    const handleSubmit = () => {
+        if (!supplierId || items.length === 0) {
+            return alert("Please select a supplier and add at least one item.");
+        }
+        
+        const totalAmount = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        
+        const now = new Date();
+        const purchaseId = mode === 'edit' && initialData ? initialData.id : `PUR-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}-${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
+
+        const finalPurchaseData: Purchase = {
+            id: purchaseId,
+            supplierId: supplierId,
+            items: items,
+            totalAmount: totalAmount,
+            date: new Date(purchaseDate).toISOString(),
+            supplierInvoiceId: supplierInvoiceId.trim() || undefined,
+            payments: (mode === 'edit' && initialData) ? initialData.payments : [],
+        };
+        
+        onSubmit(finalPurchaseData, initialData || undefined);
     };
 
     const StatusNotification = () => {
@@ -321,7 +370,8 @@ const AddPurchaseView: React.FC<AddPurchaseViewProps> = (props) => {
         );
     };
 
-    const totalPurchaseAmount = purchaseItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const totalPurchaseAmount = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const title = mode === 'add' ? 'New Purchase Order' : 'Edit Purchase Order';
 
     return (
         <div className="space-y-4">
@@ -331,20 +381,31 @@ const AddPurchaseView: React.FC<AddPurchaseViewProps> = (props) => {
             <NewProductModal
                 isOpen={isAddingProduct}
                 onClose={() => setIsAddingProduct(false)}
-                onAdd={(item) => setPurchaseItems([...purchaseItems, item])}
+                onAdd={(item) => setItems([...items, item])}
                 initialId={scannedProductId}
                 existingProducts={products}
-                currentPurchaseItems={purchaseItems}
+                currentPurchaseItems={items}
+                mode={mode}
             />
 
-            <Button onClick={onBack}>&larr; Back to List</Button>
-            <Card title="New Purchase Order">
+            <Button onClick={onBack}>&larr; Back</Button>
+            <Card title={title}>
                 <div className="space-y-4">
-                    <select value={purchaseSupplierId} onChange={e => setPurchaseSupplierId(e.target.value)} className="w-full p-2 border rounded custom-select">
-                        <option value="">Select a Supplier</option>
-                        {suppliers.map(s => <option key={s.id} value={s.id}>{s.name} - {s.location}</option>)}
-                    </select>
-                    <input type="text" placeholder="Supplier Invoice ID (Optional)" value={supplierInvoiceId} onChange={e => setSupplierInvoiceId(e.target.value)} className="w-full p-2 border rounded" />
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Supplier</label>
+                        <select value={supplierId} onChange={e => setSupplierId(e.target.value)} className="w-full p-2 border rounded custom-select mt-1">
+                            <option value="">Select a Supplier</option>
+                            {suppliers.map(s => <option key={s.id} value={s.id}>{s.name} - {s.location}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Purchase Date</label>
+                        <input type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} className="w-full p-2 border rounded mt-1" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Supplier Invoice ID (Optional)</label>
+                        <input type="text" placeholder="Supplier Invoice ID (Optional)" value={supplierInvoiceId} onChange={e => setSupplierInvoiceId(e.target.value)} className="w-full p-2 border rounded mt-1" />
+                    </div>
                 </div>
             </Card>
             <Card title="Purchase Items">
@@ -356,7 +417,7 @@ const AddPurchaseView: React.FC<AddPurchaseViewProps> = (props) => {
                 </div>
                 <StatusNotification />
                 <div className="space-y-2 mt-4">
-                    {purchaseItems.map(item => (
+                    {items.map(item => (
                         <div key={item.productId} className="flex justify-between items-center p-2 bg-gray-50 rounded">
                             <div>
                                 <p className="font-semibold">{item.productName}</p>
@@ -364,7 +425,7 @@ const AddPurchaseView: React.FC<AddPurchaseViewProps> = (props) => {
                             </div>
                             <div className="flex items-center gap-2">
                                 <p>₹{(item.quantity * item.price).toLocaleString('en-IN')}</p>
-                                <DeleteButton variant="remove" onClick={() => setPurchaseItems(purchaseItems.filter(i => i.productId !== item.productId))} />
+                                <DeleteButton variant="remove" onClick={() => setItems(items.filter(i => i.productId !== item.productId))} />
                             </div>
                         </div>
                     ))}
@@ -376,34 +437,11 @@ const AddPurchaseView: React.FC<AddPurchaseViewProps> = (props) => {
                     <p className="text-4xl font-bold text-primary">₹{totalPurchaseAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                 </div>
             </Card>
-            <Card title="Payment">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium">Amount Paid Now</label>
-                        <input type="number" placeholder={`Total is ₹${totalPurchaseAmount.toLocaleString('en-IN')}`} value={purchasePaymentDetails.amount} onChange={e => setPurchasePaymentDetails({ ...purchasePaymentDetails, amount: e.target.value })} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium">Payment Method</label>
-                        <select value={purchasePaymentDetails.method} onChange={e => setPurchasePaymentDetails({ ...purchasePaymentDetails, method: e.target.value as any })} className="w-full p-2 border rounded custom-select">
-                            <option value="CASH">Cash</option>
-                            <option value="UPI">UPI</option>
-                            <option value="CHEQUE">Cheque</option>
-                        </select>
-                    </div>
-                    <div>
-                         <label className="block text-sm font-medium">Purchase Date</label>
-                         <input type="date" value={purchasePaymentDetails.date} onChange={e => setPurchasePaymentDetails({ ...purchasePaymentDetails, date: e.target.value })} className="w-full p-2 border rounded" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium">Payment Reference (Optional)</label>
-                        <input type="text" placeholder="e.g. Cheque No., Txn ID" value={purchasePaymentDetails.reference} onChange={e => setPurchasePaymentDetails({ ...purchasePaymentDetails, reference: e.target.value })} className="w-full p-2 border rounded" />
-                    </div>
-                </div>
-            </Card>
-            <Button onClick={onCompletePurchase} className="w-full">Complete Purchase</Button>
-            <Button onClick={onClearForm} variant="secondary" className="w-full">Clear Form</Button>
+            
+            <Button onClick={handleSubmit} className="w-full">{mode === 'add' ? 'Complete Purchase' : 'Update Purchase'}</Button>
+            <Button onClick={resetForm} variant="secondary" className="w-full">Clear Form</Button>
         </div>
     );
 };
 
-export default React.memo(AddPurchaseView);
+export default React.memo(PurchaseForm);
