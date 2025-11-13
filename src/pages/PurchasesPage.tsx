@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Plus, IndianRupee, Edit, Save, X, Search, Package, Download, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, IndianRupee, Edit, Save, X, Search, Package, Download } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Supplier, Purchase, Payment, Return } from '../types';
 import Card from '../components/Card';
@@ -385,16 +385,16 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                         </div>
                                         <div className="flex items-center ml-2 flex-shrink-0">
                                             <button 
-                                                onClick={(e) => { e.stopPropagation(); setPurchaseToEdit(purchase); setView('edit_purchase'); }} 
+                                                onClick={() => { setPurchaseToEdit(purchase); setView('edit_purchase'); }} 
                                                 className="p-2 rounded-full text-blue-600 hover:bg-blue-100 transition-colors"
                                                 aria-label="Edit purchase"
                                             >
                                                 <Edit size={16} />
                                             </button>
-                                            <DeleteButton variant="delete" onClick={(e) => { e.stopPropagation(); handleDeletePurchase(purchase.id); }} />
+                                            <DeleteButton variant="delete" onClick={() => handleDeletePurchase(purchase.id)} />
                                         </div>
                                     </div>
-                                    <div className="pl-4 mt-2 border-l-2 border-purple-200 space-y-3 animate-fade-in-fast">
+                                    <div className="pl-4 mt-2 border-l-2 border-purple-200 space-y-3">
                                         <div>
                                             <h4 className="font-semibold text-sm">Items:</h4>
                                             <ul className="list-disc list-inside text-sm">
