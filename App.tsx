@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle, Bell, Menu, Plus } from 'lucide-react';
 
@@ -216,7 +217,8 @@ const MainApp: React.FC = () => {
     const commonProps = { setIsDirty };
     switch (currentPage) {
       case 'DASHBOARD':
-        return <Dashboard />;
+        // FIX: Pass the `setCurrentPage` prop to the Dashboard component.
+        return <Dashboard setCurrentPage={setCurrentPage} />;
       case 'CUSTOMERS':
         return <CustomersPage {...commonProps} />;
       case 'SALES':
@@ -230,7 +232,8 @@ const MainApp: React.FC = () => {
       case 'PRODUCTS':
         return <ProductsPage {...commonProps} />;
       default:
-        return <Dashboard />;
+        // FIX: Pass the `setCurrentPage` prop to the Dashboard component.
+        return <Dashboard setCurrentPage={setCurrentPage} />;
     }
   };
   

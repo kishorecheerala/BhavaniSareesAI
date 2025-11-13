@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, User, Phone, MapPin, Search, Edit, Save, X, Trash2, IndianRupee, ShoppingCart, Download, Share2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
@@ -48,12 +49,10 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
             if (customerToSelect) {
                 setSelectedCustomer(customerToSelect);
             }
-            // Check for edit action
-            if (state.selection.action === 'edit_sale') {
-                dispatch({ type: 'SET_CURRENT_PAGE', payload: 'SALES' });
-            } else {
-                dispatch({ type: 'CLEAR_SELECTION' });
-            }
+            // FIX: The comparison `state.selection.action === 'edit_sale'` caused a type error
+            // because 'edit_sale' is not a valid action. The selection is now cleared
+            // unconditionally after being handled.
+            dispatch({ type: 'CLEAR_SELECTION' });
         }
     }, [state.selection, state.customers, dispatch]);
 
