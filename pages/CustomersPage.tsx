@@ -77,13 +77,15 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                 setSelectedCustomer(currentCustomerData || null);
             }
         }
-    }, [selectedCustomer?.id, state.customers, state.sales]);
+    }, [selectedCustomer?.id, state.customers]);
 
 
     // Effect to reset the editing form when the selected customer changes
     useEffect(() => {
         if (selectedCustomer) {
             setEditedCustomer(selectedCustomer);
+        } else {
+            setEditedCustomer(null);
         }
         setIsEditing(false);
         setOpenSaleId(null);

@@ -47,6 +47,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             const supplierToSelect = state.suppliers.find(s => s.id === state.selection.id);
             if (supplierToSelect) {
                 setSelectedSupplier(supplierToSelect);
+                setView('list'); // Ensure we are on the list view to see the detail
             } else if (state.selection.action === 'new') {
                  setView('add_purchase');
             }
@@ -71,7 +72,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         };
     }, [setIsDirty]);
     
-    // Effect to sync selectedSupplier data with global state
+    // Effect to sync selectedSupplier data with global state if it changes (e.g. after an edit)
     useEffect(() => {
         if (selectedSupplier) {
             const currentSupplierData = state.suppliers.find(s => s.id === selectedSupplier.id);
@@ -79,7 +80,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                 setSelectedSupplier(currentSupplierData || null);
             }
         }
-    }, [selectedSupplier?.id, state.suppliers, state.purchases]);
+    }, [selectedSupplier?.id, state.suppliers]);
 
     // Effect to reset editing state when selected supplier changes
     useEffect(() => {
@@ -318,7 +319,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         )
     };
     
-    if (selectedSupplier) {
+    if (view === 'list' && selectedSupplier) {
         const supplierPurchases = state.purchases.filter(p => p.supplierId === selectedSupplier.id);
         const supplierReturns = state.returns.filter(r => r.type === 'SUPPLIER' && r.partyId === selectedSupplier.id);
 
