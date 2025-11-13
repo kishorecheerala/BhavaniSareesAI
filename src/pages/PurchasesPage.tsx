@@ -24,7 +24,13 @@ interface PurchasesPageProps {
 const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     const { state, dispatch, showToast } = useAppContext();
     const [view, setView] = useState<'list' | 'add_supplier' | 'add_purchase' | 'edit_purchase'>('list');
-    const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+    
+    const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(null);
+    const selectedSupplier = useMemo(() => {
+        if (!selectedSupplierId) return null;
+        return state.suppliers.find(s => s.id === selectedSupplierId) || null;
+    }, [selectedSupplierId, state.suppliers]);
+
     const [searchTerm, setSearchTerm] = useState('');
     const [purchaseToEdit, setPurchaseToEdit] = useState<Purchase | null>(null);
 
@@ -42,16 +48,15 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
 
     useEffect(() => {
         if (state.selection && state.selection.page === 'PURCHASES') {
-            const supplierToSelect = state.suppliers.find(s => s.id === state.selection.id);
-            if (supplierToSelect) {
-                setSelectedSupplier(supplierToSelect);
-                setView('list'); // Ensure we are on the list view to see the detail
-            } else if (state.selection.action === 'new') {
+            if (state.selection.action === 'new') {
                  setView('add_purchase');
+            } else if (state.selection.id) {
+                setSelectedSupplierId(state.selection.id);
+                setView('list');
             }
             dispatch({ type: 'CLEAR_SELECTION' });
         }
-    }, [state.selection, state.suppliers, dispatch]);
+    }, [state.selection, dispatch]);
     
     useEffect(() => {
         const addSupplierDirty = view === 'add_supplier' && !!(newSupplier.id || newSupplier.name || newSupplier.phone || newSupplier.location);
@@ -69,18 +74,6 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             setIsDirty(false);
         };
     }, [setIsDirty]);
-    
-    // Effect to keep selectedSupplier data in sync with global state if it changes
-    useEffect(() => {
-        if (selectedSupplier) {
-            const currentSupplierData = state.suppliers.find(s => s.id === selectedSupplier.id);
-            if (currentSupplierData && JSON.stringify(currentSupplierData) !== JSON.stringify(selectedSupplier)) {
-                setSelectedSupplier(currentSupplierData);
-            } else if (!currentSupplierData) {
-                setSelectedSupplier(null); // Supplier was deleted, so clear selection
-            }
-        }
-    }, [selectedSupplier?.id, state.suppliers]);
 
     // Effect to reset editing state when selected supplier changes
     useEffect(() => {
@@ -181,9 +174,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         if (oldPurchase) {
             dispatch({ type: 'UPDATE_PURCHASE', payload: { oldPurchase, updatedPurchase } });
             showToast("Purchase updated successfully!");
-            // After editing, go back to the supplier list and re-select that supplier to see the changes.
-            const supplier = state.suppliers.find(s => s.id === updatedPurchase.supplierId) || null;
-            setSelectedSupplier(supplier);
+            setSelectedSupplierId(updatedPurchase.supplierId);
             setPurchaseToEdit(null);
             setView('list'); 
         }
@@ -318,7 +309,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         )
     };
     
-    if (view === 'list' && selectedSupplier) {
+    if (view === 'list' && selectedSupplier && editedSupplier) {
         const supplierPurchases = state.purchases.filter(p => p.supplierId === selectedSupplier.id);
         const supplierReturns = state.returns.filter(r => r.type === 'SUPPLIER' && r.partyId === selectedSupplier.id);
 
@@ -334,7 +325,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                     Are you sure you want to delete this purchase? This will remove the items from your stock. This action cannot be undone.
                 </ConfirmationModal>
                 {paymentModalState.isOpen && <PaymentModal />}
-                <Button onClick={() => setSelectedSupplier(null)}>&larr; Back to Suppliers</Button>
+                <Button onClick={() => setSelectedSupplierId(null)}>&larr; Back to Suppliers</Button>
                 <Card>
                      <div className="flex justify-between items-center mb-4">
                         <h2 className="text-lg font-bold text-primary">Supplier Details: {selectedSupplier.name}</h2>
@@ -347,7 +338,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                             <Button onClick={() => setIsEditing(true)}><Edit size={16}/> Edit</Button>
                         )}
                     </div>
-                    {isEditing && editedSupplier ? (
+                    {isEditing ? (
                         <div className="space-y-3">
                             <div><label className="text-sm font-medium">Name</label><input type="text" name="name" value={editedSupplier.name} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
                             <div><label className="text-sm font-medium">Phone</label><input type="text" name="phone" value={editedSupplier.phone} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
@@ -381,18 +372,14 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
 
                                 return (
                                 <div key={purchase.id} className="p-3 bg-gray-50 rounded-lg border">
-                                    <div className="flex justify-between items-start">
-                                        <div className="flex-grow pr-4">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <div>
-                                                    <p className="font-semibold">{new Date(purchase.date).toLocaleString()}</p>
-                                                    <p className="text-xs text-gray-500">Internal ID: {purchase.id}</p>
-                                                    {purchase.supplierInvoiceId && <p className="text-xs text-gray-500">Supplier Invoice: {purchase.supplierInvoiceId}</p>}
-                                                    <p className={`text-sm font-bold ${isPaid ? 'text-green-600' : 'text-red-600'}`}>{isPaid ? 'Paid' : `Due: ₹${dueAmount.toLocaleString('en-IN')}`}</p>
-                                                </div>
-                                                <p className="font-bold text-lg text-primary">₹{purchase.totalAmount.toLocaleString('en-IN')}</p>
-                                            </div>
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                            <p className="font-semibold">{new Date(purchase.date).toLocaleString()}</p>
+                                            <p className="text-xs text-gray-500">Internal ID: {purchase.id}</p>
+                                            {purchase.supplierInvoiceId && <p className="text-xs text-gray-500">Supplier Invoice: {purchase.supplierInvoiceId}</p>}
+                                            <p className={`text-sm font-bold ${isPaid ? 'text-green-600' : 'text-red-600'}`}>{isPaid ? 'Paid' : `Due: ₹${dueAmount.toLocaleString('en-IN')}`}</p>
                                         </div>
+                                        <p className="font-bold text-lg text-primary">₹{purchase.totalAmount.toLocaleString('en-IN')}</p>
                                     </div>
                                     <div className="pl-4 mt-2 border-t border-purple-200 space-y-3 pt-2">
                                         <div className="flex items-center gap-2">
@@ -568,7 +555,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                         return (
                             <div 
                                 key={supplier.id} 
-                                onClick={() => setSelectedSupplier(supplier)} 
+                                onClick={() => setSelectedSupplierId(supplier.id)} 
                                 className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-purple-100 border animate-slide-up-fade"
                                 style={{ animationDelay: `${index * 50}ms` }}
                             >

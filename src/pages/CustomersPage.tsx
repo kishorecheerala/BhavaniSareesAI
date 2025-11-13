@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Plus, User, Phone, MapPin, Search, Edit, Save, X, IndianRupee, ShoppingCart, Download, Share2 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Customer, Payment, Sale } from '../types';
@@ -25,7 +25,12 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isAdding, setIsAdding] = useState(false);
     const [newCustomer, setNewCustomer] = useState({ id: '', name: '', phone: '', address: '', area: '', reference: '' });
-    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+    
+    const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+    const selectedCustomer = useMemo(() => {
+        if (!selectedCustomerId) return null;
+        return state.customers.find(c => c.id === selectedCustomerId) || null;
+    }, [selectedCustomerId, state.customers]);
 
     const [isEditing, setIsEditing] = useState(false);
     const [editedCustomer, setEditedCustomer] = useState<Customer | null>(null);
@@ -43,13 +48,10 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
 
     useEffect(() => {
         if (state.selection && state.selection.page === 'CUSTOMERS') {
-            const customerToSelect = state.customers.find(c => c.id === state.selection.id);
-            if (customerToSelect) {
-                setSelectedCustomer(customerToSelect);
-            }
+            setSelectedCustomerId(state.selection.id);
             dispatch({ type: 'CLEAR_SELECTION' });
         }
-    }, [state.selection, state.customers, dispatch]);
+    }, [state.selection, dispatch]);
 
 
     useEffect(() => {
@@ -66,20 +68,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
             setIsDirty(false);
         };
     }, [setIsDirty]);
-
-    // Effect to keep selectedCustomer data in sync with global state
-    useEffect(() => {
-        if (selectedCustomer) {
-            const currentCustomerData = state.customers.find(c => c.id === selectedCustomer.id);
-            if (currentCustomerData && JSON.stringify(currentCustomerData) !== JSON.stringify(selectedCustomer)) {
-                setSelectedCustomer(currentCustomerData);
-            } else if (!currentCustomerData) {
-                setSelectedCustomer(null);
-            }
-        }
-    }, [selectedCustomer?.id, state.customers]);
-
-
+    
     // Effect to reset the editing form when the selected customer changes
     useEffect(() => {
         if (selectedCustomer) {
@@ -128,7 +117,6 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
         if (editedCustomer) {
             if (window.confirm('Are you sure you want to save these changes to the customer details?')) {
                 dispatch({ type: 'UPDATE_CUSTOMER', payload: editedCustomer });
-                setSelectedCustomer(editedCustomer);
                 setIsEditing(false);
                 showToast("Customer details updated successfully.");
             }
@@ -473,7 +461,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                     Are you sure you want to delete this sale? This action cannot be undone and will add the items back to stock.
                 </ConfirmationModal>
                 {paymentModalState.isOpen && <PaymentModal />}
-                <Button onClick={() => setSelectedCustomer(null)}>&larr; Back to List</Button>
+                <Button onClick={() => setSelectedCustomerId(null)}>&larr; Back to List</Button>
                 <Card>
                     <div className="flex justify-between items-start mb-4">
                         <div>
@@ -526,21 +514,17 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
 
                                 return (
                                 <div key={sale.id} className="p-3 bg-gray-50 rounded-lg border">
-                                    <div className="flex justify-between items-start">
-                                        <div className="flex-grow pr-4">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <div>
-                                                    <p className="font-semibold">{new Date(sale.date).toLocaleString()}</p>
-                                                    <p className="text-xs text-gray-500">Invoice ID: {sale.id}</p>
-                                                    <p className={`text-sm font-bold ${isPaid ? 'text-green-600' : 'text-red-600'}`}>
-                                                        {isPaid ? 'Paid' : `Due: ₹${dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
-                                                    </p>
-                                                </div>
-                                                <p className="font-bold text-lg text-primary">
-                                                    ₹{sale.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                                </p>
-                                            </div>
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                            <p className="font-semibold">{new Date(sale.date).toLocaleString()}</p>
+                                            <p className="text-xs text-gray-500">Invoice ID: {sale.id}</p>
+                                            <p className={`text-sm font-bold ${isPaid ? 'text-green-600' : 'text-red-600'}`}>
+                                                {isPaid ? 'Paid' : `Due: ₹${dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
+                                            </p>
                                         </div>
+                                        <p className="font-bold text-lg text-primary">
+                                            ₹{sale.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                        </p>
                                     </div>
                                     <div className="pl-4 mt-2 border-t border-purple-200 space-y-3 pt-2">
                                         <div className="flex items-center flex-wrap gap-2">
@@ -678,7 +662,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                             key={customer.id} 
                             className="cursor-pointer transition-shadow animate-slide-up-fade" 
                             style={{ animationDelay: `${index * 50}ms` }}
-                            onClick={() => setSelectedCustomer(customer)}
+                            onClick={() => setSelectedCustomerId(customer.id)}
                         >
                             <div className="flex justify-between items-start">
                                 <div>
