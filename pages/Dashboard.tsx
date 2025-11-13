@@ -1,7 +1,5 @@
-
-
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { IndianRupee, User, AlertTriangle, Download, Upload, ShoppingCart, Package, XCircle, CheckCircle, Info, Calendar, ShieldCheck, ShieldAlert, ShieldX, Archive } from 'lucide-react';
+import { IndianRupee, User, AlertTriangle, Download, Upload, ShoppingCart, Package, XCircle, CheckCircle, Info, Calendar, ShieldCheck, ShieldAlert, ShieldX, Archive, PackageCheck } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import * as db from '../utils/db';
 import Card from '../components/Card';
@@ -14,7 +12,7 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
-    const { state, dispatch } = useAppContext();
+    const { state, dispatch, showToast } = useAppContext();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [restoreStatus, setRestoreStatus] = useState<{ type: 'info' | 'success' | 'error', message: string } | null>(null);
     const [lastBackupDate, setLastBackupDate] = useState<string | null>(null);
@@ -72,8 +70,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
     const handleBackup = async () => {
         try {
             const data = await db.exportData();
-            if (!data.customers || data.customers.length === 0) {
-                 alert('No data to backup.');
+            if ((!data.customers || data.customers.length === 0) && (!data.products || data.products.length === 0)) {
+                 showToast('No data to backup.', 'info');
                 return;
             }
             const dataString = JSON.stringify(data, null, 2);
@@ -91,10 +89,10 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
             await db.setLastBackupDate();
             dispatch({ type: 'SET_LAST_BACKUP_DATE', payload: new Date().toISOString() });
             
-            alert('Backup successful! Save the downloaded file in a safe place.');
+            showToast('Backup successful! Save the downloaded file in a safe place.');
         } catch (error) {
             console.error('Backup failed:', error);
-            alert('Backup failed. Please try again.');
+            showToast('Backup failed. Please try again.', 'info');
         }
     };
     
@@ -142,7 +140,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     app_metadata: Array.isArray(parsedData.app_metadata) ? parsedData.app_metadata : [],
                 };
                 dispatch({ type: 'SET_STATE', payload: validatedState });
-                
+                showToast('Data restored successfully!');
                 setTimeout(() => {
                    setRestoreStatus({ type: 'success', message: 'Data restored successfully! The app is now using the new data.' });
                 }, 100);
@@ -389,18 +387,19 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     value={totalPurchaseDues} 
                     color="bg-amber-500 shadow-lg"
                 />
-                <Card className="bg-sky-500 shadow-lg text-white">
-                    <div className="flex items-center p-4">
-                        <div className="p-3 bg-white/20 rounded-full">
-                            <Archive className="w-8 h-8" />
-                        </div>
-                        <div className="ml-4">
-                            <p className="font-semibold text-lg">Inventory Summary</p>
-                            <p className="text-2xl font-bold">₹{totalInventoryValue.toLocaleString('en-IN')}</p>
-                            <p className="text-sm font-semibold">{totalStockQuantity.toLocaleString('en-IN')} Items in Stock</p>
-                        </div>
-                    </div>
-                </Card>
+                <MetricCard 
+                    icon={Archive} 
+                    title="Inventory Value" 
+                    value={totalInventoryValue} 
+                    color="bg-sky-500 shadow-lg" 
+                />
+                <MetricCard 
+                    icon={PackageCheck} 
+                    title="Items in Stock" 
+                    value={totalStockQuantity} 
+                    color="bg-teal-500 shadow-lg"
+                    unit="" 
+                />
             </div>
 
             <OverdueDuesCard />

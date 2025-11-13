@@ -334,7 +334,7 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
 
   return (
     <div 
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[101] p-4 animate-fade-in-fast" 
+      className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[101] p-4 animate-fade-in-fast" 
       aria-modal="true" 
       role="dialog"
       onClick={onClose}

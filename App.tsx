@@ -1,7 +1,3 @@
-
-
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle, Bell, Menu, Plus } from 'lucide-react';
 
@@ -21,6 +17,7 @@ import MenuPanel from './components/MenuPanel';
 import ProfileModal from './components/ProfileModal';
 import { BeforeInstallPromptEvent, Notification, Page } from './types';
 import { useOnClickOutside } from './hooks/useOnClickOutside';
+import ConfirmationModal from './components/ConfirmationModal';
 
 const Toast = () => {
     const { state } = useAppContext();
@@ -55,6 +52,7 @@ const MainApp: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [navConfirm, setNavConfirm] = useState<{ show: boolean, page: Page | null }>({ show: false, page: null });
 
   const { state, dispatch, isDbLoaded } = useAppContext();
   const canExitApp = useRef(false);
@@ -184,10 +182,7 @@ const MainApp: React.FC = () => {
     }
 
     if (isDirty) {
-      if (window.confirm('You have unsaved changes. Are you sure you want to leave this page?')) {
-        setIsDirty(false); 
-        _setCurrentPage(page);
-      }
+      setNavConfirm({ show: true, page });
     } else {
       _setCurrentPage(page);
     }
@@ -241,7 +236,8 @@ const MainApp: React.FC = () => {
     }
   };
   
-  const NavItem = ({ page, label, icon: Icon }: { page: Page; label: string; icon: React.ElementType }) => (
+  // FIX: Use React.FC to correctly type the component and handle the 'key' prop, which is managed by React and not part of the component's own props.
+  const NavItem: React.FC<{ page: Page; label: string; icon: React.ElementType }> = ({ page, label, icon: Icon }) => (
     <button
       onClick={() => setCurrentPage(page)}
       className={`flex flex-col items-center justify-center w-full pt-2 pb-1 text-xs transition-colors duration-200 ${
@@ -282,7 +278,24 @@ const MainApp: React.FC = () => {
         onClose={closeSearch} 
         onNavigate={handleSearchResultClick} 
       />
-      <header className="bg-gradient-to-r from-primary to-secondary text-white shadow-md p-4 flex items-center justify-between">
+      <ConfirmationModal
+          isOpen={navConfirm.show}
+          onClose={() => setNavConfirm({ show: false, page: null })}
+          onConfirm={() => {
+              if (navConfirm.page) {
+                  setIsDirty(false); 
+                  _setCurrentPage(navConfirm.page);
+              }
+              setNavConfirm({ show: false, page: null });
+          }}
+          title="Unsaved Changes"
+          confirmText="Leave Page"
+          cancelText="Stay"
+          confirmVariant="danger"
+      >
+          You have unsaved changes that will be lost. Are you sure you want to leave this page?
+      </ConfirmationModal>
+      <header className="bg-primary text-white shadow-md p-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="relative" ref={menuRef}>
               <button onClick={() => setIsMenuOpen(prev => !prev)} className="p-1 rounded-full hover:bg-white/20 transition-colors" aria-label="Open menu">
@@ -331,13 +344,11 @@ const MainApp: React.FC = () => {
       <nav className="fixed bottom-0 left-0 right-0 bg-primary shadow-lg z-50">
         {/* Desktop nav */}
         <div className="hidden md:flex justify-around max-w-2xl mx-auto">
-            {/* FIX: Explicitly pass props to NavItem to resolve TypeScript error with spread syntax and the 'key' prop. */}
             {allNavItems.map(item => <NavItem key={item.page} page={item.page} label={item.label} icon={item.icon} />)}
         </div>
 
         {/* Mobile nav */}
         <div className="flex md:hidden justify-around max-w-2xl mx-auto">
-            {/* FIX: Explicitly pass props to NavItem to resolve TypeScript error with spread syntax and the 'key' prop. */}
             {mainNavItems.map(item => <NavItem key={item.page} page={item.page} label={item.label} icon={item.icon} />)}
             <div className="relative flex flex-col items-center justify-center w-full pt-2 pb-1" ref={moreMenuRef}>
                  <button

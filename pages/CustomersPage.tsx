@@ -167,6 +167,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
         };
 
         dispatch({ type: 'ADD_PAYMENT_TO_SALE', payload: { saleId: sale.id, payment } });
+        showToast('Payment added successfully!');
         
         setPaymentModalState({ isOpen: false, saleId: null });
         setPaymentDetails({ amount: '', method: 'CASH', date: getLocalDateString(), reference: '' });
@@ -397,7 +398,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
         const dueAmount = sale.totalAmount - amountPaid;
 
         return (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+            <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
                 <Card title="Add Payment" className="w-full max-w-sm animate-scale-in">
                     <div className="space-y-4">
                         <p>Invoice Total: <span className="font-bold">₹{sale.totalAmount.toLocaleString('en-IN')}</span></p>

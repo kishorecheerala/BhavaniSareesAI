@@ -373,6 +373,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         };
 
         dispatch({ type: 'ADD_SALE', payload: newSale });
+        showToast('Sale created successfully!');
 
         items.forEach(item => {
             dispatch({ type: 'UPDATE_PRODUCT_STOCK', payload: { productId: item.productId, change: -item.quantity } });
@@ -433,7 +434,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     };
 
     const AddCustomerModal = () => (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
             <Card title="Add New Customer" className="w-full max-w-md animate-scale-in">
                 <div className="space-y-4">
                      <div>
@@ -466,7 +467,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     );
 
     const ProductSearchModal = () => (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+      <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
         <Card className="w-full max-w-lg animate-scale-in">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-bold">Select Product</h2>
@@ -541,7 +542,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         }, []);
 
         return (
-            <div className="fixed inset-0 bg-black bg-opacity-75 flex flex-col items-center justify-center z-50 p-4 animate-fade-in-fast">
+            <div className="fixed inset-0 bg-black bg-opacity-75 backdrop-blur-sm flex flex-col items-center justify-center z-50 p-4 animate-fade-in-fast">
                 <Card title="Scan Product QR Code" className="w-full max-w-md relative animate-scale-in">
                      <button onClick={() => setIsScanning(false)} className="absolute top-4 right-4 p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
                         <X size={20}/>
@@ -576,9 +577,11 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                         <option value="">Select a Customer</option>
                         {state.customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.area}</option>)}
                     </select>
-                    <Button onClick={() => setIsAddingCustomer(true)} variant="secondary" className="flex-shrink-0">
-                        <Plus size={16}/> New Customer
-                    </Button>
+                    {!customerId && (
+                        <Button onClick={() => setIsAddingCustomer(true)} variant="secondary" className="flex-shrink-0">
+                            <Plus size={16}/> New Customer
+                        </Button>
+                    )}
                 </div>
                 {customerId && customerTotalDue !== null && (
                     <div className="mt-3 p-2 bg-gray-50 rounded-lg text-center">

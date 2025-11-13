@@ -10,7 +10,7 @@ interface ProductsPageProps {
 }
 
 const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
-    const { state, dispatch } = useAppContext();
+    const { state, dispatch, showToast } = useAppContext();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [isEditing, setIsEditing] = useState(false);
@@ -67,27 +67,27 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                 dispatch({ type: 'UPDATE_PRODUCT', payload: editedProduct });
                 setSelectedProduct(editedProduct);
                 setIsEditing(false);
-                alert("Product details updated successfully.");
+                showToast("Product details updated successfully.");
             }
         }
     };
 
     const handleStockAdjustment = () => {
         if (!selectedProduct || newQuantity === '' || isNaN(parseInt(newQuantity))) {
-            alert('Please enter a valid quantity.');
+            showToast('Please enter a valid quantity.', 'info');
             return;
         }
         const newQty = parseInt(newQuantity);
         const change = newQty - selectedProduct.quantity;
         
         if (change === 0) {
-            alert("The new quantity is the same as the current quantity. No changes made.");
+            showToast("The new quantity is the same as the current quantity. No changes made.", 'info');
             return;
         }
 
         if(window.confirm(`This will change the stock from ${selectedProduct.quantity} to ${newQty}. This is for correcting inventory counts and will not affect financial records. Are you sure?`)) {
             dispatch({ type: 'UPDATE_PRODUCT_STOCK', payload: { productId: selectedProduct.id, change } });
-            alert("Stock adjusted successfully.");
+            showToast("Stock adjusted successfully.");
         }
     };
     

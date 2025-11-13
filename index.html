@@ -60,6 +60,10 @@
       }
     </script>
     <style>
+      :root {
+        --primary-color: #6a0dad;
+      }
+
       .custom-select {
         -webkit-appearance: none;
         -moz-appearance: none;
@@ -81,7 +85,7 @@
       .pre-loader-om {
         font-size: 8rem; /* 128px */
         font-family: serif;
-        color: #6a0dad; /* primary color from theme */
+        color: var(--primary-color);
         animation: pulse-om 2s infinite ease-in-out;
         will-change: transform, opacity;
       }

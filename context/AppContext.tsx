@@ -42,6 +42,7 @@ type Action =
   | { type: 'ADD_SALE'; payload: Sale }
   | { type: 'DELETE_SALE'; payload: string } // saleId
   | { type: 'ADD_PURCHASE'; payload: Purchase }
+  | { type: 'UPDATE_PURCHASE'; payload: { oldPurchase: Purchase, updatedPurchase: Purchase } }
   | { type: 'DELETE_PURCHASE'; payload: string } // purchaseId
   | { type: 'ADD_RETURN'; payload: Return }
   | { type: 'ADD_PAYMENT_TO_SALE'; payload: { saleId: string; payment: Payment } }
@@ -131,6 +132,44 @@ const appReducer = (state: AppState, action: Action): AppState => {
     }
     case 'ADD_PURCHASE':
       return { ...state, purchases: [...state.purchases, action.payload] };
+    case 'UPDATE_PURCHASE': {
+        const { oldPurchase, updatedPurchase } = action.payload;
+
+        const stockChanges = new Map<string, number>();
+        const productDetails = new Map<string, { purchasePrice: number, salePrice: number, gstPercent: number }>();
+
+        oldPurchase.items.forEach(item => {
+            stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) - item.quantity);
+        });
+
+        updatedPurchase.items.forEach(item => {
+            stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) + item.quantity);
+            productDetails.set(item.productId, { purchasePrice: item.price, salePrice: item.saleValue, gstPercent: item.gstPercent });
+        });
+
+        const updatedProducts = state.products.map(p => {
+            if (stockChanges.has(p.id)) {
+                const updatedProduct = {
+                    ...p,
+                    quantity: Math.max(0, p.quantity + (stockChanges.get(p.id) || 0)),
+                };
+                const details = productDetails.get(p.id);
+                if (details) {
+                    updatedProduct.purchasePrice = details.purchasePrice;
+                    updatedProduct.salePrice = details.salePrice;
+                    updatedProduct.gstPercent = details.gstPercent;
+                }
+                return updatedProduct;
+            }
+            return p;
+        });
+
+        return {
+            ...state,
+            purchases: state.purchases.map(p => p.id === updatedPurchase.id ? updatedPurchase : p),
+            products: updatedProducts,
+        };
+    }
     case 'DELETE_PURCHASE': {
       const purchaseToDelete = state.purchases.find(p => p.id === action.payload);
       if (!purchaseToDelete) return state;
@@ -250,7 +289,7 @@ const appReducer = (state: AppState, action: Action): AppState => {
 interface AppContextType {
     state: AppState;
     dispatch: React.Dispatch<Action>;
-    showToast: (message: string) => void;
+    showToast: (message: string, type?: 'success' | 'info') => void;
     isDbLoaded: boolean;
 }
 
@@ -315,8 +354,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => { if (isDbLoaded && state.profile) db.saveCollection('profile', [state.profile]); }, [state.profile, isDbLoaded]);
 
 
-  const showToast = (message: string) => {
-    dispatch({ type: 'SHOW_TOAST', payload: { message, type: 'success' } });
+  const showToast = (message: string, type: 'success' | 'info' = 'success') => {
+    dispatch({ type: 'SHOW_TOAST', payload: { message, type } });
     setTimeout(() => {
         dispatch({ type: 'HIDE_TOAST' });
     }, 3000);
