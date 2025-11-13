@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, User, Phone, MapPin, Search, Edit, Save, X, Trash2, IndianRupee, ShoppingCart, Download, Share2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, User, Phone, MapPin, Search, Edit, Save, X, Trash2, IndianRupee, ShoppingCart, Download, Share2 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Customer, Payment, Sale } from '../types';
 import Card from '../components/Card';
@@ -39,7 +39,6 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
     });
     
     const [confirmModalState, setConfirmModalState] = useState<{ isOpen: boolean, saleIdToDelete: string | null }>({ isOpen: false, saleIdToDelete: null });
-    const [openSaleId, setOpenSaleId] = useState<string | null>(null);
     const isDirtyRef = useRef(false);
 
     useEffect(() => {
@@ -89,7 +88,6 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
             setEditedCustomer(null);
         }
         setIsEditing(false);
-        setOpenSaleId(null);
     }, [selectedCustomer]);
 
 
@@ -525,11 +523,10 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                                 const amountPaid = sale.payments.reduce((sum, p) => sum + p.amount, 0);
                                 const dueAmount = sale.totalAmount - amountPaid;
                                 const isPaid = dueAmount <= 0.01;
-                                const isSaleOpen = openSaleId === sale.id;
 
                                 return (
-                                <div key={sale.id} className="p-3 bg-gray-50 rounded-lg border overflow-hidden">
-                                    <button className="w-full flex justify-between items-start text-left" onClick={() => setOpenSaleId(isSaleOpen ? null : sale.id)} aria-expanded={isSaleOpen}>
+                                <div key={sale.id} className="p-3 bg-gray-50 rounded-lg border">
+                                    <div className="flex justify-between items-start">
                                         <div className="flex-grow pr-4">
                                             <div className="flex justify-between items-start mb-2">
                                                 <div>
@@ -544,56 +541,43 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center ml-2 flex-shrink-0">
-                                            <ChevronDown className={`text-gray-500 transition-transform duration-300 ${isSaleOpen ? 'rotate-180' : ''}`}/>
+                                    </div>
+                                    <div className="pl-4 mt-2 border-t border-purple-200 space-y-3 pt-2">
+                                        <div className="flex items-center flex-wrap gap-2">
+                                            <button onClick={() => handleEditSale(sale.id)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Edit Sale"><Edit size={16} /></button>
+                                            <button onClick={() => handleDownloadInvoice(sale)} className="p-2 text-gray-600 hover:bg-gray-100 rounded-full" aria-label="Download Invoice"><Download size={16} /></button>
+                                            <DeleteButton variant="delete" onClick={() => handleDeleteSale(sale.id)} />
                                         </div>
-                                    </button>
-                                    <div
-                                        style={{
-                                            display: 'grid',
-                                            gridTemplateRows: isSaleOpen ? '1fr' : '0fr',
-                                            transition: 'grid-template-rows 0.4s ease-in-out'
-                                        }}
-                                    >
-                                        <div className="overflow-hidden">
-                                            <div className="pl-4 mt-2 border-l-2 border-purple-200 space-y-3 pt-2">
-                                                <div className="flex items-center flex-wrap gap-2">
-                                                    <button onClick={(e) => { e.stopPropagation(); handleEditSale(sale.id); }} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Edit Sale"><Edit size={16} /></button>
-                                                    <button onClick={(e) => { e.stopPropagation(); handleDownloadInvoice(sale); }} className="p-2 text-gray-600 hover:bg-gray-100 rounded-full" aria-label="Download Invoice"><Download size={16} /></button>
-                                                    <DeleteButton variant="delete" onClick={(e) => { e.stopPropagation(); handleDeleteSale(sale.id); }} />
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-semibold text-sm text-gray-700 mb-1">Items Purchased:</h4>
-                                                    <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                                                        {sale.items.map((item, index) => (
-                                                            <li key={index}>
-                                                                {item.productName} (x{item.quantity}) @ ₹{item.price.toLocaleString('en-IN')} each
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                                {sale.payments.length > 0 && (
-                                                    <div>
-                                                        <h4 className="font-semibold text-sm text-gray-700 mb-1">Payments Made:</h4>
-                                                        <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                                                            {sale.payments.map(payment => (
-                                                                <li key={payment.id}>
-                                                                    ₹{payment.amount.toLocaleString('en-IN')} {payment.method === 'RETURN_CREDIT' ? <span className="text-blue-600 font-semibold">(Return Credit)</span> : `via ${payment.method}`} on {new Date(payment.date).toLocaleDateString()}
-                                                                    {payment.reference && <span className="text-xs text-gray-500 block">Ref: {payment.reference}</span>}
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    </div>
-                                                )}
-                                                {!isPaid && (
-                                                    <div className="pt-2">
-                                                        <Button onClick={() => setPaymentModalState({ isOpen: true, saleId: sale.id })} className="w-full sm:w-auto">
-                                                            <Plus size={16} className="mr-2"/> Add Payment
-                                                        </Button>
-                                                    </div>
-                                                )}
+                                        <div>
+                                            <h4 className="font-semibold text-sm text-gray-700 mb-1">Items Purchased:</h4>
+                                            <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                                                {sale.items.map((item, index) => (
+                                                    <li key={index}>
+                                                        {item.productName} (x{item.quantity}) @ ₹{item.price.toLocaleString('en-IN')} each
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                        {sale.payments.length > 0 && (
+                                            <div>
+                                                <h4 className="font-semibold text-sm text-gray-700 mb-1">Payments Made:</h4>
+                                                <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                                                    {sale.payments.map(payment => (
+                                                        <li key={payment.id}>
+                                                            ₹{payment.amount.toLocaleString('en-IN')} {payment.method === 'RETURN_CREDIT' ? <span className="text-blue-600 font-semibold">(Return Credit)</span> : `via ${payment.method}`} on {new Date(payment.date).toLocaleDateString()}
+                                                            {payment.reference && <span className="text-xs text-gray-500 block">Ref: {payment.reference}</span>}
+                                                        </li>
+                                                    ))}
+                                                </ul>
                                             </div>
-                                        </div>
+                                        )}
+                                        {!isPaid && (
+                                            <div className="pt-2">
+                                                <Button onClick={() => setPaymentModalState({ isOpen: true, saleId: sale.id })} className="w-full sm:w-auto">
+                                                    <Plus size={16} className="mr-2"/> Add Payment
+                                                </Button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )})}

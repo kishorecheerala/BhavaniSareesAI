@@ -216,7 +216,6 @@ const MainApp: React.FC = () => {
     const commonProps = { setIsDirty };
     switch (currentPage) {
       case 'DASHBOARD':
-        // FIX: Pass the `setCurrentPage` prop to the Dashboard component.
         return <Dashboard setCurrentPage={setCurrentPage} />;
       case 'CUSTOMERS':
         return <CustomersPage {...commonProps} />;
@@ -231,12 +230,10 @@ const MainApp: React.FC = () => {
       case 'PRODUCTS':
         return <ProductsPage {...commonProps} />;
       default:
-        // FIX: Pass the `setCurrentPage` prop to the Dashboard component.
         return <Dashboard setCurrentPage={setCurrentPage} />;
     }
   };
   
-  // FIX: Use React.FC to correctly type the component and handle the 'key' prop, which is managed by React and not part of the component's own props.
   const NavItem: React.FC<{ page: Page; label: string; icon: React.ElementType }> = ({ page, label, icon: Icon }) => (
     <button
       onClick={() => setCurrentPage(page)}
@@ -269,7 +266,7 @@ const MainApp: React.FC = () => {
 
 
   return (
-    <div className="flex flex-col h-screen font-sans text-text bg-background">
+    <div className="flex flex-col min-h-screen font-sans text-text bg-background">
       <Toast />
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Plus, IndianRupee, Edit, Save, X, Search, Package, Download, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, IndianRupee, Edit, Save, X, Search, Package, Download } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Supplier, Purchase, Payment, Return } from '../types';
 import Card from '../components/Card';
@@ -27,7 +27,6 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [purchaseToEdit, setPurchaseToEdit] = useState<Purchase | null>(null);
-    const [openPurchaseId, setOpenPurchaseId] = useState<string | null>(null);
 
     // State for 'add_supplier' view
     const [newSupplier, setNewSupplier] = useState({ id: '', name: '', phone: '', location: '', gstNumber: '', reference: '', account1: '', account2: '', upi: '' });
@@ -46,7 +45,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             const supplierToSelect = state.suppliers.find(s => s.id === state.selection.id);
             if (supplierToSelect) {
                 setSelectedSupplier(supplierToSelect);
-                setView('list');
+                setView('list'); // Ensure we are on the list view to see the detail
             } else if (state.selection.action === 'new') {
                  setView('add_purchase');
             }
@@ -91,7 +90,6 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             setEditedSupplier(null);
         }
         setIsEditing(false);
-        setOpenPurchaseId(null);
     }, [selectedSupplier]);
     
     const handleAddSupplier = () => {
@@ -380,11 +378,10 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                 const amountPaid = (purchase.payments || []).reduce((sum, p) => sum + p.amount, 0);
                                 const dueAmount = purchase.totalAmount - amountPaid;
                                 const isPaid = dueAmount <= 0.01;
-                                const isPurchaseOpen = openPurchaseId === purchase.id;
 
                                 return (
-                                <div key={purchase.id} className="p-3 bg-gray-50 rounded-lg border overflow-hidden">
-                                    <div className="flex justify-between items-start cursor-pointer" onClick={() => setOpenPurchaseId(isPurchaseOpen ? null : purchase.id)}>
+                                <div key={purchase.id} className="p-3 bg-gray-50 rounded-lg border">
+                                    <div className="flex justify-between items-start">
                                         <div className="flex-grow pr-4">
                                             <div className="flex justify-between items-start mb-2">
                                                 <div>
@@ -396,45 +393,38 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                                 <p className="font-bold text-lg text-primary">₹{purchase.totalAmount.toLocaleString('en-IN')}</p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center ml-2 flex-shrink-0">
-                                            {isPurchaseOpen ? <ChevronUp className="text-gray-500"/> : <ChevronDown className="text-gray-500"/>}
-                                        </div>
                                     </div>
-                                    <div style={{ display: 'grid', gridTemplateRows: isPurchaseOpen ? '1fr' : '0fr', transition: 'grid-template-rows 0.4s ease-in-out' }}>
-                                        <div className="overflow-hidden">
-                                            <div className="pl-4 mt-2 border-l-2 border-purple-200 space-y-3 pt-2">
-                                                <div className="flex items-center gap-2">
-                                                    <button 
-                                                        onClick={() => { setPurchaseToEdit(purchase); setView('edit_purchase'); }} 
-                                                        className="p-2 rounded-full text-blue-600 hover:bg-blue-100 transition-colors"
-                                                        aria-label="Edit purchase"
-                                                    >
-                                                        <Edit size={16} />
-                                                    </button>
-                                                    <DeleteButton variant="delete" onClick={() => handleDeletePurchase(purchase.id)} />
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-semibold text-sm">Items:</h4>
-                                                    <ul className="list-disc list-inside text-sm">
-                                                        {purchase.items.map((item, index) => <li key={index}>{item.productName} (x{item.quantity}) @ ₹{item.price.toLocaleString('en-IN')}</li>)}
-                                                    </ul>
-                                                </div>
-                                                {(purchase.payments || []).length > 0 && (
-                                                    <div>
-                                                        <h4 className="font-semibold text-sm">Payments:</h4>
-                                                        <ul className="list-disc list-inside text-sm">
-                                                            {(purchase.payments || []).map(p => (
-                                                            <li key={p.id}>
-                                                                ₹{p.amount.toLocaleString('en-IN')} {p.method === 'RETURN_CREDIT' ? <span className="text-blue-600 font-semibold">(Return Credit)</span> : `via ${p.method}`} on {new Date(p.date).toLocaleDateString()}
-                                                                {p.reference && <span className="text-xs text-gray-500 block">Ref: {p.reference}</span>}
-                                                            </li>
-                                                            ))}
-                                                        </ul>
-                                                    </div>
-                                                )}
-                                                {!isPaid && <Button onClick={() => setPaymentModalState({ isOpen: true, purchaseId: purchase.id })}><Plus size={16}/> Add Payment</Button>}
-                                            </div>
+                                    <div className="pl-4 mt-2 border-t border-purple-200 space-y-3 pt-2">
+                                        <div className="flex items-center gap-2">
+                                            <button 
+                                                onClick={() => { setPurchaseToEdit(purchase); setView('edit_purchase'); }} 
+                                                className="p-2 rounded-full text-blue-600 hover:bg-blue-100 transition-colors"
+                                                aria-label="Edit purchase"
+                                            >
+                                                <Edit size={16} />
+                                            </button>
+                                            <DeleteButton variant="delete" onClick={() => handleDeletePurchase(purchase.id)} />
                                         </div>
+                                        <div>
+                                            <h4 className="font-semibold text-sm">Items:</h4>
+                                            <ul className="list-disc list-inside text-sm">
+                                                {purchase.items.map((item, index) => <li key={index}>{item.productName} (x{item.quantity}) @ ₹{item.price.toLocaleString('en-IN')}</li>)}
+                                            </ul>
+                                        </div>
+                                        {(purchase.payments || []).length > 0 && (
+                                            <div>
+                                                <h4 className="font-semibold text-sm">Payments:</h4>
+                                                <ul className="list-disc list-inside text-sm">
+                                                    {(purchase.payments || []).map(p => (
+                                                    <li key={p.id}>
+                                                        ₹{p.amount.toLocaleString('en-IN')} {p.method === 'RETURN_CREDIT' ? <span className="text-blue-600 font-semibold">(Return Credit)</span> : `via ${p.method}`} on {new Date(p.date).toLocaleDateString()}
+                                                        {p.reference && <span className="text-xs text-gray-500 block">Ref: {p.reference}</span>}
+                                                    </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+                                        {!isPaid && <Button onClick={() => setPaymentModalState({ isOpen: true, purchaseId: purchase.id })}><Plus size={16}/> Add Payment</Button>}
                                     </div>
                                 </div>
                             )})}
