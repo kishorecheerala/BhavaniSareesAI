@@ -66,16 +66,24 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
         };
     }, [setIsDirty]);
 
+    // Effect to keep selectedCustomer data in sync with global state
     useEffect(() => {
         if (selectedCustomer) {
-            const currentCustomer = state.customers.find(c => c.id === selectedCustomer.id);
-            setSelectedCustomer(currentCustomer || null);
-            setEditedCustomer(currentCustomer || null);
-        } else {
-            setEditedCustomer(null);
+            const currentCustomerData = state.customers.find(c => c.id === selectedCustomer.id);
+            // Deep comparison to avoid re-render if data is the same
+            if (JSON.stringify(currentCustomerData) !== JSON.stringify(selectedCustomer)) {
+                setSelectedCustomer(currentCustomerData || null);
+            }
+        }
+    }, [selectedCustomer?.id, state.customers]);
+
+    // Effect to reset the editing form when the selected customer changes
+    useEffect(() => {
+        if (selectedCustomer) {
+            setEditedCustomer(selectedCustomer);
         }
         setIsEditing(false);
-    }, [selectedCustomer, state.customers, state.sales]);
+    }, [selectedCustomer]);
 
 
     const handleAddCustomer = () => {

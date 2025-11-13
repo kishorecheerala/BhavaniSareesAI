@@ -10,7 +10,7 @@ const DeleteButton: React.FC<DeleteButtonProps> = ({ variant = 'delete', ...prop
   
   return (
     <button
-      className="p-2 rounded-full text-red-600 hover:bg-red-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 flex-shrink-0"
+      className="p-2 rounded-full text-red-500 hover:bg-red-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 flex-shrink-0"
       aria-label={variant === 'delete' ? 'Delete item' : 'Remove item'}
       {...props}
     >

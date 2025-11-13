@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, IndianRupee, Edit, Save, X, Search, Package } from 'lucide-react';
+import { Plus, IndianRupee, Edit, Save, X, Search, Package, Download } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
-import { Supplier, Purchase, Payment } from '../types';
+import { Supplier, Purchase, Payment, Return } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import ConfirmationModal from '../components/ConfirmationModal';
 import DeleteButton from '../components/DeleteButton';
 import AddPurchaseView from '../components/AddPurchaseView';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -45,6 +47,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     const [paymentModalState, setPaymentModalState] = useState<{ isOpen: boolean, purchaseId: string | null }>({ isOpen: false, purchaseId: null });
     const [paymentDetails, setPaymentDetails] = useState({ amount: '', method: 'CASH' as 'CASH' | 'UPI' | 'CHEQUE', date: getLocalDateString(), reference: '' });
     const [confirmModalState, setConfirmModalState] = useState<{ isOpen: boolean, purchaseIdToDelete: string | null }>({ isOpen: false, purchaseIdToDelete: null });
+    const [expandedPurchaseId, setExpandedPurchaseId] = useState<string | null>(null);
     const isDirtyRef = useRef(false);
 
     useEffect(() => {
@@ -86,6 +89,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             setEditedSupplier(null);
         }
         setIsEditing(false);
+        setExpandedPurchaseId(null); // Collapse all items when supplier changes
     }, [selectedSupplier, state.suppliers, state.purchases]);
     
     const resetAddPurchaseForm = () => {
@@ -218,6 +222,98 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         setView('list');
     };
     
+    const generateDebitNotePDF = async (newReturn: Return) => {
+        const profile = state.profile;
+        const supplier = state.suppliers.find(s => s.id === newReturn.partyId);
+
+        if (!profile || !supplier) {
+            alert("Could not generate PDF. Missing profile or supplier information.");
+            return;
+        }
+
+        const doc = new jsPDF();
+        
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(20);
+        doc.text('DEBIT NOTE', 105, 15, { align: 'center' });
+        
+        doc.setFontSize(12);
+        doc.text(profile.name, 14, 25);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        const addressLines = doc.splitTextToSize(profile.address, 80);
+        doc.text(addressLines, 14, 30);
+        let currentY = 30 + (addressLines.length * 5);
+        if (profile.phone) doc.text(`Phone: ${profile.phone}`, 14, currentY);
+        if (profile.gstNumber) { currentY += 5; doc.text(`GSTIN: ${profile.gstNumber}`, 14, currentY); }
+        
+        doc.setFont('helvetica', 'bold');
+        doc.text('To:', 120, 25);
+        doc.setFont('helvetica', 'normal');
+        doc.text(supplier.name, 120, 30);
+        const supplierAddressLines = doc.splitTextToSize(supplier.location, 80);
+        doc.text(supplierAddressLines, 120, 35);
+
+        currentY += 15;
+        doc.setDrawColor(100);
+        doc.line(14, currentY, 196, currentY);
+        currentY += 8;
+
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Debit Note No:`, 14, currentY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(newReturn.id, 55, currentY);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Date:`, 120, currentY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(new Date(newReturn.returnDate).toLocaleDateString(), 135, currentY);
+        currentY += 6;
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Original Inv. No:`, 14, currentY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(newReturn.referenceId, 55, currentY);
+        currentY += 10;
+        
+        autoTable(doc, {
+            startY: currentY,
+            head: [['#', 'Description', 'Qty', 'Rate', 'Amount']],
+            body: newReturn.items.map((item, index) => [
+                index + 1,
+                item.productName,
+                item.quantity,
+                `Rs. ${item.price.toLocaleString('en-IN')}`,
+                `Rs. ${(item.quantity * item.price).toLocaleString('en-IN')}`
+            ]),
+            theme: 'grid',
+            headStyles: { fillColor: [106, 13, 173] },
+            columnStyles: { 3: { halign: 'right' }, 4: { halign: 'right' } }
+        });
+
+        currentY = (doc as any).lastAutoTable.finalY + 10;
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Total Return Value:', 140, currentY, { align: 'right' });
+        doc.text(`Rs. ${newReturn.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 196, currentY, { align: 'right' });
+        
+        if (newReturn.notes) {
+            currentY += 15;
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Notes:', 14, currentY);
+            doc.setFont('helvetica', 'normal');
+            currentY += 5;
+            const notesLines = doc.splitTextToSize(newReturn.notes, 182);
+            doc.text(notesLines, 14, currentY);
+        }
+        
+        currentY = doc.internal.pageSize.height - 30;
+        doc.line(130, currentY, 196, currentY);
+        currentY += 5;
+        doc.text('Authorised Signatory', 163, currentY, { align: 'center' });
+
+        doc.save(`DebitNote-${newReturn.id}.pdf`);
+    };
+
     const PaymentModal = () => {
         const purchase = state.purchases.find(p => p.id === paymentModalState.purchaseId);
         if (!paymentModalState.isOpen || !purchase) return null;
@@ -257,6 +353,8 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     
     if (selectedSupplier) {
         const supplierPurchases = state.purchases.filter(p => p.supplierId === selectedSupplier.id);
+        const supplierReturns = state.returns.filter(r => r.type === 'SUPPLIER' && r.partyId === selectedSupplier.id);
+
         const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             if (editedSupplier) {
                 setEditedSupplier({ ...editedSupplier, [e.target.name]: e.target.value });
@@ -313,11 +411,12 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                 const amountPaid = (purchase.payments || []).reduce((sum, p) => sum + p.amount, 0);
                                 const dueAmount = purchase.totalAmount - amountPaid;
                                 const isPaid = dueAmount <= 0.01;
+                                const isExpanded = expandedPurchaseId === purchase.id;
 
                                 return (
                                 <div key={purchase.id} className="p-3 bg-gray-50 rounded-lg border">
                                     <div className="flex justify-between items-start">
-                                      <div className="flex-grow">
+                                      <div className="flex-grow cursor-pointer" onClick={() => setExpandedPurchaseId(isExpanded ? null : purchase.id)}>
                                         <div className="flex justify-between items-start mb-2">
                                             <div>
                                                 <p className="font-semibold">{new Date(purchase.date).toLocaleString()}</p>
@@ -328,34 +427,71 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                             <p className="font-bold text-lg text-primary">₹{purchase.totalAmount.toLocaleString('en-IN')}</p>
                                         </div>
                                       </div>
-                                      <DeleteButton variant="delete" onClick={() => handleDeletePurchase(purchase.id)} className="ml-4" />
+                                      <DeleteButton variant="delete" onClick={(e) => { e.stopPropagation(); handleDeletePurchase(purchase.id); }} className="ml-4" />
                                     </div>
-                                    <div className="pl-4 mt-2 border-l-2 border-purple-200 space-y-3">
-                                        <div>
-                                            <h4 className="font-semibold text-sm">Items:</h4>
-                                            <ul className="list-disc list-inside text-sm">
-                                                {purchase.items.map((item, index) => <li key={index}>{item.productName} (x{item.quantity}) @ ₹{item.price.toLocaleString('en-IN')}</li>)}
-                                            </ul>
-                                        </div>
-                                        {(purchase.payments || []).length > 0 && (
+                                    {isExpanded && (
+                                        <div className="pl-4 mt-2 border-l-2 border-purple-200 space-y-3 animate-fade-in-fast">
                                             <div>
-                                                <h4 className="font-semibold text-sm">Payments:</h4>
+                                                <h4 className="font-semibold text-sm">Items:</h4>
                                                 <ul className="list-disc list-inside text-sm">
-                                                    {(purchase.payments || []).map(p => (
-                                                      <li key={p.id}>
-                                                        ₹{p.amount.toLocaleString('en-IN')} via {p.method} on {new Date(p.date).toLocaleDateString()}
-                                                        {p.reference && <span className="text-xs text-gray-500 block">Ref: {p.reference}</span>}
-                                                      </li>
-                                                    ))}
+                                                    {purchase.items.map((item, index) => <li key={index}>{item.productName} (x{item.quantity}) @ ₹{item.price.toLocaleString('en-IN')}</li>)}
                                                 </ul>
                                             </div>
-                                        )}
-                                        {!isPaid && <Button onClick={() => setPaymentModalState({ isOpen: true, purchaseId: purchase.id })}><Plus size={16}/> Add Payment</Button>}
-                                    </div>
+                                            {(purchase.payments || []).length > 0 && (
+                                                <div>
+                                                    <h4 className="font-semibold text-sm">Payments:</h4>
+                                                    <ul className="list-disc list-inside text-sm">
+                                                        {(purchase.payments || []).map(p => (
+                                                        <li key={p.id}>
+                                                            ₹{p.amount.toLocaleString('en-IN')} {p.method === 'RETURN_CREDIT' ? <span className="text-blue-600 font-semibold">(Return Credit)</span> : `via ${p.method}`} on {new Date(p.date).toLocaleDateString()}
+                                                            {p.reference && <span className="text-xs text-gray-500 block">Ref: {p.reference}</span>}
+                                                        </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                            {!isPaid && <Button onClick={() => setPaymentModalState({ isOpen: true, purchaseId: purchase.id })}><Plus size={16}/> Add Payment</Button>}
+                                        </div>
+                                    )}
                                 </div>
                             )})}
                         </div>
                     ) : <p className="text-gray-500">No purchases recorded for this supplier.</p>}
+                </Card>
+                <Card title="Returns History">
+                    {supplierReturns.length > 0 ? (
+                        <div className="space-y-3">
+                            {supplierReturns.slice().reverse().map(ret => (
+                                <div key={ret.id} className="p-3 bg-gray-50 rounded-lg border">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="font-semibold">Return on {new Date(ret.returnDate).toLocaleDateString()}</p>
+                                            <p className="text-xs text-gray-500">Original Invoice: {ret.referenceId}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <p className="font-semibold text-primary">Credit: ₹{ret.amount.toLocaleString('en-IN')}</p>
+                                            <button 
+                                                onClick={() => generateDebitNotePDF(ret)} 
+                                                className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" 
+                                                aria-label="Download Debit Note"
+                                            >
+                                                <Download size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="mt-2 pt-2 border-t">
+                                        <ul className="text-sm list-disc list-inside text-gray-600">
+                                            {ret.items.map((item, idx) => (
+                                                <li key={idx}>{item.productName} (x{item.quantity})</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-gray-500">No returns recorded for this supplier.</p>
+                    )}
                 </Card>
             </div>
         );

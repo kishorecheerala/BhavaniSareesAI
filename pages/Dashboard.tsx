@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { IndianRupee, User, AlertTriangle, Download, Upload, ShoppingCart, Package, XCircle, CheckCircle, Info, Calendar, ShieldCheck, ShieldAlert, ShieldX, Archive } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
@@ -45,6 +46,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
     const totalInventoryValue = state.products.reduce((sum, product) => {
         return sum + (product.purchasePrice * product.quantity);
     }, 0);
+    
+    const totalStockQuantity = state.products.reduce((sum, product) => sum + product.quantity, 0);
     
     const totalSales = state.sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
     const totalPurchases = state.purchases.reduce((sum, purchase) => sum + purchase.totalAmount, 0);
@@ -296,20 +299,21 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
 
         const now = new Date();
         const backupDate = new Date(lastBackupDate);
-        const diffHours = (now.getTime() - backupDate.getTime()) / (1000 * 60 * 60);
-        const diffDays = Math.floor(diffHours / 24);
+        
+        const todayStr = now.toISOString().slice(0, 10);
+        const backupDateStr = backupDate.toISOString().slice(0, 10);
 
-        let status: 'safe' | 'warning' | 'overdue' = 'safe';
-        if (diffDays > 7) {
-            status = 'overdue';
-        } else if (diffDays > 2) {
-            status = 'warning';
+        const status = backupDateStr === todayStr ? 'safe' : 'overdue';
+        const diffDays = Math.floor((now.getTime() - backupDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        let overdueMessage = "Your last backup was not today. Please back up now.";
+        if (diffDays > 0) {
+            overdueMessage = `Your last backup was ${diffDays} day${diffDays > 1 ? 's' : ''} ago. Please back up now.`;
         }
 
         const messages = {
-            safe: { icon: ShieldCheck, color: 'green', title: 'Data Backup is Up-to-Date', text: `Last backup was ${backupDate.toLocaleString()}.` },
-            warning: { icon: ShieldAlert, color: 'amber', title: 'Backup Recommended', text: `Your last backup was ${diffDays} days ago.` },
-            overdue: { icon: ShieldX, color: 'red', title: 'Backup Overdue', text: `Your last backup was over a week ago. Please back up now.` },
+            safe: { icon: ShieldCheck, color: 'green', title: 'Data Backup is Up-to-Date', text: `Last backup was today at ${backupDate.toLocaleTimeString()}.` },
+            overdue: { icon: ShieldX, color: 'red', title: 'Backup Overdue', text: overdueMessage },
         };
 
         const current = messages[status];
@@ -385,13 +389,18 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     value={totalPurchaseDues} 
                     color="bg-amber-500 shadow-lg"
                 />
-                 <MetricCard 
-                    icon={Archive} 
-                    title="Total Inventory Value" 
-                    value={totalInventoryValue} 
-                    color="bg-sky-500 shadow-lg"
-                    unit="₹"
-                />
+                <Card className="bg-sky-500 shadow-lg text-white">
+                    <div className="flex items-center p-4">
+                        <div className="p-3 bg-white/20 rounded-full">
+                            <Archive className="w-8 h-8" />
+                        </div>
+                        <div className="ml-4">
+                            <p className="font-semibold text-lg">Inventory Summary</p>
+                            <p className="text-2xl font-bold">₹{totalInventoryValue.toLocaleString('en-IN')}</p>
+                            <p className="text-sm font-semibold">{totalStockQuantity.toLocaleString('en-IN')} Items in Stock</p>
+                        </div>
+                    </div>
+                </Card>
             </div>
 
             <OverdueDuesCard />

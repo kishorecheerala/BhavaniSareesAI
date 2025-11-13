@@ -1,5 +1,7 @@
 
 
+
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle, Bell, Menu, Plus } from 'lucide-react';
 
@@ -27,13 +29,17 @@ const Toast = () => {
 
     const isSuccess = state.toast.type === 'success';
 
+    const containerClasses = "fixed top-5 inset-x-0 flex justify-center z-[200]";
+
     const toastClasses = isSuccess
-        ? "fixed top-5 left-1/2 -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded-full shadow-lg z-[200] animate-fade-in-out"
-        : "fixed bottom-20 left-1/2 -translate-x-1/2 bg-gray-800 bg-opacity-90 text-white px-5 py-3 rounded-full shadow-lg z-[200] animate-fade-in-out";
+        ? "bg-green-600 text-white px-4 py-2 rounded-full shadow-lg animate-fade-in-out"
+        : "bg-gray-800 bg-opacity-90 text-white px-5 py-3 rounded-full shadow-lg animate-fade-in-out";
 
     return (
-        <div className={toastClasses}>
-            {state.toast.message}
+        <div className={containerClasses} style={{ pointerEvents: 'none' }}>
+            <div className={toastClasses} style={{ pointerEvents: 'auto' }}>
+                {state.toast.message}
+            </div>
         </div>
     );
 };
@@ -77,30 +83,27 @@ const MainApp: React.FC = () => {
   }, [dispatch]);
   
   useEffect(() => {
-    if (!isDbLoaded) return; // Wait for data to be loaded
+    if (!isDbLoaded) return;
 
     const today = new Date();
-    const todayStr = today.toISOString().slice(0, 10); // "YYYY-MM-DD"
+    const todayStr = today.toISOString().slice(0, 10);
     const backupNotificationId = `backup-reminder-${todayStr}`;
 
+    // Filter out any old backup notifications that aren't for today
+    const relevantNotifications = state.notifications.filter(n => n.type !== 'backup' || n.id === backupNotificationId);
+    
     const lastBackupDay = lastBackupDate ? new Date(lastBackupDate).toISOString().slice(0, 10) : null;
     const isBackupDoneToday = lastBackupDay === todayStr;
-
-    const existingNotification = state.notifications.find(n => n.id === backupNotificationId);
     
-    // Clean up old, read backup notifications
-    const oldReadBackupNotifications = state.notifications.filter(n => n.type === 'backup' && n.read && n.id !== backupNotificationId);
-    if(oldReadBackupNotifications.length > 0) {
-        // This is a bit complex for the reducer, for now let's just mark as read
-    }
+    let finalNotifications = [...relevantNotifications];
+    const existingTodaysNotification = finalNotifications.find(n => n.id === backupNotificationId);
 
     if (isBackupDoneToday) {
-        const unreadBackupNotification = state.notifications.find(n => n.type === 'backup' && !n.read);
-        if (unreadBackupNotification) {
-            dispatch({ type: 'MARK_NOTIFICATION_AS_READ', payload: unreadBackupNotification.id });
-        }
+        // If backup is done, remove today's reminder
+        finalNotifications = finalNotifications.filter(n => n.id !== backupNotificationId);
     } else {
-        if (!existingNotification) {
+        // If backup is NOT done, ensure today's reminder exists and is unread
+        if (!existingTodaysNotification) {
             const newNotification: Notification = {
                 id: backupNotificationId,
                 title: 'Backup Reminder',
@@ -110,8 +113,16 @@ const MainApp: React.FC = () => {
                 type: 'backup',
                 actionLink: 'DASHBOARD'
             };
-            dispatch({ type: 'ADD_NOTIFICATION', payload: newNotification });
+            finalNotifications.unshift(newNotification);
+        } else if (existingTodaysNotification.read) {
+            // This is a safeguard in case it somehow gets marked as read without a backup being made.
+            finalNotifications = finalNotifications.map(n => n.id === backupNotificationId ? { ...n, read: false } : n);
         }
+    }
+
+    // Only dispatch if the notifications array has actually changed to prevent infinite loops.
+    if (JSON.stringify(finalNotifications) !== JSON.stringify(state.notifications)) {
+        dispatch({ type: 'SET_NOTIFICATIONS', payload: finalNotifications });
     }
 }, [isDbLoaded, lastBackupDate, state.notifications, dispatch]);
 
@@ -320,14 +331,14 @@ const MainApp: React.FC = () => {
       <nav className="fixed bottom-0 left-0 right-0 bg-primary shadow-lg z-50">
         {/* Desktop nav */}
         <div className="hidden md:flex justify-around max-w-2xl mx-auto">
-            {/* FIX: Use spread syntax to pass props to NavItem to resolve TypeScript error. */}
-            {allNavItems.map(item => <NavItem key={item.page} {...item} />)}
+            {/* FIX: Explicitly pass props to NavItem to resolve TypeScript error with spread syntax and the 'key' prop. */}
+            {allNavItems.map(item => <NavItem key={item.page} page={item.page} label={item.label} icon={item.icon} />)}
         </div>
 
         {/* Mobile nav */}
         <div className="flex md:hidden justify-around max-w-2xl mx-auto">
-            {/* FIX: Use spread syntax to pass props to NavItem to resolve TypeScript error. */}
-            {mainNavItems.map(item => <NavItem key={item.page} {...item} />)}
+            {/* FIX: Explicitly pass props to NavItem to resolve TypeScript error with spread syntax and the 'key' prop. */}
+            {mainNavItems.map(item => <NavItem key={item.page} page={item.page} label={item.label} icon={item.icon} />)}
             <div className="relative flex flex-col items-center justify-center w-full pt-2 pb-1" ref={moreMenuRef}>
                  <button
                     onClick={() => setIsMoreMenuOpen(prev => !prev)}

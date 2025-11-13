@@ -102,8 +102,13 @@ const ReportsPage: React.FC = () => {
                 customerSalesSummary[customer.id].totalPaid += paidForThisSale;
             }
         });
+        
+        const summaryWithDues = Object.values(customerSalesSummary).map(summary => ({
+            ...summary,
+            totalDue: summary.totalSales - summary.totalPaid
+        }));
 
-        return Object.values(customerSalesSummary).sort((a, b) => b.totalSales - a.totalSales);
+        return summaryWithDues.sort((a, b) => b.totalSales - a.totalSales);
     }, [filteredSalesByDate, state.customers]);
 
     const uniqueAreas = [...new Set(state.customers.map(c => c.area))];
@@ -428,14 +433,18 @@ const ReportsPage: React.FC = () => {
                                 <th className="p-2">Customer</th>
                                 <th className="p-2 text-right">Total Sales</th>
                                 <th className="p-2 text-right">Total Paid</th>
+                                <th className="p-2 text-right">Total Due</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {salesByCustomer.map(({ customer, totalSales, totalPaid }) => (
+                            {salesByCustomer.map(({ customer, totalSales, totalPaid, totalDue }) => (
                                 <tr key={customer.id} className="border-b">
                                     <td className="p-2 font-semibold">{customer.name}</td>
                                     <td className="p-2 text-right text-green-600">₹{totalSales.toLocaleString('en-IN')}</td>
                                     <td className="p-2 text-right">₹{totalPaid.toLocaleString('en-IN')}</td>
+                                    <td className={`p-2 text-right font-bold ${totalDue > 0.01 ? 'text-red-600' : 'text-gray-600'}`}>
+                                        ₹{totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
