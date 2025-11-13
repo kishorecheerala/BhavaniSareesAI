@@ -71,19 +71,26 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         };
     }, [setIsDirty]);
     
+    // Effect to sync selectedSupplier data with global state
     useEffect(() => {
         if (selectedSupplier) {
             const currentSupplierData = state.suppliers.find(s => s.id === selectedSupplier.id);
             if (JSON.stringify(currentSupplierData) !== JSON.stringify(selectedSupplier)) {
                 setSelectedSupplier(currentSupplierData || null);
             }
-            setEditedSupplier(currentSupplierData || null);
+        }
+    }, [selectedSupplier?.id, state.suppliers, state.purchases]);
+
+    // Effect to reset editing state when selected supplier changes
+    useEffect(() => {
+        if (selectedSupplier) {
+            setEditedSupplier(selectedSupplier);
         } else {
             setEditedSupplier(null);
         }
         setIsEditing(false);
         setOpenPurchaseId(null);
-    }, [selectedSupplier?.id, state.suppliers, state.purchases]);
+    }, [selectedSupplier]);
     
     const handleAddSupplier = () => {
         const trimmedId = newSupplier.id.trim();
@@ -494,6 +501,36 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                 onEdit={handleEditFromHistory}
             />
         );
+    }
+
+    if (view === 'add_supplier') {
+        return (
+            <Card title="New Supplier Form">
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Supplier ID</label>
+                        <div className="flex items-center mt-1">
+                            <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                                SUPP-
+                            </span>
+                            <input type="text" placeholder="Enter unique ID" value={newSupplier.id} onChange={e => setNewSupplier({ ...newSupplier, id: e.target.value })} className="w-full p-2 border rounded-r-md" />
+                        </div>
+                    </div>
+                    <input type="text" placeholder="Name" value={newSupplier.name} onChange={e => setNewSupplier({ ...newSupplier, name: e.target.value })} className="w-full p-2 border rounded" />
+                    <input type="text" placeholder="Phone" value={newSupplier.phone} onChange={e => setNewSupplier({ ...newSupplier, phone: e.target.value })} className="w-full p-2 border rounded" />
+                    <input type="text" placeholder="Location" value={newSupplier.location} onChange={e => setNewSupplier({ ...newSupplier, location: e.target.value })} className="w-full p-2 border rounded" />
+                    <input type="text" placeholder="GST Number (Optional)" value={newSupplier.gstNumber} onChange={e => setNewSupplier({ ...newSupplier, gstNumber: e.target.value })} className="w-full p-2 border rounded" />
+                    <input type="text" placeholder="Reference (Optional)" value={newSupplier.reference} onChange={e => setNewSupplier({ ...newSupplier, reference: e.target.value })} className="w-full p-2 border rounded" />
+                    <input type="text" placeholder="Account 1 (Optional)" value={newSupplier.account1} onChange={e => setNewSupplier({ ...newSupplier, account1: e.target.value })} className="w-full p-2 border rounded" />
+                    <input type="text" placeholder="Account 2 (Optional)" value={newSupplier.account2} onChange={e => setNewSupplier({ ...newSupplier, account2: e.target.value })} className="w-full p-2 border rounded" />
+                    <input type="text" placeholder="UPI ID (Optional)" value={newSupplier.upi} onChange={e => setNewSupplier({ ...newSupplier, upi: e.target.value })} className="w-full p-2 border rounded" />
+                    <div className="flex gap-2">
+                       <Button onClick={handleAddSupplier} className="w-full">Save Supplier</Button>
+                       <Button onClick={() => setView('list')} variant="secondary" className="w-full">Cancel</Button>
+                    </div>
+                </div>
+            </Card>
+        )
     }
 
     // Default 'list' view
