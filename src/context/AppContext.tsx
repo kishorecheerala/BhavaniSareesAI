@@ -48,6 +48,7 @@ type Action =
   | { type: 'UPDATE_PURCHASE'; payload: { oldPurchase: Purchase, updatedPurchase: Purchase } }
   | { type: 'DELETE_PURCHASE'; payload: string } // purchaseId
   | { type: 'ADD_RETURN'; payload: Return }
+  // FIX: Add UPDATE_RETURN action type to handle editing existing returns.
   | { type: 'UPDATE_RETURN'; payload: { oldReturn: Return, updatedReturn: Return } }
   | { type: 'ADD_PAYMENT_TO_SALE'; payload: { saleId: string; payment: Payment } }
   | { type: 'ADD_PAYMENT_TO_PURCHASE'; payload: { purchaseId: string; payment: Payment } }
@@ -288,6 +289,7 @@ const appReducer = (state: AppState, action: Action): AppState => {
         returns: [...state.returns, returnPayload],
       };
     }
+    // FIX: Add reducer logic for UPDATE_RETURN to correctly handle stock and payment adjustments when a return is edited.
     case 'UPDATE_RETURN': {
         const { oldReturn, updatedReturn } = action.payload;
         const stockChanges = new Map<string, number>();

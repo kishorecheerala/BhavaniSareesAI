@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Trash2, Share2, Search, X, IndianRupee, QrCode } from 'lucide-react';
+import { Plus, Trash2, Share2, Search, X, IndianRupee, QrCode, Edit } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Sale, SaleItem, Customer, Product, Payment } from '../types';
 import Card from '../components/Card';
@@ -606,6 +606,22 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         );
     };
 
+    const lastTenSales = useMemo(() => {
+        return state.sales.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
+    }, [state.sales]);
+
+    const handleEditSaleFromHistory = (sale: Sale) => {
+        setMode('edit');
+        setSaleToEdit(sale);
+        setCustomerId(sale.customerId);
+        setItems(sale.items);
+        setDiscount(String(sale.discount));
+        // Reset payment details for edit mode
+        setPaymentDetails({ amount: '', method: 'CASH', date: getLocalDateString(), reference: '' });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        showToast('Editing Sale. Make your changes and click "Update Sale".', 'info');
+    };
+
     const canCreateSale = customerId && items.length > 0 && mode === 'add';
     const canUpdateSale = customerId && items.length > 0 && mode === 'edit';
     const canRecordPayment = customerId && items.length === 0 && parseFloat(paymentDetails.amount || '0') > 0 && customerTotalDue != null && customerTotalDue > 0.01 && mode === 'add';
@@ -774,6 +790,28 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                         </div>
                     </Card>
                  </>
+            )}
+            
+            {mode === 'add' && items.length === 0 && (
+                <Card title="Last 10 Transactions">
+                    <div className="space-y-3 max-h-80 overflow-y-auto">
+                        {lastTenSales.length > 0 ? lastTenSales.map(sale => {
+                            const customer = state.customers.find(c => c.id === sale.customerId);
+                            return (
+                                <div key={sale.id} className="p-3 bg-gray-50 rounded-lg border flex justify-between items-center">
+                                    <div>
+                                        <p className="font-semibold text-primary">{customer?.name || 'Unknown Customer'}</p>
+                                        <p className="text-xs text-gray-500">ID: {sale.id}</p>
+                                        <p className="text-sm">Total: <span className="font-bold">₹{sale.totalAmount.toLocaleString('en-IN')}</span> on {new Date(sale.date).toLocaleDateString()}</p>
+                                    </div>
+                                    <Button onClick={() => handleEditSaleFromHistory(sale)} variant="secondary" className="px-3 py-1 text-sm flex-shrink-0">
+                                        <Edit size={14} className="mr-1" /> Edit
+                                    </Button>
+                                </div>
+                            );
+                        }) : <p className="text-gray-500 text-center">No sales recorded yet.</p>}
+                    </div>
+                </Card>
             )}
 
             <div className="space-y-2">

@@ -48,6 +48,8 @@ type Action =
   | { type: 'UPDATE_PURCHASE'; payload: { oldPurchase: Purchase, updatedPurchase: Purchase } }
   | { type: 'DELETE_PURCHASE'; payload: string } // purchaseId
   | { type: 'ADD_RETURN'; payload: Return }
+  // FIX: Add UPDATE_RETURN action type to handle editing existing returns.
+  | { type: 'UPDATE_RETURN'; payload: { oldReturn: Return, updatedReturn: Return } }
   | { type: 'ADD_PAYMENT_TO_SALE'; payload: { saleId: string; payment: Payment } }
   | { type: 'ADD_PAYMENT_TO_PURCHASE'; payload: { purchaseId: string; payment: Payment } }
   | { type: 'SHOW_TOAST'; payload: { message: string; type?: 'success' | 'info' } }
@@ -264,6 +266,66 @@ const appReducer = (state: AppState, action: Action): AppState => {
         purchases: updatedPurchases,
         returns: [...state.returns, returnPayload],
       };
+    }
+    // FIX: Add reducer logic for UPDATE_RETURN to correctly handle stock and payment adjustments when a return is edited.
+    case 'UPDATE_RETURN': {
+        const { oldReturn, updatedReturn } = action.payload;
+        const stockChanges = new Map<string, number>();
+
+        // Reverting old return: customer return added stock (+), so we subtract (-). Supplier return removed stock (-), so we add (+).
+        const oldStockSign = oldReturn.type === 'CUSTOMER' ? -1 : 1; 
+        // Applying new return: customer return adds stock (+). Supplier return removes stock (-).
+        const newStockSign = updatedReturn.type === 'CUSTOMER' ? 1 : -1;
+
+        // Revert stock changes from the old return
+        oldReturn.items.forEach(item => {
+            stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) + (item.quantity * oldStockSign));
+        });
+        // Apply stock changes for the new return
+        updatedReturn.items.forEach(item => {
+            stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) + (item.quantity * newStockSign));
+        });
+
+        const updatedProducts = state.products.map(p => {
+            if (stockChanges.has(p.id)) {
+                return { ...p, quantity: Math.max(0, p.quantity + (stockChanges.get(p.id) || 0)) };
+            }
+            return p;
+        });
+
+        let updatedSales = state.sales;
+        let updatedPurchases = state.purchases;
+
+        // Update payment/credit on the original invoice
+        if (oldReturn.type === 'CUSTOMER') {
+            updatedSales = state.sales.map(sale => {
+                if (sale.id === oldReturn.referenceId) {
+                    const updatedPayments = (sale.payments || []).map(p => 
+                        p.id === `PAY-RET-${oldReturn.id}` ? { ...p, amount: updatedReturn.amount, date: updatedReturn.returnDate } : p
+                    );
+                    return { ...sale, payments: updatedPayments };
+                }
+                return sale;
+            });
+        } else { // SUPPLIER
+            updatedPurchases = state.purchases.map(purchase => {
+                if (purchase.id === oldReturn.referenceId) {
+                    const updatedPayments = (purchase.payments || []).map(p => 
+                        p.id === `PAY-RET-${oldReturn.id}` ? { ...p, amount: updatedReturn.amount, date: updatedReturn.returnDate } : p
+                    );
+                    return { ...purchase, payments: updatedPayments };
+                }
+                return purchase;
+            });
+        }
+
+        return {
+            ...state,
+            returns: state.returns.map(r => r.id === updatedReturn.id ? updatedReturn : r),
+            products: updatedProducts,
+            sales: updatedSales,
+            purchases: updatedPurchases,
+        };
     }
     case 'ADD_PAYMENT_TO_SALE':
       return {
