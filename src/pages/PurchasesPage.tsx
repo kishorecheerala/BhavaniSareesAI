@@ -70,14 +70,14 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         };
     }, [setIsDirty]);
     
-    // Effect to sync selectedSupplier data with global state if it changes (e.g. after an edit)
+    // Effect to keep selectedSupplier data in sync with global state if it changes
     useEffect(() => {
         if (selectedSupplier) {
             const currentSupplierData = state.suppliers.find(s => s.id === selectedSupplier.id);
             if (currentSupplierData && JSON.stringify(currentSupplierData) !== JSON.stringify(selectedSupplier)) {
                 setSelectedSupplier(currentSupplierData);
             } else if (!currentSupplierData) {
-                setSelectedSupplier(null);
+                setSelectedSupplier(null); // Supplier was deleted, so clear selection
             }
         }
     }, [selectedSupplier?.id, state.suppliers]);
