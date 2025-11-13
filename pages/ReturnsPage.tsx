@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Undo2, Users, Package, Plus, Trash2, Share2 } from 'lucide-react';
+import { Undo2, Users, Package, Plus, Share2, ChevronDown, ChevronUp, Download } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Return, ReturnItem, Sale, Purchase } from '../types';
 import Card from '../components/Card';
@@ -30,6 +30,7 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
     const [amount, setAmount] = useState('');
     const [reason, setReason] = useState('');
     const [returnNotes, setReturnNotes] = useState('');
+    const [openReturnId, setOpenReturnId] = useState<string | null>(null);
     const isDirtyRef = useRef(false);
 
     useEffect(() => {
@@ -350,27 +351,32 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                             const party = ret.type === 'CUSTOMER'
                                 ? state.customers.find(c => c.id === ret.partyId)
                                 : state.suppliers.find(s => s.id === ret.partyId);
+                            const isReturnOpen = openReturnId === ret.id;
+                            
                             return (
                                 <div key={ret.id} className="p-3 bg-gray-50 rounded-lg border">
-                                    <div className="flex justify-between items-start">
-                                        <div>
+                                    <div className="flex justify-between items-start cursor-pointer" onClick={() => setOpenReturnId(isReturnOpen ? null : ret.id)}>
+                                        <div className="flex-grow pr-4">
                                             <p className={`font-bold text-sm ${ret.type === 'CUSTOMER' ? 'text-blue-600' : 'text-teal-600'}`}>{ret.type === 'CUSTOMER' ? 'Customer Return' : 'Return to Supplier'}</p>
                                             <p className="font-semibold">{party?.name || 'Unknown'}</p>
                                             <p className="text-xs text-gray-500">Date: {new Date(ret.returnDate).toLocaleDateString()}</p>
                                             <p className="text-xs text-gray-500">Ref Invoice: {ret.referenceId}</p>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="font-bold text-lg text-primary">₹{ret.amount.toLocaleString('en-IN')}</p>
+                                        <div className="text-right flex items-center flex-shrink-0">
+                                            <p className="font-bold text-lg text-primary mr-2">₹{ret.amount.toLocaleString('en-IN')}</p>
+                                            {isReturnOpen ? <ChevronUp className="text-gray-500"/> : <ChevronDown className="text-gray-500"/>}
                                         </div>
                                     </div>
-                                    <div className="mt-2 pt-2 border-t">
-                                        <p className="text-xs font-semibold text-gray-700">Items:</p>
-                                        <ul className="text-xs list-disc list-inside text-gray-600">
-                                            {ret.items.map((item, idx) => (
-                                                <li key={idx}>{item.productName} (x{item.quantity})</li>
-                                            ))}
-                                        </ul>
-                                    </div>
+                                    {isReturnOpen && (
+                                        <div className="mt-2 pt-2 border-t animate-fade-in-fast">
+                                            <p className="text-xs font-semibold text-gray-700">Items:</p>
+                                            <ul className="text-xs list-disc list-inside text-gray-600">
+                                                {ret.items.map((item, idx) => (
+                                                    <li key={idx}>{item.productName} (x{item.quantity})</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}

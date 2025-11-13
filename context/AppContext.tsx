@@ -1,5 +1,5 @@
 import React, { createContext, useReducer, useContext, useEffect, ReactNode, useState } from 'react';
-import { Customer, Supplier, Product, Sale, Purchase, Return, Payment, BeforeInstallPromptEvent, Notification, ProfileData, Page } from '../types';
+import { Customer, Supplier, Product, Sale, Purchase, Return, Payment, BeforeInstallPromptEvent, Notification, ProfileData, Page, SelectionPayload } from '../types';
 import * as db from '../utils/db';
 
 interface ToastState {
@@ -24,12 +24,14 @@ export interface AppState {
   notifications: Notification[];
   profile: ProfileData | null;
   toast: ToastState;
-  selection: { page: Page; id: string } | null;
+  selection: SelectionPayload | null;
   installPromptEvent: BeforeInstallPromptEvent | null;
+  currentPage: Page;
 }
 
 type Action =
-  | { type: 'SET_STATE'; payload: Omit<AppState, 'toast' | 'selection' | 'installPromptEvent' | 'notifications' | 'profile'> }
+  | { type: 'SET_STATE'; payload: Omit<AppState, 'toast' | 'selection' | 'installPromptEvent' | 'notifications' | 'profile' | 'currentPage'> }
+  | { type: 'SET_CURRENT_PAGE', payload: Page }
   | { type: 'SET_NOTIFICATIONS'; payload: Notification[] }
   | { type: 'SET_PROFILE'; payload: ProfileData | null }
   | { type: 'ADD_CUSTOMER'; payload: Customer }
@@ -40,6 +42,7 @@ type Action =
   | { type: 'UPDATE_PRODUCT'; payload: Product }
   | { type: 'UPDATE_PRODUCT_STOCK'; payload: { productId: string; change: number } }
   | { type: 'ADD_SALE'; payload: Sale }
+  | { type: 'UPDATE_SALE', payload: { oldSale: Sale, updatedSale: Sale } }
   | { type: 'DELETE_SALE'; payload: string } // saleId
   | { type: 'ADD_PURCHASE'; payload: Purchase }
   | { type: 'UPDATE_PURCHASE'; payload: { oldPurchase: Purchase, updatedPurchase: Purchase } }
@@ -50,7 +53,7 @@ type Action =
   | { type: 'SHOW_TOAST'; payload: { message: string; type?: 'success' | 'info' } }
   | { type: 'HIDE_TOAST' }
   | { type: 'SET_LAST_BACKUP_DATE'; payload: string }
-  | { type: 'SET_SELECTION'; payload: { page: Page; id: string } }
+  | { type: 'SET_SELECTION'; payload: SelectionPayload }
   | { type: 'CLEAR_SELECTION' }
   | { type: 'SET_INSTALL_PROMPT_EVENT'; payload: BeforeInstallPromptEvent | null }
   | { type: 'ADD_NOTIFICATION'; payload: Notification }
@@ -71,12 +74,15 @@ const initialState: AppState = {
   toast: { message: '', show: false, type: 'info' },
   selection: null,
   installPromptEvent: null,
+  currentPage: (sessionStorage.getItem('currentPage') as Page) || 'DASHBOARD',
 };
 
 const appReducer = (state: AppState, action: Action): AppState => {
   switch (action.type) {
     case 'SET_STATE':
         return { ...state, ...action.payload };
+    case 'SET_CURRENT_PAGE':
+        return { ...state, currentPage: action.payload };
     case 'SET_NOTIFICATIONS':
         return { ...state, notifications: action.payload };
     case 'SET_PROFILE':
@@ -107,6 +113,33 @@ const appReducer = (state: AppState, action: Action): AppState => {
         }
     case 'ADD_SALE':
       return { ...state, sales: [...state.sales, action.payload] };
+    case 'UPDATE_SALE': {
+        const { oldSale, updatedSale } = action.payload;
+        const stockChanges = new Map<string, number>();
+
+        // Add back old items to stock
+        oldSale.items.forEach(item => {
+            stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) + item.quantity);
+        });
+
+        // Remove new items from stock
+        updatedSale.items.forEach(item => {
+            stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) - item.quantity);
+        });
+        
+        const updatedProducts = state.products.map(p => {
+            if (stockChanges.has(p.id)) {
+                return { ...p, quantity: p.quantity + (stockChanges.get(p.id) || 0) };
+            }
+            return p;
+        });
+
+        return {
+            ...state,
+            sales: state.sales.map(s => s.id === updatedSale.id ? updatedSale : s),
+            products: updatedProducts,
+        };
+    }
     case 'DELETE_SALE': {
       const saleToDelete = state.sales.find(s => s.id === action.payload);
       if (!saleToDelete) return state;
@@ -320,7 +353,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           db.getAll('profile'),
         ]);
 
-        const validatedState: Omit<AppState, 'toast' | 'selection' | 'installPromptEvent' | 'notifications' | 'profile'> = {
+        const validatedState: Omit<AppState, 'toast' | 'selection' | 'installPromptEvent' | 'notifications' | 'profile' | 'currentPage'> = {
             customers: Array.isArray(customers) ? customers : [],
             suppliers: Array.isArray(suppliers) ? suppliers : [],
             products: Array.isArray(products) ? products : [],

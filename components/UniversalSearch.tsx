@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, X, User, Package, Boxes, ShoppingCart } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
-import { Page } from '../types';
+import { Page, SelectionPayload } from '../types';
 import { Customer, Supplier, Product, Sale, Purchase } from '../types';
 
 interface SearchResults {
@@ -15,7 +15,7 @@ interface SearchResults {
 interface UniversalSearchProps {
     isOpen: boolean;
     onClose: () => void;
-    onNavigate: (page: Page, id: string) => void;
+    onNavigate: (selection: SelectionPayload) => void;
 }
 
 const UniversalSearch: React.FC<UniversalSearchProps> = ({ isOpen, onClose, onNavigate }) => {
@@ -111,7 +111,7 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({ isOpen, onClose, onNa
                                 <h2 className="text-sm font-bold uppercase text-purple-700 mb-2">Customers</h2>
                                 <div className="space-y-2">
                                     {results.customers.map(c => (
-                                        <div key={c.id} onClick={() => onNavigate('CUSTOMERS', c.id)} className="p-3 bg-white rounded-lg shadow-sm cursor-pointer hover:bg-purple-50 flex items-center gap-3">
+                                        <div key={c.id} onClick={() => onNavigate({ page: 'CUSTOMERS', id: c.id })} className="p-3 bg-white rounded-lg shadow-sm cursor-pointer hover:bg-purple-50 flex items-center gap-3">
                                             <User className="w-5 h-5 text-primary" />
                                             <div>
                                                 <p className="font-semibold">{c.name}</p>
@@ -127,7 +127,7 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({ isOpen, onClose, onNa
                                 <h2 className="text-sm font-bold uppercase text-purple-700 mb-2">Suppliers</h2>
                                 <div className="space-y-2">
                                     {results.suppliers.map(s => (
-                                        <div key={s.id} onClick={() => onNavigate('PURCHASES', s.id)} className="p-3 bg-white rounded-lg shadow-sm cursor-pointer hover:bg-purple-50 flex items-center gap-3">
+                                        <div key={s.id} onClick={() => onNavigate({ page: 'PURCHASES', id: s.id })} className="p-3 bg-white rounded-lg shadow-sm cursor-pointer hover:bg-purple-50 flex items-center gap-3">
                                             <Package className="w-5 h-5 text-primary" />
                                             <div>
                                                 <p className="font-semibold">{s.name}</p>
@@ -143,7 +143,7 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({ isOpen, onClose, onNa
                                 <h2 className="text-sm font-bold uppercase text-purple-700 mb-2">Products</h2>
                                 <div className="space-y-2">
                                     {results.products.map(p => (
-                                        <div key={p.id} onClick={() => onNavigate('PRODUCTS', p.id)} className="p-3 bg-white rounded-lg shadow-sm cursor-pointer hover:bg-purple-50 flex items-center gap-3">
+                                        <div key={p.id} onClick={() => onNavigate({ page: 'PRODUCTS', id: p.id })} className="p-3 bg-white rounded-lg shadow-sm cursor-pointer hover:bg-purple-50 flex items-center gap-3">
                                             <Boxes className="w-5 h-5 text-primary" />
                                             <div>
                                                 <p className="font-semibold">{p.name}</p>
@@ -161,7 +161,7 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({ isOpen, onClose, onNa
                                     {results.sales.map(s => {
                                         const customer = state.customers.find(c => c.id === s.customerId);
                                         return (
-                                            <div key={s.id} onClick={() => onNavigate('CUSTOMERS', s.customerId)} className="p-3 bg-white rounded-lg shadow-sm cursor-pointer hover:bg-purple-50 flex items-center gap-3">
+                                            <div key={s.id} onClick={() => onNavigate({ page: 'CUSTOMERS', id: s.customerId })} className="p-3 bg-white rounded-lg shadow-sm cursor-pointer hover:bg-purple-50 flex items-center gap-3">
                                                 <ShoppingCart className="w-5 h-5 text-primary" />
                                                 <div>
                                                     <p className="font-semibold">To: {customer?.name || 'Unknown'}</p>
@@ -180,7 +180,7 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({ isOpen, onClose, onNa
                                     {results.purchases.map(p => {
                                         const supplier = state.suppliers.find(s => s.id === p.supplierId);
                                         return (
-                                            <div key={p.id} onClick={() => onNavigate('PURCHASES', p.supplierId)} className="p-3 bg-white rounded-lg shadow-sm cursor-pointer hover:bg-purple-50 flex items-center gap-3">
+                                            <div key={p.id} onClick={() => onNavigate({ page: 'PURCHASES', id: p.supplierId })} className="p-3 bg-white rounded-lg shadow-sm cursor-pointer hover:bg-purple-50 flex items-center gap-3">
                                                 <Package className="w-5 h-5 text-primary" />
                                                 <div>
                                                     <p className="font-semibold">From: {supplier?.name || 'Unknown'}</p>
