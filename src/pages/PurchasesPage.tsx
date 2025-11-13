@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Plus, IndianRupee, Edit, Save, X, Search, Package, Download } from 'lucide-react';
+import { Plus, IndianRupee, Edit, Save, X, Search, Package, Download, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Supplier, Purchase, Payment, Return } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import ConfirmationModal from '../components/ConfirmationModal';
 import DeleteButton from '../components/DeleteButton';
-import PurchaseForm from '../components/AddPurchaseView';
+import { PurchaseForm } from '../components/AddPurchaseView';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -27,6 +27,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [purchaseToEdit, setPurchaseToEdit] = useState<Purchase | null>(null);
+    const [openPurchaseId, setOpenPurchaseId] = useState<string | null>(null);
 
     // State for 'add_supplier' view
     const [newSupplier, setNewSupplier] = useState({ id: '', name: '', phone: '', location: '', gstNumber: '', reference: '', account1: '', account2: '', upi: '' });
@@ -45,7 +46,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             const supplierToSelect = state.suppliers.find(s => s.id === state.selection.id);
             if (supplierToSelect) {
                 setSelectedSupplier(supplierToSelect);
-            } else {
+            } else if (state.selection.action === 'new') {
                  setView('add_purchase');
             }
             dispatch({ type: 'CLEAR_SELECTION' });
@@ -80,6 +81,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             setEditedSupplier(null);
         }
         setIsEditing(false);
+        setOpenPurchaseId(null);
     }, [selectedSupplier?.id, state.suppliers, state.purchases]);
     
     const handleAddSupplier = () => {
@@ -171,7 +173,6 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         if (oldPurchase) {
             dispatch({ type: 'UPDATE_PURCHASE', payload: { oldPurchase, updatedPurchase } });
             showToast("Purchase updated successfully!");
-            // After editing, go back to the supplier list and re-select that supplier to see the changes.
             const supplier = state.suppliers.find(s => s.id === updatedPurchase.supplierId) || null;
             setSelectedSupplier(supplier);
             setPurchaseToEdit(null);
@@ -368,10 +369,11 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                 const amountPaid = (purchase.payments || []).reduce((sum, p) => sum + p.amount, 0);
                                 const dueAmount = purchase.totalAmount - amountPaid;
                                 const isPaid = dueAmount <= 0.01;
+                                const isPurchaseOpen = openPurchaseId === purchase.id;
 
                                 return (
-                                <div key={purchase.id} className="p-3 bg-gray-50 rounded-lg border">
-                                    <div className="flex justify-between items-start">
+                                <div key={purchase.id} className="p-3 bg-gray-50 rounded-lg border overflow-hidden">
+                                    <div className="flex justify-between items-start cursor-pointer" onClick={() => setOpenPurchaseId(isPurchaseOpen ? null : purchase.id)}>
                                         <div className="flex-grow pr-4">
                                             <div className="flex justify-between items-start mb-2">
                                                 <div>
@@ -384,37 +386,44 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                             </div>
                                         </div>
                                         <div className="flex items-center ml-2 flex-shrink-0">
-                                            <button 
-                                                onClick={() => { setPurchaseToEdit(purchase); setView('edit_purchase'); }} 
-                                                className="p-2 rounded-full text-blue-600 hover:bg-blue-100 transition-colors"
-                                                aria-label="Edit purchase"
-                                            >
-                                                <Edit size={16} />
-                                            </button>
-                                            <DeleteButton variant="delete" onClick={() => handleDeletePurchase(purchase.id)} />
+                                            {isPurchaseOpen ? <ChevronUp className="text-gray-500"/> : <ChevronDown className="text-gray-500"/>}
                                         </div>
                                     </div>
-                                    <div className="pl-4 mt-2 border-l-2 border-purple-200 space-y-3">
-                                        <div>
-                                            <h4 className="font-semibold text-sm">Items:</h4>
-                                            <ul className="list-disc list-inside text-sm">
-                                                {purchase.items.map((item, index) => <li key={index}>{item.productName} (x{item.quantity}) @ ₹{item.price.toLocaleString('en-IN')}</li>)}
-                                            </ul>
-                                        </div>
-                                        {(purchase.payments || []).length > 0 && (
-                                            <div>
-                                                <h4 className="font-semibold text-sm">Payments:</h4>
-                                                <ul className="list-disc list-inside text-sm">
-                                                    {(purchase.payments || []).map(p => (
-                                                    <li key={p.id}>
-                                                        ₹{p.amount.toLocaleString('en-IN')} {p.method === 'RETURN_CREDIT' ? <span className="text-blue-600 font-semibold">(Return Credit)</span> : `via ${p.method}`} on {new Date(p.date).toLocaleDateString()}
-                                                        {p.reference && <span className="text-xs text-gray-500 block">Ref: {p.reference}</span>}
-                                                    </li>
-                                                    ))}
-                                                </ul>
+                                    <div style={{ display: 'grid', gridTemplateRows: isPurchaseOpen ? '1fr' : '0fr', transition: 'grid-template-rows 0.4s ease-in-out' }}>
+                                        <div className="overflow-hidden">
+                                            <div className="pl-4 mt-2 border-l-2 border-purple-200 space-y-3 pt-2">
+                                                <div className="flex items-center gap-2">
+                                                    <button 
+                                                        onClick={() => { setPurchaseToEdit(purchase); setView('edit_purchase'); }} 
+                                                        className="p-2 rounded-full text-blue-600 hover:bg-blue-100 transition-colors"
+                                                        aria-label="Edit purchase"
+                                                    >
+                                                        <Edit size={16} />
+                                                    </button>
+                                                    <DeleteButton variant="delete" onClick={() => handleDeletePurchase(purchase.id)} />
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-semibold text-sm">Items:</h4>
+                                                    <ul className="list-disc list-inside text-sm">
+                                                        {purchase.items.map((item, index) => <li key={index}>{item.productName} (x{item.quantity}) @ ₹{item.price.toLocaleString('en-IN')}</li>)}
+                                                    </ul>
+                                                </div>
+                                                {(purchase.payments || []).length > 0 && (
+                                                    <div>
+                                                        <h4 className="font-semibold text-sm">Payments:</h4>
+                                                        <ul className="list-disc list-inside text-sm">
+                                                            {(purchase.payments || []).map(p => (
+                                                            <li key={p.id}>
+                                                                ₹{p.amount.toLocaleString('en-IN')} {p.method === 'RETURN_CREDIT' ? <span className="text-blue-600 font-semibold">(Return Credit)</span> : `via ${p.method}`} on {new Date(p.date).toLocaleDateString()}
+                                                                {p.reference && <span className="text-xs text-gray-500 block">Ref: {p.reference}</span>}
+                                                            </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
+                                                {!isPaid && <Button onClick={() => setPaymentModalState({ isOpen: true, purchaseId: purchase.id })}><Plus size={16}/> Add Payment</Button>}
                                             </div>
-                                        )}
-                                        {!isPaid && <Button onClick={() => setPaymentModalState({ isOpen: true, purchaseId: purchase.id })}><Plus size={16}/> Add Payment</Button>}
+                                        </div>
                                     </div>
                                 </div>
                             )})}
@@ -460,34 +469,15 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         );
     }
     
-    if (view === 'add_supplier') {
-        return (
-            <div className="space-y-4">
-                 <Button onClick={() => setView('list')}>&larr; Back to List</Button>
-                 <Card title="Add New Supplier">
-                     <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium">Supplier ID</label>
-                            <div className="flex items-center mt-1">
-                                <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 bg-gray-50 text-gray-500 text-sm">SUPP-</span>
-                                <input type="text" placeholder="Enter unique ID" value={newSupplier.id} onChange={e => setNewSupplier({ ...newSupplier, id: e.target.value })} className="w-full p-2 border rounded-r-md" autoFocus />
-                            </div>
-                        </div>
-                        <input type="text" placeholder="Name*" value={newSupplier.name} onChange={e => setNewSupplier({ ...newSupplier, name: e.target.value })} className="w-full p-2 border rounded" />
-                        <input type="text" placeholder="Phone*" value={newSupplier.phone} onChange={e => setNewSupplier({ ...newSupplier, phone: e.target.value })} className="w-full p-2 border rounded" />
-                        <input type="text" placeholder="Location*" value={newSupplier.location} onChange={e => setNewSupplier({ ...newSupplier, location: e.target.value })} className="w-full p-2 border rounded" />
-                        <input type="text" placeholder="GST Number (Optional)" value={newSupplier.gstNumber} onChange={e => setNewSupplier({ ...newSupplier, gstNumber: e.target.value })} className="w-full p-2 border rounded" />
-                        <input type="text" placeholder="Reference (Optional)" value={newSupplier.reference} onChange={e => setNewSupplier({ ...newSupplier, reference: e.target.value })} className="w-full p-2 border rounded" />
-                        <input type="text" placeholder="Bank Account 1 (Optional)" value={newSupplier.account1} onChange={e => setNewSupplier({ ...newSupplier, account1: e.target.value })} className="w-full p-2 border rounded" />
-                        <input type="text" placeholder="Bank Account 2 (Optional)" value={newSupplier.account2} onChange={e => setNewSupplier({ ...newSupplier, account2: e.target.value })} className="w-full p-2 border rounded" />
-                        <input type="text" placeholder="UPI ID (Optional)" value={newSupplier.upi} onChange={e => setNewSupplier({ ...newSupplier, upi: e.target.value })} className="w-full p-2 border rounded" />
-                        <Button onClick={handleAddSupplier} className="w-full">Save Supplier</Button>
-                     </div>
-                 </Card>
-            </div>
-        );
-    }
-    
+    const lastTenPurchases = useMemo(() => {
+        return state.purchases.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
+    }, [state.purchases]);
+
+    const handleEditFromHistory = (purchase: Purchase) => {
+        setPurchaseToEdit(purchase);
+        setView('edit_purchase');
+    };
+
     if (view === 'add_purchase' || view === 'edit_purchase') {
        return (
             <PurchaseForm
@@ -498,6 +488,8 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                 onSubmit={view === 'add_purchase' ? handleCompletePurchase : handleUpdatePurchase}
                 onBack={() => { setView('list'); setPurchaseToEdit(null); }}
                 setIsDirty={setIsDirty}
+                lastTenPurchases={lastTenPurchases}
+                onEdit={handleEditFromHistory}
             />
         );
     }
@@ -509,98 +501,97 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         supplier.location.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const lastTenPurchases = useMemo(() => {
-        return state.purchases.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
-    }, [state.purchases]);
-
     return (
         <div className="space-y-4">
-            <h1 className="text-2xl font-bold text-primary">Purchases & Suppliers</h1>
-            <div className="flex flex-col sm:flex-row gap-4">
-                <Button onClick={() => setView('add_purchase')} className="w-full">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create New Purchase
-                </Button>
-                <Button onClick={() => setView('add_supplier')} variant="secondary" className="w-full">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add New Supplier
-                </Button>
-            </div>
-            
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                <input
-                    type="text"
-                    placeholder="Search suppliers by name, phone, or location..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full p-2 pl-10 border rounded-lg"
-                />
-            </div>
-
-            <Card title="Last 10 Purchases">
-                <div className="space-y-3 max-h-80 overflow-y-auto">
-                    {lastTenPurchases.length > 0 ? lastTenPurchases.map(purchase => {
-                        const supplier = state.suppliers.find(s => s.id === purchase.supplierId);
-                        return (
-                            <div key={purchase.id} className="p-3 bg-gray-50 rounded-lg border flex justify-between items-center">
-                                <div>
-                                    <p className="font-semibold text-primary">{supplier?.name || 'Unknown Supplier'}</p>
-                                    <p className="text-xs text-gray-500">ID: {purchase.id}</p>
-                                    <p className="text-sm">Total: <span className="font-bold">₹{purchase.totalAmount.toLocaleString('en-IN')}</span> on {new Date(purchase.date).toLocaleDateString()}</p>
-                                </div>
-                                <Button 
-                                    onClick={() => {
-                                        setPurchaseToEdit(purchase);
-                                        setView('edit_purchase');
-                                    }} 
-                                    variant="secondary" 
-                                    className="px-3 py-1 text-sm flex-shrink-0"
-                                >
-                                    <Edit size={14} className="mr-1" /> Edit
-                                </Button>
+            {view === 'add_supplier' ? (
+                 <Card title="New Supplier Form">
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Supplier ID</label>
+                            <div className="flex items-center mt-1">
+                                <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                                    SUPP-
+                                </span>
+                                <input type="text" placeholder="Enter unique ID" value={newSupplier.id} onChange={e => setNewSupplier({ ...newSupplier, id: e.target.value })} className="w-full p-2 border rounded-r-md" />
                             </div>
-                        );
-                    }) : <p className="text-gray-500 text-center">No purchases recorded yet.</p>}
-                </div>
-            </Card>
+                        </div>
+                        <input type="text" placeholder="Name" value={newSupplier.name} onChange={e => setNewSupplier({ ...newSupplier, name: e.target.value })} className="w-full p-2 border rounded" />
+                        <input type="text" placeholder="Phone" value={newSupplier.phone} onChange={e => setNewSupplier({ ...newSupplier, phone: e.target.value })} className="w-full p-2 border rounded" />
+                        <input type="text" placeholder="Location" value={newSupplier.location} onChange={e => setNewSupplier({ ...newSupplier, location: e.target.value })} className="w-full p-2 border rounded" />
+                        <input type="text" placeholder="GST Number (Optional)" value={newSupplier.gstNumber} onChange={e => setNewSupplier({ ...newSupplier, gstNumber: e.target.value })} className="w-full p-2 border rounded" />
+                        <input type="text" placeholder="Reference (Optional)" value={newSupplier.reference} onChange={e => setNewSupplier({ ...newSupplier, reference: e.target.value })} className="w-full p-2 border rounded" />
+                        <input type="text" placeholder="Account 1 (Optional)" value={newSupplier.account1} onChange={e => setNewSupplier({ ...newSupplier, account1: e.target.value })} className="w-full p-2 border rounded" />
+                        <input type="text" placeholder="Account 2 (Optional)" value={newSupplier.account2} onChange={e => setNewSupplier({ ...newSupplier, account2: e.target.value })} className="w-full p-2 border rounded" />
+                        <input type="text" placeholder="UPI ID (Optional)" value={newSupplier.upi} onChange={e => setNewSupplier({ ...newSupplier, upi: e.target.value })} className="w-full p-2 border rounded" />
+                        <div className="flex gap-2">
+                           <Button onClick={handleAddSupplier} className="w-full">Save Supplier</Button>
+                           <Button onClick={() => setView('list')} variant="secondary" className="w-full">Cancel</Button>
+                        </div>
+                    </div>
+                </Card>
+            ) : (
+                <>
+                    <h1 className="text-2xl font-bold text-primary">Purchases & Suppliers</h1>
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        <Button onClick={() => setView('add_purchase')} className="w-full">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Create New Purchase
+                        </Button>
+                        <Button onClick={() => setView('add_supplier')} variant="secondary" className="w-full">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add New Supplier
+                        </Button>
+                    </div>
+                    
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                        <input
+                            type="text"
+                            placeholder="Search suppliers by name, phone, or location..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full p-2 pl-10 border rounded-lg"
+                        />
+                    </div>
 
-            <Card title="All Suppliers">
-                <div className="space-y-3">
-                    {filteredSuppliers.map((supplier, index) => {
-                        const supplierPurchases = state.purchases.filter(p => p.supplierId === supplier.id);
-                        const totalSpent = supplierPurchases.reduce((sum, p) => sum + p.totalAmount, 0);
-                        const totalPaid = supplierPurchases.reduce((sum, p) => sum + (p.payments || []).reduce((pSum, payment) => pSum + payment.amount, 0), 0);
-                        const totalDue = totalSpent - totalPaid;
+                    <Card title="All Suppliers">
+                        <div className="space-y-3">
+                            {filteredSuppliers.map((supplier, index) => {
+                                const supplierPurchases = state.purchases.filter(p => p.supplierId === supplier.id);
+                                const totalSpent = supplierPurchases.reduce((sum, p) => sum + p.totalAmount, 0);
+                                const totalPaid = supplierPurchases.reduce((sum, p) => sum + (p.payments || []).reduce((pSum, payment) => pSum + payment.amount, 0), 0);
+                                const totalDue = totalSpent - totalPaid;
 
-                        return (
-                            <div 
-                                key={supplier.id} 
-                                onClick={() => setSelectedSupplier(supplier)} 
-                                className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-purple-100 border animate-slide-up-fade"
-                                style={{ animationDelay: `${index * 50}ms` }}
-                            >
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <p className="font-bold text-lg text-primary">{supplier.name}</p>
-                                        <p className="text-sm text-gray-500">{supplier.location}</p>
-                                    </div>
-                                    <div className="text-right flex-shrink-0 ml-4">
-                                        <div className="flex items-center justify-end gap-1 text-green-600">
-                                            <Package size={14}/>
-                                            <span className="font-semibold">₹{totalSpent.toLocaleString('en-IN')}</span>
+                                return (
+                                    <div 
+                                        key={supplier.id} 
+                                        onClick={() => setSelectedSupplier(supplier)} 
+                                        className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-purple-100 border animate-slide-up-fade"
+                                        style={{ animationDelay: `${index * 50}ms` }}
+                                    >
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <p className="font-bold text-lg text-primary">{supplier.name}</p>
+                                                <p className="text-sm text-gray-500">{supplier.location}</p>
+                                            </div>
+                                            <div className="text-right flex-shrink-0 ml-4">
+                                                <div className="flex items-center justify-end gap-1 text-green-600">
+                                                    <Package size={14}/>
+                                                    <span className="font-semibold">₹{totalSpent.toLocaleString('en-IN')}</span>
+                                                </div>
+                                                <div className={`flex items-center justify-end gap-1 ${totalDue > 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                                                    <IndianRupee size={14} />
+                                                    <span className="font-semibold">₹{totalDue.toLocaleString('en-IN')}</span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className={`flex items-center justify-end gap-1 ${totalDue > 0 ? 'text-red-600' : 'text-gray-600'}`}>
-                                            <IndianRupee size={14} />
-                                            <span className="font-semibold">₹{totalDue.toLocaleString('en-IN')}</span>
-                                        </div>
                                     </div>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            </Card>
+                                );
+                            })}
+                        </div>
+                    </Card>
+                </>
+            )}
         </div>
     );
 };

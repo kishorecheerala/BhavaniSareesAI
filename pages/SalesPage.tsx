@@ -791,28 +791,6 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                     </Card>
                  </>
             )}
-            
-            {mode === 'add' && items.length === 0 && (
-                <Card title="Last 10 Transactions">
-                    <div className="space-y-3 max-h-80 overflow-y-auto">
-                        {lastTenSales.length > 0 ? lastTenSales.map(sale => {
-                            const customer = state.customers.find(c => c.id === sale.customerId);
-                            return (
-                                <div key={sale.id} className="p-3 bg-gray-50 rounded-lg border flex justify-between items-center">
-                                    <div>
-                                        <p className="font-semibold text-primary">{customer?.name || 'Unknown Customer'}</p>
-                                        <p className="text-xs text-gray-500">ID: {sale.id}</p>
-                                        <p className="text-sm">Total: <span className="font-bold">₹{sale.totalAmount.toLocaleString('en-IN')}</span> on {new Date(sale.date).toLocaleDateString()}</p>
-                                    </div>
-                                    <Button onClick={() => handleEditSaleFromHistory(sale)} variant="secondary" className="px-3 py-1 text-sm flex-shrink-0">
-                                        <Edit size={14} className="mr-1" /> Edit
-                                    </Button>
-                                </div>
-                            );
-                        }) : <p className="text-gray-500 text-center">No sales recorded yet.</p>}
-                    </div>
-                </Card>
-            )}
 
             <div className="space-y-2">
                 {canCreateSale ? (
@@ -842,6 +820,28 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                     {mode === 'edit' ? 'Cancel Edit' : 'Clear Form'}
                 </Button>
             </div>
+            
+            {mode === 'add' && items.length === 0 && (
+                <Card title="Last 10 Transactions">
+                    <div className="space-y-3 max-h-80 overflow-y-auto">
+                        {lastTenSales.length > 0 ? lastTenSales.map(sale => {
+                            const customer = state.customers.find(c => c.id === sale.customerId);
+                            return (
+                                <div key={sale.id} className="p-3 bg-gray-50 rounded-lg border flex justify-between items-center">
+                                    <div>
+                                        <p className="font-semibold text-primary">{customer?.name || 'Unknown Customer'}</p>
+                                        <p className="text-xs text-gray-500">ID: {sale.id}</p>
+                                        <p className="text-sm">Total: <span className="font-bold">₹{sale.totalAmount.toLocaleString('en-IN')}</span> on {new Date(sale.date).toLocaleDateString()}</p>
+                                    </div>
+                                    <Button onClick={() => handleEditSaleFromHistory(sale)} variant="secondary" className="px-3 py-1 text-sm flex-shrink-0">
+                                        <Edit size={14} className="mr-1" /> Edit
+                                    </Button>
+                                </div>
+                            );
+                        }) : <p className="text-gray-500 text-center">No sales recorded yet.</p>}
+                    </div>
+                </Card>
+            )}
         </div>
     );
 };

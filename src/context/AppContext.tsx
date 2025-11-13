@@ -48,7 +48,6 @@ type Action =
   | { type: 'UPDATE_PURCHASE'; payload: { oldPurchase: Purchase, updatedPurchase: Purchase } }
   | { type: 'DELETE_PURCHASE'; payload: string } // purchaseId
   | { type: 'ADD_RETURN'; payload: Return }
-  // FIX: Add UPDATE_RETURN action type to handle editing existing returns.
   | { type: 'UPDATE_RETURN'; payload: { oldReturn: Return, updatedReturn: Return } }
   | { type: 'ADD_PAYMENT_TO_SALE'; payload: { saleId: string; payment: Payment } }
   | { type: 'ADD_PAYMENT_TO_PURCHASE'; payload: { purchaseId: string; payment: Payment } }
@@ -185,23 +184,20 @@ const appReducer = (state: AppState, action: Action): AppState => {
         updatedPurchase.items.forEach(item => {
             productDetails.set(item.productId, { purchasePrice: item.price, salePrice: item.saleValue, gstPercent: item.gstPercent, productName: item.productName });
             
-            // If this product doesn't exist in our main product list, it's a new one.
             if (!existingProductIds.has(item.productId)) {
                 newProductsToAdd.push({
                     id: item.productId,
                     name: item.productName,
-                    quantity: item.quantity, // Initial quantity is from this purchase
+                    quantity: item.quantity,
                     purchasePrice: item.price,
                     salePrice: item.saleValue,
                     gstPercent: item.gstPercent,
                 });
             } else {
-                 // It's an existing product, so calculate its stock change.
                  stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) + item.quantity);
             }
         });
 
-        // Update existing products
         const updatedExistingProducts = state.products.map(p => {
             if (stockChanges.has(p.id)) {
                 const updatedProduct = {
@@ -213,6 +209,7 @@ const appReducer = (state: AppState, action: Action): AppState => {
                     updatedProduct.purchasePrice = details.purchasePrice;
                     updatedProduct.salePrice = details.salePrice;
                     updatedProduct.gstPercent = details.gstPercent;
+                    updatedProduct.name = details.productName;
                 }
                 return updatedProduct;
             }
@@ -289,21 +286,16 @@ const appReducer = (state: AppState, action: Action): AppState => {
         returns: [...state.returns, returnPayload],
       };
     }
-    // FIX: Add reducer logic for UPDATE_RETURN to correctly handle stock and payment adjustments when a return is edited.
     case 'UPDATE_RETURN': {
         const { oldReturn, updatedReturn } = action.payload;
         const stockChanges = new Map<string, number>();
 
-        // Reverting old return: customer return added stock (+), so we subtract (-). Supplier return removed stock (-), so we add (+).
         const oldStockSign = oldReturn.type === 'CUSTOMER' ? -1 : 1; 
-        // Applying new return: customer return adds stock (+). Supplier return removes stock (-).
         const newStockSign = updatedReturn.type === 'CUSTOMER' ? 1 : -1;
 
-        // Revert stock changes from the old return
         oldReturn.items.forEach(item => {
             stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) + (item.quantity * oldStockSign));
         });
-        // Apply stock changes for the new return
         updatedReturn.items.forEach(item => {
             stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) + (item.quantity * newStockSign));
         });
@@ -318,7 +310,6 @@ const appReducer = (state: AppState, action: Action): AppState => {
         let updatedSales = state.sales;
         let updatedPurchases = state.purchases;
 
-        // Update payment/credit on the original invoice
         if (oldReturn.type === 'CUSTOMER') {
             updatedSales = state.sales.map(sale => {
                 if (sale.id === oldReturn.referenceId) {

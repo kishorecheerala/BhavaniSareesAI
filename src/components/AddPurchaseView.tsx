@@ -479,5 +479,4 @@ const PurchaseFormComponent: React.FC<PurchaseFormProps> = ({ mode, initialData,
     );
 };
 
-// FIX: Changed to a named export to resolve module resolution issue.
 export const PurchaseForm = React.memo(PurchaseFormComponent);

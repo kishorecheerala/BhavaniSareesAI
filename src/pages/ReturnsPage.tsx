@@ -86,9 +86,6 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
             : state.purchases.find(p => p.id === referenceId);
 
         const originalItem = originalInvoice?.items.find(i => i.productId === productId);
-
-        // FIX: Remove incorrect logic that wrongly inflated the max returnable quantity in edit mode.
-        // The max quantity should always be the quantity from the original invoice.
         const maxQuantity = originalItem?.quantity || 0;
 
         if (newQuantity > maxQuantity) {
