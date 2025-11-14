@@ -169,47 +169,47 @@ const appReducer = (state: AppState, action: Action): AppState => {
     case 'UPDATE_PURCHASE': {
         const { oldPurchase, updatedPurchase } = action.payload;
 
-        // Use a map for efficient product lookups and updates
-        const productMap = new Map<string, Product>(state.products.map(p => [p.id, { ...p }]));
+        let tempProducts = [...state.products];
 
-        // 1. Revert stock from the old purchase
-        oldPurchase.items.forEach(item => {
-            const product = productMap.get(item.productId);
-            if (product) {
-                product.quantity -= item.quantity;
+        // Create a set of all product IDs involved for easier lookup
+        const allProductIds = new Set([
+            ...oldPurchase.items.map(i => i.productId),
+            ...updatedPurchase.items.map(i => i.productId)
+        ]);
+
+        allProductIds.forEach(productId => {
+            const oldItem = oldPurchase.items.find(i => i.productId === productId);
+            const newItem = updatedPurchase.items.find(i => i.productId === productId);
+            const existingProductIndex = tempProducts.findIndex(p => p.id === productId);
+
+            const oldQty = oldItem ? oldItem.quantity : 0;
+            const newQty = newItem ? newItem.quantity : 0;
+            const stockChange = newQty - oldQty;
+
+            if (existingProductIndex > -1) {
+                // Product exists, update it
+                const updatedProduct = { ...tempProducts[existingProductIndex] };
+                updatedProduct.quantity += stockChange;
+                if (newItem) { // Update product details from the new item
+                    updatedProduct.purchasePrice = newItem.price;
+                    updatedProduct.salePrice = newItem.saleValue;
+                    updatedProduct.gstPercent = newItem.gstPercent;
+                }
+                tempProducts[existingProductIndex] = updatedProduct;
+            } else if (newItem) {
+                // This case handles a new product being added during the edit
+                tempProducts.push({
+                    id: newItem.productId,
+                    name: newItem.productName,
+                    quantity: newItem.quantity,
+                    purchasePrice: newItem.price,
+                    salePrice: newItem.saleValue,
+                    gstPercent: newItem.gstPercent,
+                });
             }
         });
-
-        // 2. Apply new stock and update product details from the updated purchase
-        updatedPurchase.items.forEach(item => {
-            let product = productMap.get(item.productId);
-
-            if (product) {
-                // Product exists, update its stock and details
-                product.quantity += item.quantity;
-                product.purchasePrice = item.price;
-                product.salePrice = item.saleValue; // `PurchaseItem` uses `saleValue`
-                product.gstPercent = item.gstPercent;
-            } else {
-                // Product doesn't exist, it's a new item added during the edit
-                product = {
-                    id: item.productId,
-                    name: item.productName,
-                    quantity: item.quantity,
-                    purchasePrice: item.price,
-                    salePrice: item.saleValue,
-                    gstPercent: item.gstPercent,
-                };
-            }
-            productMap.set(item.productId, product);
-        });
-
-        // Convert map back to array, ensuring no negative quantities
-        const updatedProducts = Array.from(productMap.values()).map(p => ({
-            ...p,
-            quantity: Math.max(0, p.quantity)
-        }));
-
+        
+        const updatedProducts = tempProducts.map(p => ({ ...p, quantity: Math.max(0, p.quantity) }));
         const updatedPurchases = state.purchases.map(p => p.id === updatedPurchase.id ? updatedPurchase : p);
 
         return {
