@@ -366,6 +366,14 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                 const dueAmount = purchase.totalAmount - amountPaid;
                                 const isPaid = dueAmount <= 0.01;
 
+                                const totalGst = purchase.items.reduce((sum, item) => {
+                                    const itemTotal = item.price * item.quantity;
+                                    const itemGst = itemTotal - (itemTotal / (1 + (item.gstPercent / 100)));
+                                    return sum + itemGst;
+                                }, 0);
+                                const subTotal = purchase.totalAmount - totalGst;
+
+
                                 return (
                                 <div key={purchase.id} className="p-3 bg-gray-50 rounded-lg border">
                                     <div className="flex justify-between items-start">
@@ -394,6 +402,16 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                                 {purchase.items.map((item, index) => <li key={index}>{item.productName} (x{item.quantity}) @ ₹{item.price.toLocaleString('en-IN')}</li>)}
                                             </ul>
                                         </div>
+                                        
+                                        <div className="p-2 bg-purple-50 rounded-md text-sm">
+                                            <h4 className="font-semibold text-gray-700 mb-2">Transaction Details:</h4>
+                                            <div className="space-y-1">
+                                                <div className="flex justify-between"><span>Subtotal (excl. GST):</span> <span>₹{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                                                <div className="flex justify-between"><span>GST Amount:</span> <span>+ ₹{totalGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                                                <div className="flex justify-between font-bold border-t pt-1 mt-1"><span>Grand Total:</span> <span>₹{purchase.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                                            </div>
+                                        </div>
+
                                         {(purchase.payments || []).length > 0 && (
                                             <div>
                                                 <h4 className="font-semibold text-sm">Payments:</h4>

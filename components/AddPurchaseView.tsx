@@ -383,6 +383,12 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
     };
 
     const totalPurchaseAmount = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const totalGstAmount = items.reduce((sum, item) => {
+        const itemTotal = item.price * item.quantity;
+        const itemGst = itemTotal - (itemTotal / (1 + (item.gstPercent / 100)));
+        return sum + itemGst;
+    }, 0);
+    const subTotal = totalPurchaseAmount - totalGstAmount;
     const title = mode === 'add' ? 'New Purchase Order' : 'Edit Purchase Order';
 
     return (
@@ -462,9 +468,19 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
                     ))}
                 </div>
             </Card>
-            <Card title="Billing Summary">
-                <div className="p-4 bg-purple-50 rounded-lg text-center">
-                    <p className="text-sm font-semibold text-gray-600">Total Amount</p>
+            <Card title="Transaction Details">
+                 <div className="space-y-2 mb-4">
+                    <div className="flex justify-between text-gray-600">
+                        <span>Subtotal (excl. GST):</span>
+                        <span>₹{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-600">
+                        <span>GST Amount:</span>
+                        <span>+ ₹{totalGstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                </div>
+                <div className="p-4 bg-purple-50 rounded-lg text-center border-t">
+                    <p className="text-sm font-semibold text-gray-600">Grand Total</p>
                     <p className="text-4xl font-bold text-primary">₹{totalPurchaseAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                 </div>
             </Card>

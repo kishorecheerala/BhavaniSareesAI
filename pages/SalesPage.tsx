@@ -675,7 +675,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                 </div>
             </Card>
 
-            <Card title="Billing & Payment">
+            <Card title="Transaction Details">
                 <div className="mb-4 space-y-2">
                     <div className="flex justify-between text-gray-600">
                         <span>Subtotal:</span>

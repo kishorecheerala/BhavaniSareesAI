@@ -519,6 +519,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                                 const amountPaid = sale.payments.reduce((sum, p) => sum + p.amount, 0);
                                 const dueAmount = sale.totalAmount - amountPaid;
                                 const isPaid = dueAmount <= 0.01; // Epsilon for float comparison
+                                const subTotal = sale.totalAmount + sale.discount;
 
                                 return (
                                 <div key={sale.id} className="p-3 bg-gray-50 rounded-lg border">
@@ -557,6 +558,17 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                                                 ))}
                                             </ul>
                                         </div>
+
+                                        <div className="p-2 bg-purple-50 rounded-md text-sm">
+                                            <h4 className="font-semibold text-gray-700 mb-2">Transaction Details:</h4>
+                                            <div className="space-y-1">
+                                                <div className="flex justify-between"><span>Subtotal:</span> <span>₹{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                                                <div className="flex justify-between"><span>Discount:</span> <span>- ₹{sale.discount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                                                <div className="flex justify-between"><span>GST Included:</span> <span>₹{sale.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                                                <div className="flex justify-between font-bold border-t pt-1 mt-1"><span>Grand Total:</span> <span>₹{sale.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                                            </div>
+                                        </div>
+
                                         {sale.payments.length > 0 && (
                                             <div>
                                                 <h4 className="font-semibold text-sm text-gray-700 mb-1">Payments Made:</h4>
