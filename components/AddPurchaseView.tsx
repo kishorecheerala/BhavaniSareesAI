@@ -184,7 +184,7 @@ interface PurchaseFormProps {
     initialData?: Purchase | null;
     suppliers: Supplier[];
     products: Product[];
-    onSubmit: (purchaseData: Purchase, originalPurchase?: Purchase) => void;
+    onSubmit: (purchaseData: Purchase) => void;
     onBack: () => void;
     setIsDirty: (isDirty: boolean) => void;
 }
@@ -363,7 +363,7 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
             payments: (mode === 'edit' && initialData) ? initialData.payments : [],
         };
         
-        onSubmit(finalPurchaseData, initialData || undefined);
+        onSubmit(finalPurchaseData);
     };
 
     const StatusNotification = () => {

@@ -43,7 +43,7 @@ type Action =
   | { type: 'UPDATE_SALE'; payload: { oldSale: Sale, updatedSale: Sale } }
   | { type: 'DELETE_SALE'; payload: string } // saleId
   | { type: 'ADD_PURCHASE'; payload: Purchase }
-  | { type: 'UPDATE_PURCHASE'; payload: { oldPurchase: Purchase, updatedPurchase: Purchase } }
+  | { type: 'UPDATE_PURCHASE'; payload: Purchase }
   | { type: 'DELETE_PURCHASE'; payload: string } // purchaseId
   | { type: 'ADD_RETURN'; payload: Return }
   | { type: 'ADD_PAYMENT_TO_SALE'; payload: { saleId: string; payment: Payment } }
@@ -167,7 +167,15 @@ const appReducer = (state: AppState, action: Action): AppState => {
     case 'ADD_PURCHASE':
       return { ...state, purchases: [...state.purchases, action.payload] };
     case 'UPDATE_PURCHASE': {
-        const { oldPurchase, updatedPurchase } = action.payload;
+        const updatedPurchase = action.payload;
+        const oldPurchase = state.purchases.find(p => p.id === updatedPurchase.id);
+        
+        if (!oldPurchase) {
+             return {
+                ...state,
+                purchases: state.purchases.map(p => p.id === updatedPurchase.id ? updatedPurchase : p),
+            };
+        }
 
         let tempProducts = [...state.products];
 

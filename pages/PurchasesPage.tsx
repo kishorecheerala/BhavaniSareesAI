@@ -165,15 +165,13 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         setView('list');
     };
 
-    const handleUpdatePurchase = (updatedPurchase: Purchase, oldPurchase?: Purchase) => {
-        if (oldPurchase) {
-            dispatch({ type: 'UPDATE_PURCHASE', payload: { oldPurchase, updatedPurchase } });
-            showToast("Purchase updated successfully!");
-            // After editing, go back to the supplier list and re-select that supplier to see the changes.
-            const supplier = state.suppliers.find(s => s.id === updatedPurchase.supplierId) || null;
-            setSelectedSupplier(supplier);
-            setView('list'); 
-        }
+    const handleUpdatePurchase = (updatedPurchase: Purchase) => {
+        dispatch({ type: 'UPDATE_PURCHASE', payload: updatedPurchase });
+        showToast("Purchase updated successfully!");
+        // After editing, go back to the supplier list and re-select that supplier to see the changes.
+        const supplier = state.suppliers.find(s => s.id === updatedPurchase.supplierId) || null;
+        setSelectedSupplier(supplier);
+        setView('list');
     };
     
     const generateDebitNotePDF = async (newReturn: Return) => {
