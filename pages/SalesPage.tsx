@@ -277,14 +277,22 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
           doc.setFontSize(8);
           doc.setTextColor('#000000');
           
-          doc.text(`Invoice: ${sale.id}`, margin, y);
+            const invoiceTextTopY = y - 3; // Approximate top of the text line
+            doc.text(`Invoice: ${sale.id}`, margin, y);
+            y += 4;
+            doc.text(`Date: ${new Date(sale.date).toLocaleString()}`, margin, y);
+            
             if (qrCodeBase64) {
                 const qrSize = 15; // 15mm
-                doc.addImage(qrCodeBase64, 'PNG', pageWidth - margin - qrSize, y - 8, qrSize, qrSize);
+                doc.addImage(qrCodeBase64, 'PNG', pageWidth - margin - qrSize, invoiceTextTopY, qrSize, qrSize);
+                
+                // Ensure y position is below the QR code for subsequent content
+                const qrBottom = invoiceTextTopY + qrSize;
+                if (qrBottom > y) {
+                    y = qrBottom;
+                }
             }
-          y += 4;
-          doc.text(`Date: ${new Date(sale.date).toLocaleString()}`, margin, y);
-          y += 5;
+            y += 5;
           
           doc.setFont('Helvetica', 'bold');
           doc.text('Billed To:', margin, y);

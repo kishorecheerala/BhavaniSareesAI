@@ -238,13 +238,21 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             doc.setFontSize(8);
             doc.setTextColor('#000000');
             
+            const invoiceTextTopY = y - 3; // Approximate top of the text line
             doc.text(`Invoice: ${sale.id}`, margin, y);
-            if (qrCodeBase64) {
-                const qrSize = 15; // 15mm
-                doc.addImage(qrCodeBase64, 'PNG', pageWidth - margin - qrSize, y - 8, qrSize, qrSize);
-            }
             y += 4;
             doc.text(`Date: ${new Date(sale.date).toLocaleString()}`, margin, y);
+            
+            if (qrCodeBase64) {
+                const qrSize = 15; // 15mm
+                doc.addImage(qrCodeBase64, 'PNG', pageWidth - margin - qrSize, invoiceTextTopY, qrSize, qrSize);
+                
+                // Ensure y position is below the QR code for subsequent content
+                const qrBottom = invoiceTextTopY + qrSize;
+                if (qrBottom > y) {
+                    y = qrBottom;
+                }
+            }
             y += 5;
             
             doc.setFont('Helvetica', 'bold');
