@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Trash2, Share2, Search, X, IndianRupee, QrCode } from 'lucide-react';
+import { Plus, Trash2, Share2, Search, X, IndianRupee, QrCode, Save, Edit } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Sale, SaleItem, Customer, Product, Payment } from '../types';
 import Card from '../components/Card';
@@ -22,6 +22,10 @@ interface SalesPageProps {
 
 const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     const { state, dispatch, showToast } = useAppContext();
+    
+    const [mode, setMode] = useState<'add' | 'edit'>('add');
+    const [saleToEdit, setSaleToEdit] = useState<Sale | null>(null);
+
     const [customerId, setCustomerId] = useState('');
     const [items, setItems] = useState<SaleItem[]>([]);
     const [discount, setDiscount] = useState('0');
@@ -40,6 +44,22 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     const [isAddingCustomer, setIsAddingCustomer] = useState(false);
     const [newCustomer, setNewCustomer] = useState({ id: '', name: '', phone: '', address: '', area: '', reference: '' });
     const isDirtyRef = useRef(false);
+
+    // Effect to handle switching to edit mode from another page
+    useEffect(() => {
+        if (state.selection?.page === 'SALES' && state.selection.action === 'edit') {
+            const sale = state.sales.find(s => s.id === state.selection.id);
+            if (sale) {
+                setSaleToEdit(sale);
+                setMode('edit');
+                setCustomerId(sale.customerId);
+                setItems(sale.items.map(item => ({...item}))); // Deep copy
+                setDiscount(sale.discount.toString());
+                setPaymentDetails({ amount: '', method: 'CASH', date: getLocalDateString(), reference: '' });
+                dispatch({ type: 'CLEAR_SELECTION' });
+            }
+        }
+    }, [state.selection, state.sales, dispatch]);
 
     useEffect(() => {
         const formIsDirty = !!customerId || items.length > 0 || discount !== '0' || !!paymentDetails.amount;
@@ -70,6 +90,8 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         });
         setProductSearchTerm('');
         setIsSelectingProduct(false);
+        setMode('add');
+        setSaleToEdit(null);
     };
     
     const handleSelectProduct = (product: Product) => {
@@ -81,15 +103,19 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         };
 
         const existingItem = items.find(i => i.productId === newItem.productId);
+        
+        const originalQtyInSale = mode === 'edit' ? saleToEdit?.items.find(i => i.productId === product.id)?.quantity || 0 : 0;
+        const availableStock = product.quantity + originalQtyInSale;
+
         if (existingItem) {
-            if (existingItem.quantity + 1 > product.quantity) {
-                 alert(`Not enough stock for ${product.name}. Only ${product.quantity} available.`);
+            if (existingItem.quantity + 1 > availableStock) {
+                 alert(`Not enough stock for ${product.name}. Only ${availableStock} available for this sale.`);
                  return;
             }
             setItems(items.map(i => i.productId === newItem.productId ? { ...i, quantity: i.quantity + 1 } : i));
         } else {
-             if (1 > product.quantity) {
-                 alert(`Not enough stock for ${product.name}. Only ${product.quantity} available.`);
+             if (1 > availableStock) {
+                 alert(`Not enough stock for ${product.name}. Only ${availableStock} available for this sale.`);
                  return;
             }
             setItems([...items, newItem]);
@@ -107,6 +133,28 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             alert("Product not found in inventory.");
         }
     };
+
+    const handleItemChange = (productId: string, field: 'quantity' | 'price', value: string) => {
+        const numValue = parseFloat(value);
+        if (isNaN(numValue) && value !== '') return;
+
+        setItems(prevItems => prevItems.map(item => {
+            if (item.productId === productId) {
+                if (field === 'quantity') {
+                    const product = state.products.find(p => p.id === productId);
+                    const originalQtyInSale = mode === 'edit' ? saleToEdit?.items.find(i => i.productId === productId)?.quantity || 0 : 0;
+                    const availableStock = (product?.quantity || 0) + originalQtyInSale;
+                    if (numValue > availableStock) {
+                        alert(`Not enough stock for ${item.productName}. Only ${availableStock} available for this sale.`);
+                        return { ...item, quantity: availableStock };
+                    }
+                }
+                return { ...item, [field]: numValue };
+            }
+            return item;
+        }));
+    };
+
 
     const handleRemoveItem = (productId: string) => {
         setItems(items.filter(item => item.productId !== productId));
@@ -327,7 +375,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
       }
     };
 
-    const handleCompleteSale = async () => {
+    const handleSubmitSale = async () => {
         if (!customerId || items.length === 0) {
             alert("Please select a customer and add at least one item.");
             return;
@@ -340,46 +388,49 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         }
         
         const { totalAmount, gstAmount, discountAmount } = calculations;
-        const paidAmount = parseFloat(paymentDetails.amount) || 0;
 
-        if (paidAmount > totalAmount + 0.01) {
-            alert(`Paid amount (₹${paidAmount.toLocaleString('en-IN')}) cannot be greater than the total amount (₹${totalAmount.toLocaleString('en-IN')}).`);
-            return;
-        }
-
-        const payments: Payment[] = [];
-        if (paidAmount > 0) {
-            payments.push({
-                id: `PAY-S-${Date.now()}`,
-                amount: paidAmount,
-                method: paymentDetails.method,
-                date: new Date(paymentDetails.date).toISOString(),
-                reference: paymentDetails.reference.trim() || undefined,
+        if (mode === 'add') {
+            const paidAmount = parseFloat(paymentDetails.amount) || 0;
+            if (paidAmount > totalAmount + 0.01) {
+                alert(`Paid amount (₹${paidAmount.toLocaleString('en-IN')}) cannot be greater than the total amount (₹${totalAmount.toLocaleString('en-IN')}).`);
+                return;
+            }
+            const payments: Payment[] = [];
+            if (paidAmount > 0) {
+                payments.push({
+                    id: `PAY-S-${Date.now()}`, amount: paidAmount, method: paymentDetails.method,
+                    date: new Date(paymentDetails.date).toISOString(), reference: paymentDetails.reference.trim() || undefined,
+                });
+            }
+            const now = new Date();
+            const saleId = `SALE-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}-${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
+            const newSale: Sale = {
+                id: saleId, customerId, items, discount: discountAmount, gstAmount, totalAmount,
+                date: now.toISOString(), payments
+            };
+            dispatch({ type: 'ADD_SALE', payload: newSale });
+            items.forEach(item => {
+                dispatch({ type: 'UPDATE_PRODUCT_STOCK', payload: { productId: item.productId, change: -item.quantity } });
             });
+            showToast('Sale created successfully!');
+            await generateAndSharePDF(newSale, customer, paidAmount);
+
+        } else if (mode === 'edit' && saleToEdit) {
+            const existingPayments = saleToEdit.payments || [];
+            const totalPaid = existingPayments.reduce((sum, p) => sum + p.amount, 0);
+
+            if (totalAmount < totalPaid - 0.01) {
+                alert(`The new total amount (₹${totalAmount.toLocaleString('en-IN')}) cannot be less than the amount already paid (₹${totalPaid.toLocaleString('en-IN')}).`);
+                return;
+            }
+
+            const updatedSale: Sale = {
+                ...saleToEdit, items, discount: discountAmount, gstAmount, totalAmount,
+            };
+            dispatch({ type: 'UPDATE_SALE', payload: { oldSale: saleToEdit, updatedSale } });
+            showToast('Sale updated successfully!');
         }
-        
-        const now = new Date();
-        const saleId = `SALE-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}-${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
 
-        const newSale: Sale = {
-            id: saleId,
-            customerId,
-            items,
-            discount: discountAmount,
-            gstAmount: gstAmount,
-            totalAmount,
-            date: now.toISOString(),
-            payments
-        };
-
-        dispatch({ type: 'ADD_SALE', payload: newSale });
-        showToast('Sale created successfully!');
-
-        items.forEach(item => {
-            dispatch({ type: 'UPDATE_PRODUCT_STOCK', payload: { productId: item.productId, change: -item.quantity } });
-        });
-        
-        await generateAndSharePDF(newSale, customer, paidAmount);
         resetForm();
     };
 
@@ -555,15 +606,17 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         );
     };
 
-    const canCreateSale = customerId && items.length > 0;
-    const canRecordPayment = customerId && items.length === 0 && parseFloat(paymentDetails.amount || '0') > 0 && customerTotalDue != null && customerTotalDue > 0.01;
+    const canCreateSale = customerId && items.length > 0 && mode === 'add';
+    const canUpdateSale = customerId && items.length > 0 && mode === 'edit';
+    const canRecordPayment = customerId && items.length === 0 && parseFloat(paymentDetails.amount || '0') > 0 && customerTotalDue != null && customerTotalDue > 0.01 && mode === 'add';
+    const pageTitle = mode === 'edit' ? `Edit Sale: ${saleToEdit?.id}` : 'New Sale / Payment';
 
     return (
         <div className="space-y-4">
             {isAddingCustomer && <AddCustomerModal />}
             {isSelectingProduct && <ProductSearchModal />}
             {isScanning && <QRScannerModal />}
-            <h1 className="text-2xl font-bold text-primary">New Sale / Payment</h1>
+            <h1 className="text-2xl font-bold text-primary">{pageTitle}</h1>
             
             <Card>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
@@ -572,18 +625,18 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                         value={customerId} 
                         onChange={e => setCustomerId(e.target.value)} 
                         className="w-full p-2 border rounded custom-select"
-                        disabled={items.length > 0}
+                        disabled={items.length > 0 || mode === 'edit'}
                     >
                         <option value="">Select a Customer</option>
                         {state.customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.area}</option>)}
                     </select>
-                    {!customerId && (
+                    {!customerId && mode === 'add' && (
                         <Button onClick={() => setIsAddingCustomer(true)} variant="secondary" className="flex-shrink-0">
                             <Plus size={16}/> New Customer
                         </Button>
                     )}
                 </div>
-                {customerId && customerTotalDue !== null && (
+                {customerId && customerTotalDue !== null && mode === 'add' && (
                     <div className="mt-3 p-2 bg-gray-50 rounded-lg text-center">
                         <p className="text-sm font-medium text-gray-600">
                             Selected Customer's Total Outstanding Due:
@@ -595,131 +648,107 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                 )}
             </Card>
 
-            {/* If there are items in the cart, we are in "Sale Mode" */}
-            {items.length > 0 && (
-                <>
-                    <Card title="Sale Items">
-                        <div className="flex flex-col sm:flex-row gap-2">
-                            <Button onClick={() => setIsSelectingProduct(true)} className="w-full sm:w-auto flex-grow" disabled={!customerId}>
-                                <Search size={16} className="mr-2"/> Select Product
-                            </Button>
-                            <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full sm:w-auto flex-grow" disabled={!customerId}>
-                                <QrCode size={16} className="mr-2"/> Scan Product
-                            </Button>
+            <Card title="Sale Items">
+                <div className="flex flex-col sm:flex-row gap-2">
+                    <Button onClick={() => setIsSelectingProduct(true)} className="w-full sm:w-auto flex-grow" disabled={!customerId}>
+                        <Search size={16} className="mr-2"/> Select Product
+                    </Button>
+                    <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full sm:w-auto flex-grow" disabled={!customerId}>
+                        <QrCode size={16} className="mr-2"/> Scan Product
+                    </Button>
+                </div>
+                <div className="mt-4 space-y-2">
+                    {items.map(item => (
+                        <div key={item.productId} className="p-2 bg-gray-50 rounded animate-fade-in-fast border">
+                            <div className="flex justify-between items-start">
+                                <p className="font-semibold flex-grow">{item.productName}</p>
+                                <DeleteButton variant="remove" onClick={() => handleRemoveItem(item.productId)} />
+                            </div>
+                            <div className="flex items-center gap-2 text-sm mt-1">
+                                <input type="number" value={item.quantity} onChange={e => handleItemChange(item.productId, 'quantity', e.target.value)} className="w-20 p-1 border rounded" placeholder="Qty"/>
+                                <span>x</span>
+                                <input type="number" value={item.price} onChange={e => handleItemChange(item.productId, 'price', e.target.value)} className="w-24 p-1 border rounded" placeholder="Price"/>
+                                <span>= ₹{(item.quantity * item.price).toLocaleString('en-IN')}</span>
+                            </div>
                         </div>
-                        <div className="mt-4 space-y-2">
-                            {items.map(item => (
-                                <div key={item.productId} className="flex justify-between items-center p-2 bg-gray-50 rounded animate-fade-in-fast">
-                                    <div>
-                                        <p className="font-semibold">{item.productName}</p>
-                                        <p className="text-sm">{item.quantity} x ₹{item.price.toLocaleString('en-IN')}</p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <p>₹{(item.quantity * item.price).toLocaleString('en-IN')}</p>
-                                        <DeleteButton variant="remove" onClick={() => handleRemoveItem(item.productId)} />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </Card>
+                    ))}
+                </div>
+            </Card>
 
-                    <Card title="Billing & Payment">
-                        <div className="mb-4 space-y-2">
-                            <div className="flex justify-between text-gray-600">
-                                <span>Subtotal:</span>
-                                <span>₹{calculations.subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-gray-600">
-                                <span>Discount:</span>
-                                <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} className="w-28 p-1 border rounded text-right" />
-                            </div>
-                            <div className="flex justify-between text-gray-600">
-                                <span>GST Included:</span>
-                                <span>₹{calculations.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                            </div>
-                            <div className="mt-4 pt-4 border-t">
-                                <div className="p-4 bg-purple-50 rounded-lg text-center">
-                                    <p className="text-sm font-semibold text-gray-600">Grand Total</p>
-                                    <p className="text-4xl font-bold text-primary">
-                                        ₹{calculations.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                    </p>
-                                </div>
-                            </div>
+            <Card title="Billing & Payment">
+                <div className="mb-4 space-y-2">
+                    <div className="flex justify-between text-gray-600">
+                        <span>Subtotal:</span>
+                        <span>₹{calculations.subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-gray-600">
+                        <span>Discount:</span>
+                        <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} className="w-28 p-1 border rounded text-right" />
+                    </div>
+                    <div className="flex justify-between text-gray-600">
+                        <span>GST Included:</span>
+                        <span>₹{calculations.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="mt-4 pt-4 border-t">
+                        <div className="p-4 bg-purple-50 rounded-lg text-center">
+                            <p className="text-sm font-semibold text-gray-600">Grand Total</p>
+                            <p className="text-4xl font-bold text-primary">
+                                ₹{calculations.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </p>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Amount Paid</label>
-                                <input type="number" value={paymentDetails.amount} onChange={e => setPaymentDetails({...paymentDetails, amount: e.target.value })} placeholder={`Total is ₹${calculations.totalAmount.toLocaleString('en-IN')}`} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Payment Method</label>
-                                <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any})} className="w-full p-2 border rounded custom-select">
-                                    <option value="CASH">Cash</option>
-                                    <option value="UPI">UPI</option>
-                                    <option value="CHEQUE">Cheque</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Payment Date</label>
-                                <input type="date" value={paymentDetails.date} onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} className="w-full p-2 border rounded" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Payment Reference (Optional)</label>
-                                <input type="text" value={paymentDetails.reference} onChange={e => setPaymentDetails({ ...paymentDetails, reference: e.target.value })} placeholder="e.g. Transaction ID, Cheque No." className="w-full p-2 border rounded" />
-                            </div>
+                    </div>
+                </div>
+                {mode === 'add' ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Amount Paid Now</label>
+                            <input type="number" value={paymentDetails.amount} onChange={e => setPaymentDetails({...paymentDetails, amount: e.target.value })} placeholder={`Total is ₹${calculations.totalAmount.toLocaleString('en-IN')}`} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500" />
                         </div>
-                    </Card>
-                </>
-            )}
-
-            {/* If cart is empty, we are in "Idle" or "Payment Mode" */}
-            {items.length === 0 && (
-                 <>
-                    {customerId && customerTotalDue != null && customerTotalDue > 0.01 && (
-                        <Card title="Record Payment for Dues">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Amount Paid</label>
-                                    <input type="number" value={paymentDetails.amount} onChange={e => setPaymentDetails({...paymentDetails, amount: e.target.value })} placeholder={'Enter amount to pay dues'} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Payment Method</label>
-                                    <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any})} className="w-full p-2 border rounded custom-select">
-                                        <option value="CASH">Cash</option>
-                                        <option value="UPI">UPI</option>
-                                        <option value="CHEQUE">Cheque</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Payment Date</label>
-                                    <input type="date" value={paymentDetails.date} onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} className="w-full p-2 border rounded" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Payment Reference (Optional)</label>
-                                    <input type="text" value={paymentDetails.reference} onChange={e => setPaymentDetails({ ...paymentDetails, reference: e.target.value })} placeholder="e.g. Transaction ID, Cheque No." className="w-full p-2 border rounded" />
-                                </div>
-                            </div>
-                        </Card>
-                    )}
-                    <Card title="Sale Items">
-                        <p className="text-gray-500 text-center py-4">{customerId ? "Add products to start a new sale." : "Select a customer to begin."}</p>
-                        <div className="flex flex-col sm:flex-row gap-2 mt-4">
-                            <Button onClick={() => setIsSelectingProduct(true)} className="w-full sm:w-auto flex-grow" disabled={!customerId}>
-                                <Search size={16} className="mr-2"/> Select Product
-                            </Button>
-                            <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full sm:w-auto flex-grow" disabled={!customerId}>
-                                <QrCode size={16} className="mr-2"/> Scan Product
-                            </Button>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Payment Method</label>
+                            <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any})} className="w-full p-2 border rounded custom-select">
+                                <option value="CASH">Cash</option>
+                                <option value="UPI">UPI</option>
+                                <option value="CHEQUE">Cheque</option>
+                            </select>
                         </div>
-                    </Card>
-                 </>
+                    </div>
+                ) : (
+                    <div className="pt-4 border-t text-center">
+                        <p className="text-sm text-gray-600">Payments for this invoice must be managed from the customer's details page.</p>
+                    </div>
+                )}
+            </Card>
+            
+            {mode === 'add' && items.length === 0 && customerId && customerTotalDue != null && customerTotalDue > 0.01 && (
+                <Card title="Record Payment for Dues">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Amount Paid</label>
+                            <input type="number" value={paymentDetails.amount} onChange={e => setPaymentDetails({...paymentDetails, amount: e.target.value })} placeholder={'Enter amount to pay dues'} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Payment Method</label>
+                            <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any})} className="w-full p-2 border rounded custom-select">
+                                <option value="CASH">Cash</option>
+                                <option value="UPI">UPI</option>
+                                <option value="CHEQUE">Cheque</option>
+                            </select>
+                        </div>
+                    </div>
+                </Card>
             )}
 
             <div className="space-y-2">
                 {canCreateSale ? (
-                    <Button onClick={handleCompleteSale} className="w-full">
+                    <Button onClick={handleSubmitSale} className="w-full">
                         <Share2 className="w-4 h-4 mr-2"/>
                         Create Sale & Share Invoice
+                    </Button>
+                ) : canUpdateSale ? (
+                    <Button onClick={handleSubmitSale} className="w-full">
+                        <Save className="w-4 h-4 mr-2"/>
+                        Save Changes to Sale
                     </Button>
                 ) : canRecordPayment ? (
                      <Button onClick={handleRecordStandalonePayment} className="w-full">
@@ -728,10 +757,12 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                     </Button>
                 ) : (
                      <Button className="w-full" disabled>
-                        {customerId ? (items.length === 0 ? 'Enter payment amount for dues, or add items for a new sale' : 'Complete billing details') : 'Select a customer to begin'}
+                        {customerId ? (items.length === 0 ? 'Enter payment or add items' : 'Complete billing details') : 'Select a customer'}
                     </Button>
                 )}
-                <Button onClick={resetForm} variant="secondary" className="w-full">Clear Form</Button>
+                <Button onClick={resetForm} variant="secondary" className="w-full">
+                    {mode === 'edit' ? 'Cancel Edit' : 'Clear Form'}
+                </Button>
             </div>
         </div>
     );

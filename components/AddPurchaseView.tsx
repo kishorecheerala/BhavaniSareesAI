@@ -257,6 +257,18 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
         setIsSelectingProduct(false);
     };
 
+    const handleItemChange = (productId: string, field: keyof PurchaseItem, value: string) => {
+        const numericFields = ['quantity', 'price', 'saleValue', 'gstPercent'];
+        const isNumeric = numericFields.includes(field as string);
+
+        setItems(prevItems => prevItems.map(item => {
+            if (item.productId === productId) {
+                return { ...item, [field]: isNumeric ? parseFloat(value) || 0 : value };
+            }
+            return item;
+        }));
+    };
+
     const handleProductScanned = (decodedText: string) => {
         setIsScanning(false);
         const product = products.find(p => p.id.toLowerCase() === decodedText.toLowerCase());
@@ -393,7 +405,7 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Supplier</label>
-                        <select value={supplierId} onChange={e => setSupplierId(e.target.value)} className="w-full p-2 border rounded custom-select mt-1">
+                        <select value={supplierId} onChange={e => setSupplierId(e.target.value)} className="w-full p-2 border rounded custom-select mt-1" disabled={mode === 'edit'}>
                             <option value="">Select a Supplier</option>
                             {suppliers.map(s => <option key={s.id} value={s.id}>{s.name} - {s.location}</option>)}
                         </select>
@@ -418,14 +430,33 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
                 <StatusNotification />
                 <div className="space-y-2 mt-4">
                     {items.map(item => (
-                        <div key={item.productId} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                            <div>
-                                <p className="font-semibold">{item.productName}</p>
-                                <p className="text-sm">{item.quantity} x ₹{item.price.toLocaleString('en-IN')}</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <p>₹{(item.quantity * item.price).toLocaleString('en-IN')}</p>
+                        <div key={item.productId} className="p-3 bg-gray-50 rounded-lg space-y-2 border">
+                            <div className="flex justify-between items-start">
+                                <input 
+                                    type="text" 
+                                    value={item.productName}
+                                    onChange={e => handleItemChange(item.productId, 'productName', e.target.value)}
+                                    className="font-semibold bg-transparent border-b w-full"
+                                />
                                 <DeleteButton variant="remove" onClick={() => setItems(items.filter(i => i.productId !== item.productId))} />
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                                <div>
+                                    <label className="text-xs font-medium text-gray-500">Qty</label>
+                                    <input type="number" value={item.quantity} onChange={e => handleItemChange(item.productId, 'quantity', e.target.value)} className="w-full p-1 border rounded" />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-medium text-gray-500">Purchase Price</label>
+                                    <input type="number" value={item.price} onChange={e => handleItemChange(item.productId, 'price', e.target.value)} className="w-full p-1 border rounded" />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-medium text-gray-500">Sale Price</label>
+                                    <input type="number" value={item.saleValue} onChange={e => handleItemChange(item.productId, 'saleValue', e.target.value)} className="w-full p-1 border rounded" />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-medium text-gray-500">GST %</label>
+                                    <input type="number" value={item.gstPercent} onChange={e => handleItemChange(item.productId, 'gstPercent', e.target.value)} className="w-full p-1 border rounded" />
+                                </div>
                             </div>
                         </div>
                     ))}

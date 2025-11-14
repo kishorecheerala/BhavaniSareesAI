@@ -24,7 +24,7 @@ export interface AppState {
   notifications: Notification[];
   profile: ProfileData | null;
   toast: ToastState;
-  selection: { page: Page; id: string } | null;
+  selection: { page: Page; id: string; action?: 'edit' } | null;
   installPromptEvent: BeforeInstallPromptEvent | null;
 }
 
@@ -40,6 +40,7 @@ type Action =
   | { type: 'UPDATE_PRODUCT'; payload: Product }
   | { type: 'UPDATE_PRODUCT_STOCK'; payload: { productId: string; change: number } }
   | { type: 'ADD_SALE'; payload: Sale }
+  | { type: 'UPDATE_SALE'; payload: { oldSale: Sale, updatedSale: Sale } }
   | { type: 'DELETE_SALE'; payload: string } // saleId
   | { type: 'ADD_PURCHASE'; payload: Purchase }
   | { type: 'UPDATE_PURCHASE'; payload: { oldPurchase: Purchase, updatedPurchase: Purchase } }
@@ -50,7 +51,7 @@ type Action =
   | { type: 'SHOW_TOAST'; payload: { message: string; type?: 'success' | 'info' } }
   | { type: 'HIDE_TOAST' }
   | { type: 'SET_LAST_BACKUP_DATE'; payload: string }
-  | { type: 'SET_SELECTION'; payload: { page: Page; id: string } }
+  | { type: 'SET_SELECTION'; payload: { page: Page; id: string; action?: 'edit' } }
   | { type: 'CLEAR_SELECTION' }
   | { type: 'SET_INSTALL_PROMPT_EVENT'; payload: BeforeInstallPromptEvent | null }
   | { type: 'ADD_NOTIFICATION'; payload: Notification }
@@ -107,6 +108,39 @@ const appReducer = (state: AppState, action: Action): AppState => {
         }
     case 'ADD_SALE':
       return { ...state, sales: [...state.sales, action.payload] };
+    case 'UPDATE_SALE': {
+        const { oldSale, updatedSale } = action.payload;
+
+        const stockChanges = new Map<string, number>();
+
+        // Add back stock from the old sale items
+        oldSale.items.forEach(item => {
+            stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) + item.quantity);
+        });
+
+        // Subtract stock for the updated sale items
+        updatedSale.items.forEach(item => {
+            stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) - item.quantity);
+        });
+
+        const updatedProducts = state.products.map(p => {
+            if (stockChanges.has(p.id)) {
+                return {
+                    ...p,
+                    quantity: p.quantity + (stockChanges.get(p.id) || 0),
+                };
+            }
+            return p;
+        });
+        
+        const updatedSales = state.sales.map(s => s.id === updatedSale.id ? updatedSale : s);
+
+        return {
+            ...state,
+            sales: updatedSales,
+            products: updatedProducts,
+        };
+    }
     case 'DELETE_SALE': {
       const saleToDelete = state.sales.find(s => s.id === action.payload);
       if (!saleToDelete) return state;
@@ -144,6 +178,7 @@ const appReducer = (state: AppState, action: Action): AppState => {
 
         updatedPurchase.items.forEach(item => {
             stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) + item.quantity);
+            // FIX: The property name in the object literal should be 'salePrice' to match the type definition of `productDetails`.
             productDetails.set(item.productId, { purchasePrice: item.price, salePrice: item.saleValue, gstPercent: item.gstPercent });
         });
 
@@ -156,6 +191,7 @@ const appReducer = (state: AppState, action: Action): AppState => {
                 const details = productDetails.get(p.id);
                 if (details) {
                     updatedProduct.purchasePrice = details.purchasePrice;
+                    // FIX: The `details` object has a `salePrice` property, not `saleValue`.
                     updatedProduct.salePrice = details.salePrice;
                     updatedProduct.gstPercent = details.gstPercent;
                 }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, User, Phone, MapPin, Search, Edit, Save, X, Trash2, IndianRupee, ShoppingCart, Download, Share2 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
-import { Customer, Payment, Sale } from '../types';
+import { Customer, Payment, Sale, Page } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -18,9 +18,10 @@ const getLocalDateString = (date = new Date()) => {
 
 interface CustomersPageProps {
   setIsDirty: (isDirty: boolean) => void;
+  setCurrentPage: (page: Page) => void;
 }
 
-const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
+const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPage }) => {
     const { state, dispatch, showToast } = useAppContext();
     const [searchTerm, setSearchTerm] = useState('');
     const [isAdding, setIsAdding] = useState(false);
@@ -140,6 +141,11 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
             showToast('Sale deleted successfully.');
             setConfirmModalState({ isOpen: false, saleIdToDelete: null });
         }
+    };
+
+    const handleEditSale = (saleId: string) => {
+        dispatch({ type: 'SET_SELECTION', payload: { page: 'SALES', id: saleId, action: 'edit' } });
+        setCurrentPage('SALES');
     };
 
     const handleAddPayment = () => {
@@ -532,6 +538,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                                         </div>
                                       </div>
                                       <div className="flex items-center ml-2">
+                                        <button onClick={() => handleEditSale(sale.id)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Edit Sale"><Edit size={16} /></button>
                                         <button onClick={() => handleDownloadInvoice(sale)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Download Invoice"><Download size={16} /></button>
                                         <DeleteButton 
                                             variant="delete" 

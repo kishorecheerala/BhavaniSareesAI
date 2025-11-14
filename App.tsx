@@ -220,7 +220,7 @@ const MainApp: React.FC = () => {
       case 'DASHBOARD':
         return <Dashboard setCurrentPage={_setCurrentPage} />;
       case 'CUSTOMERS':
-        return <CustomersPage {...commonProps} />;
+        return <CustomersPage {...commonProps} setCurrentPage={_setCurrentPage} />;
       case 'SALES':
         return <SalesPage {...commonProps} />;
       case 'PURCHASES':
