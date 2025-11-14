@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Plus, User, Phone, MapPin, Search, Edit, Save, X, Trash2, IndianRupee, ShoppingCart, Download, Share2, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, User, Phone, MapPin, Search, Edit, Save, X, Trash2, IndianRupee, ShoppingCart, Download, Share2 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Customer, Payment, Sale } from '../types';
 import Card from '../components/Card';
@@ -20,20 +20,12 @@ interface CustomersPageProps {
   setIsDirty: (isDirty: boolean) => void;
 }
 
-const ITEMS_PER_PAGE = 25;
-const SALES_HISTORY_PAGE_SIZE = 10;
-
 const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
     const { state, dispatch, showToast } = useAppContext();
     const [searchTerm, setSearchTerm] = useState('');
     const [isAdding, setIsAdding] = useState(false);
     const [newCustomer, setNewCustomer] = useState({ id: '', name: '', phone: '', address: '', area: '', reference: '' });
-    
-    const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
-    const selectedCustomer = useMemo(() => {
-        if (!selectedCustomerId) return null;
-        return state.customers.find(c => c.id === selectedCustomerId) || null;
-    }, [selectedCustomerId, state.customers]);
+    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
     const [isEditing, setIsEditing] = useState(false);
     const [editedCustomer, setEditedCustomer] = useState<Customer | null>(null);
@@ -47,20 +39,17 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
     });
     
     const [confirmModalState, setConfirmModalState] = useState<{ isOpen: boolean, saleIdToDelete: string | null }>({ isOpen: false, saleIdToDelete: null });
-    const [openSaleId, setOpenSaleId] = useState<string | null>(null);
     const isDirtyRef = useRef(false);
-
-    // State for pagination
-    const [listCurrentPage, setListCurrentPage] = useState(1);
-    const [visibleSalesCount, setVisibleSalesCount] = useState(SALES_HISTORY_PAGE_SIZE);
 
     useEffect(() => {
         if (state.selection && state.selection.page === 'CUSTOMERS') {
-            setSelectedCustomerId(state.selection.id);
+            const customerToSelect = state.customers.find(c => c.id === state.selection.id);
+            if (customerToSelect) {
+                setSelectedCustomer(customerToSelect);
+            }
             dispatch({ type: 'CLEAR_SELECTION' });
         }
-    }, [state.selection, dispatch]);
-
+    }, [state.selection, state.customers, dispatch]);
 
     useEffect(() => {
         const currentlyDirty = (isAdding && !!(newCustomer.id || newCustomer.name || newCustomer.phone || newCustomer.address || newCustomer.area)) || isEditing;
@@ -76,17 +65,24 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
             setIsDirty(false);
         };
     }, [setIsDirty]);
-    
+
+    // Effect to keep selectedCustomer data in sync with global state
+    useEffect(() => {
+        if (selectedCustomer) {
+            const currentCustomerData = state.customers.find(c => c.id === selectedCustomer.id);
+            // Deep comparison to avoid re-render if data is the same
+            if (JSON.stringify(currentCustomerData) !== JSON.stringify(selectedCustomer)) {
+                setSelectedCustomer(currentCustomerData || null);
+            }
+        }
+    }, [selectedCustomer?.id, state.customers]);
+
     // Effect to reset the editing form when the selected customer changes
     useEffect(() => {
         if (selectedCustomer) {
             setEditedCustomer(selectedCustomer);
-        } else {
-            setEditedCustomer(null);
         }
         setIsEditing(false);
-        setOpenSaleId(null);
-        setVisibleSalesCount(SALES_HISTORY_PAGE_SIZE); // Reset sales history pagination
     }, [selectedCustomer]);
 
 
@@ -127,6 +123,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
         if (editedCustomer) {
             if (window.confirm('Are you sure you want to save these changes to the customer details?')) {
                 dispatch({ type: 'UPDATE_CUSTOMER', payload: editedCustomer });
+                setSelectedCustomer(editedCustomer);
                 setIsEditing(false);
                 showToast("Customer details updated successfully.");
             }
@@ -143,11 +140,6 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
             showToast('Sale deleted successfully.');
             setConfirmModalState({ isOpen: false, saleIdToDelete: null });
         }
-    };
-    
-    const handleEditSale = (saleId: string) => {
-        dispatch({ type: 'SET_SELECTION', payload: { page: 'SALES', id: saleId, action: 'edit' } });
-        dispatch({ type: 'SET_CURRENT_PAGE', payload: 'SALES' });
     };
 
     const handleAddPayment = () => {
@@ -390,44 +382,13 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
           doc.save(`Dues-Summary-${selectedCustomer.id}.pdf`);
         }
     };
-    
-    const customersWithDues = useMemo(() => {
-        const salesSummary = new Map<string, { totalPurchase: number, totalPaid: number }>();
-        for (const sale of state.sales) {
-            const summary = salesSummary.get(sale.customerId) || { totalPurchase: 0, totalPaid: 0 };
-            summary.totalPurchase += sale.totalAmount;
-            const paymentsTotal = (sale.payments || []).reduce((pSum, p) => pSum + p.amount, 0);
-            summary.totalPaid += paymentsTotal;
-            salesSummary.set(sale.customerId, summary);
-        }
-
-        return state.customers.map(customer => {
-            const summary = salesSummary.get(customer.id) || { totalPurchase: 0, totalPaid: 0 };
-            const totalDue = summary.totalPurchase - summary.totalPaid;
-            
-            return {
-                ...customer,
-                totalPurchase: summary.totalPurchase,
-                totalDue
-            };
-        });
-    }, [state.customers, state.sales]);
 
 
-    const filteredCustomers = useMemo(() => customersWithDues.filter(c =>
+    const filteredCustomers = state.customers.filter(c =>
         c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         c.phone.includes(searchTerm) ||
         c.area.toLowerCase().includes(searchTerm.toLowerCase())
-    ), [customersWithDues, searchTerm]);
-    
-    // Derived state for pagination of the main customer list
-    const paginatedCustomers = useMemo(() => {
-        const startIndex = (listCurrentPage - 1) * ITEMS_PER_PAGE;
-        const endIndex = startIndex + ITEMS_PER_PAGE;
-        return filteredCustomers.slice(startIndex, endIndex);
-    }, [filteredCustomers, listCurrentPage]);
-
-    const totalListPages = Math.ceil(filteredCustomers.length / ITEMS_PER_PAGE);
+    );
     
     const PaymentModal = () => {
         const sale = state.sales.find(s => s.id === paymentModalState.saleId);
@@ -444,11 +405,11 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                         <p>Amount Due: <span className="font-bold text-red-600">₹{dueAmount.toLocaleString('en-IN')}</span></p>
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Amount</label>
-                            <input type="number" placeholder="Enter amount" value={paymentDetails.amount} onChange={e => setPaymentDetails({ ...paymentDetails, amount: e.target.value })} autoFocus/>
+                            <input type="number" placeholder="Enter amount" value={paymentDetails.amount} onChange={e => setPaymentDetails({ ...paymentDetails, amount: e.target.value })} className="w-full p-2 border rounded" autoFocus/>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Method</label>
-                            <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any })} className="custom-select">
+                            <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any })} className="w-full p-2 border rounded custom-select">
                                 <option value="CASH">Cash</option>
                                 <option value="UPI">UPI</option>
                                 <option value="CHEQUE">Cheque</option>
@@ -460,6 +421,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                                 type="date" 
                                 value={paymentDetails.date} 
                                 onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} 
+                                className="w-full p-2 border rounded"
                             />
                         </div>
                         <div>
@@ -469,6 +431,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                                 placeholder="e.g. UPI ID, Cheque No."
                                 value={paymentDetails.reference}
                                 onChange={e => setPaymentDetails({ ...paymentDetails, reference: e.target.value })}
+                                className="w-full p-2 border rounded"
                             />
                         </div>
                         <div className="flex gap-2">
@@ -481,37 +444,13 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
         )
     };
     
-    const salesByCustomer = useMemo(() => {
-        const map = new Map<string, Sale[]>();
-        for (const sale of state.sales) {
-            if (!map.has(sale.customerId)) {
-                map.set(sale.customerId, []);
-            }
-            map.get(sale.customerId)!.push(sale);
-        }
-        for (const sales of map.values()) {
-            sales.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        }
-        return map;
-    }, [state.sales]);
-
     if (selectedCustomer && editedCustomer) {
-        const customerSalesWithDues = useMemo(() => {
-            const customerSales = salesByCustomer.get(selectedCustomer.id) || [];
-            return customerSales.map(sale => {
-                const amountPaid = (sale.payments || []).reduce((sum, p) => sum + p.amount, 0);
-                const dueAmount = sale.totalAmount - amountPaid;
-                return { ...sale, amountPaid, dueAmount };
-            });
-        }, [salesByCustomer, selectedCustomer.id]);
-        
-        const customerReturns = useMemo(() => state.returns.filter(r => r.type === 'CUSTOMER' && r.partyId === selectedCustomer.id), [state.returns, selectedCustomer.id]);
+        const customerSales = state.sales.filter(s => s.customerId === selectedCustomer.id);
+        const customerReturns = state.returns.filter(r => r.type === 'CUSTOMER' && r.partyId === selectedCustomer.id);
         
         const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             setEditedCustomer({ ...editedCustomer, [e.target.name]: e.target.value });
         };
-        
-        const salesToShow = customerSalesWithDues.slice(0, visibleSalesCount);
 
         return (
             <div className="space-y-4">
@@ -524,7 +463,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                     Are you sure you want to delete this sale? This action cannot be undone and will add the items back to stock.
                 </ConfirmationModal>
                 {paymentModalState.isOpen && <PaymentModal />}
-                <Button onClick={() => setSelectedCustomerId(null)}>&larr; Back to List</Button>
+                <Button onClick={() => setSelectedCustomer(null)}>&larr; Back to List</Button>
                 <Card>
                     <div className="flex justify-between items-start mb-4">
                         <div>
@@ -545,11 +484,11 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                     </div>
                     {isEditing ? (
                         <div className="space-y-3">
-                            <div><label className="text-sm font-medium">Name</label><input type="text" name="name" value={editedCustomer.name} onChange={handleInputChange} /></div>
-                            <div><label className="text-sm font-medium">Phone</label><input type="text" name="phone" value={editedCustomer.phone} onChange={handleInputChange} /></div>
-                            <div><label className="text-sm font-medium">Address</label><input type="text" name="address" value={editedCustomer.address} onChange={handleInputChange} /></div>
-                            <div><label className="text-sm font-medium">Area</label><input type="text" name="area" value={editedCustomer.area} onChange={handleInputChange} /></div>
-                            <div><label className="text-sm font-medium">Reference</label><input type="text" name="reference" value={editedCustomer.reference ?? ''} onChange={handleInputChange} /></div>
+                            <div><label className="text-sm font-medium">Name</label><input type="text" name="name" value={editedCustomer.name} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
+                            <div><label className="text-sm font-medium">Phone</label><input type="text" name="phone" value={editedCustomer.phone} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
+                            <div><label className="text-sm font-medium">Address</label><input type="text" name="address" value={editedCustomer.address} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
+                            <div><label className="text-sm font-medium">Area</label><input type="text" name="area" value={editedCustomer.area} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
+                            <div><label className="text-sm font-medium">Reference</label><input type="text" name="reference" value={editedCustomer.reference ?? ''} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
                         </div>
                     ) : (
                         <div className="space-y-1 text-gray-700">
@@ -568,86 +507,72 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                     </div>
                 </Card>
                 <Card title="Sales History">
-                    {customerSalesWithDues.length > 0 ? (
+                    {customerSales.length > 0 ? (
                         <div className="space-y-4">
-                            {salesToShow.map(sale => {
-                                const { dueAmount } = sale;
-                                const isPaid = dueAmount <= 0.01;
-                                const isSaleOpen = openSaleId === sale.id;
+                            {customerSales.slice().reverse().map(sale => {
+                                const amountPaid = sale.payments.reduce((sum, p) => sum + p.amount, 0);
+                                const dueAmount = sale.totalAmount - amountPaid;
+                                const isPaid = dueAmount <= 0.01; // Epsilon for float comparison
 
                                 return (
-                                <div key={sale.id} className="bg-gray-50 rounded-lg border overflow-hidden">
-                                    <button type="button" className="w-full flex justify-between items-start text-left p-3 transition-colors hover:bg-purple-50" onClick={() => setOpenSaleId(isSaleOpen ? null : sale.id)}>
-                                        <div className="flex-grow pr-4">
-                                            <p className="font-semibold">{new Date(sale.date).toLocaleString()}</p>
-                                            <p className="text-xs text-gray-500">Invoice ID: {sale.id}</p>
-                                            <p className={`text-sm font-bold ${isPaid ? 'text-green-600' : 'text-red-600'}`}>
-                                                {isPaid ? 'Paid' : `Due: ₹${dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
-                                            </p>
-                                        </div>
-                                        <div className="text-right">
+                                <div key={sale.id} className="p-3 bg-gray-50 rounded-lg border">
+                                    <div className="flex justify-between items-start">
+                                      <div className="flex-grow">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <p className="font-semibold">{new Date(sale.date).toLocaleString()}</p>
+                                                <p className="text-xs text-gray-500">Invoice ID: {sale.id}</p>
+                                                <p className={`text-sm font-bold ${isPaid ? 'text-green-600' : 'text-red-600'}`}>
+                                                    {isPaid ? 'Paid' : `Due: ₹${dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
+                                                </p>
+                                            </div>
                                             <p className="font-bold text-lg text-primary">
                                                 ₹{sale.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                             </p>
                                         </div>
-                                        <div className="flex items-center ml-2 flex-shrink-0">
-                                            {isSaleOpen ? <ChevronUp className="text-gray-500"/> : <ChevronDown className="text-gray-500"/>}
+                                      </div>
+                                      <div className="flex items-center ml-2">
+                                        <button onClick={() => handleDownloadInvoice(sale)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Download Invoice"><Download size={16} /></button>
+                                        <DeleteButton 
+                                            variant="delete" 
+                                            onClick={(e) => { e.stopPropagation(); handleDeleteSale(sale.id); }} 
+                                        />
+                                      </div>
+                                    </div>
+                                    <div className="pl-4 mt-2 border-l-2 border-purple-200 space-y-3">
+                                        <div>
+                                            <h4 className="font-semibold text-sm text-gray-700 mb-1">Items Purchased:</h4>
+                                            <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                                                {sale.items.map((item, index) => (
+                                                    <li key={index}>
+                                                        {item.productName} (x{item.quantity}) @ ₹{item.price.toLocaleString('en-IN')} each
+                                                    </li>
+                                                ))}
+                                            </ul>
                                         </div>
-                                    </button>
-                                    <div
-                                        style={{
-                                            display: 'grid',
-                                            gridTemplateRows: isSaleOpen ? '1fr' : '0fr',
-                                            transition: 'grid-template-rows 0.4s ease-in-out'
-                                        }}
-                                    >
-                                        <div className="overflow-hidden">
-                                            <div className="p-3 border-t border-purple-100 bg-white space-y-3">
-                                                <div className="flex items-center flex-wrap gap-2">
-                                                    <button onClick={(e) => { e.stopPropagation(); handleEditSale(sale.id); }} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Edit Sale"><Edit size={16} /></button>
-                                                    <button onClick={(e) => { e.stopPropagation(); handleDownloadInvoice(sale); }} className="p-2 text-gray-600 hover:bg-gray-100 rounded-full" aria-label="Download Invoice"><Download size={16} /></button>
-                                                    <DeleteButton variant="delete" onClick={(e) => { e.stopPropagation(); handleDeleteSale(sale.id); }} />
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-semibold text-sm text-gray-700 mb-1">Items Purchased:</h4>
-                                                    <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                                                        {sale.items.map((item, index) => (
-                                                            <li key={index}>
-                                                                {item.productName} (x{item.quantity}) @ ₹{item.price.toLocaleString('en-IN')} each
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                                {sale.payments.length > 0 && (
-                                                    <div>
-                                                        <h4 className="font-semibold text-sm text-gray-700 mb-1">Payments Made:</h4>
-                                                        <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                                                            {sale.payments.map(payment => (
-                                                                <li key={payment.id}>
-                                                                    ₹{payment.amount.toLocaleString('en-IN')} {payment.method === 'RETURN_CREDIT' ? <span className="text-blue-600 font-semibold">(Return Credit)</span> : `via ${payment.method}`} on {new Date(payment.date).toLocaleDateString()}
-                                                                    {payment.reference && <span className="text-xs text-gray-500 block">Ref: {payment.reference}</span>}
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    </div>
-                                                )}
-                                                {!isPaid && (
-                                                    <div className="pt-2">
-                                                        <Button onClick={() => setPaymentModalState({ isOpen: true, saleId: sale.id })} className="w-full sm:w-auto">
-                                                            <Plus size={16} className="mr-2"/> Add Payment
-                                                        </Button>
-                                                    </div>
-                                                )}
+                                        {sale.payments.length > 0 && (
+                                            <div>
+                                                <h4 className="font-semibold text-sm text-gray-700 mb-1">Payments Made:</h4>
+                                                <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                                                    {sale.payments.map(payment => (
+                                                        <li key={payment.id}>
+                                                            ₹{payment.amount.toLocaleString('en-IN')} {payment.method === 'RETURN_CREDIT' ? <span className="text-blue-600 font-semibold">(Return Credit)</span> : `via ${payment.method}`} on {new Date(payment.date).toLocaleDateString()}
+                                                            {payment.reference && <span className="text-xs text-gray-500 block">Ref: {payment.reference}</span>}
+                                                        </li>
+                                                    ))}
+                                                </ul>
                                             </div>
-                                        </div>
+                                        )}
+                                        {!isPaid && (
+                                            <div className="pt-2">
+                                                <Button onClick={() => setPaymentModalState({ isOpen: true, saleId: sale.id })} className="w-full sm:w-auto">
+                                                    <Plus size={16} className="mr-2"/> Add Payment
+                                                </Button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )})}
-                            {customerSalesWithDues.length > visibleSalesCount && (
-                                <Button onClick={() => setVisibleSalesCount(prev => prev + SALES_HISTORY_PAGE_SIZE)} variant="secondary" className="w-full mt-4">
-                                    Show More
-                                </Button>
-                            )}
                         </div>
                     ) : (
                         <p className="text-gray-500">No sales recorded for this customer.</p>
@@ -695,7 +620,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
             </div>
 
             {isAdding && (
-                <Card title="New Customer Form" className="animate-fade-in-fast">
+                <Card title="New Customer Form">
                     <div className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Customer ID</label>
@@ -708,15 +633,15 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                                     placeholder="Enter unique ID" 
                                     value={newCustomer.id} 
                                     onChange={e => setNewCustomer({ ...newCustomer, id: e.target.value })} 
-                                    className="rounded-l-none"
+                                    className="w-full p-2 border rounded-r-md" 
                                 />
                             </div>
                         </div>
-                        <input type="text" placeholder="Name" value={newCustomer.name} onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })} />
-                        <input type="text" placeholder="Phone" value={newCustomer.phone} onChange={e => setNewCustomer({ ...newCustomer, phone: e.target.value })} />
-                        <input type="text" placeholder="Address" value={newCustomer.address} onChange={e => setNewCustomer({ ...newCustomer, address: e.target.value })} />
-                        <input type="text" placeholder="Area/Location" value={newCustomer.area} onChange={e => setNewCustomer({ ...newCustomer, area: e.target.value })} />
-                        <input type="text" placeholder="Reference (Optional)" value={newCustomer.reference} onChange={e => setNewCustomer({ ...newCustomer, reference: e.target.value })} />
+                        <input type="text" placeholder="Name" value={newCustomer.name} onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })} className="w-full p-2 border rounded" />
+                        <input type="text" placeholder="Phone" value={newCustomer.phone} onChange={e => setNewCustomer({ ...newCustomer, phone: e.target.value })} className="w-full p-2 border rounded" />
+                        <input type="text" placeholder="Address" value={newCustomer.address} onChange={e => setNewCustomer({ ...newCustomer, address: e.target.value })} className="w-full p-2 border rounded" />
+                        <input type="text" placeholder="Area/Location" value={newCustomer.area} onChange={e => setNewCustomer({ ...newCustomer, area: e.target.value })} className="w-full p-2 border rounded" />
+                        <input type="text" placeholder="Reference (Optional)" value={newCustomer.reference} onChange={e => setNewCustomer({ ...newCustomer, reference: e.target.value })} className="w-full p-2 border rounded" />
                         <Button onClick={handleAddCustomer} className="w-full">Save Customer</Button>
                     </div>
                 </Card>
@@ -729,18 +654,23 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                     placeholder="Search customers by name, phone, or area..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
+                    className="w-full p-2 pl-10 border rounded-lg"
                 />
             </div>
 
             <div className="space-y-3">
-                {paginatedCustomers.map((customer, index) => {
+                {filteredCustomers.map((customer, index) => {
+                    const customerSales = state.sales.filter(s => s.customerId === customer.id);
+                    const totalPurchase = customerSales.reduce((sum, s) => sum + s.totalAmount, 0);
+                    const totalPaid = customerSales.reduce((sum, s) => sum + s.payments.reduce((pSum, p) => pSum + p.amount, 0), 0);
+                    const totalDue = totalPurchase - totalPaid;
+
                     return (
                         <Card 
                             key={customer.id} 
                             className="cursor-pointer transition-shadow animate-slide-up-fade" 
                             style={{ animationDelay: `${index * 50}ms` }}
-                            onClick={() => setSelectedCustomerId(customer.id)}
+                            onClick={() => setSelectedCustomer(customer)}
                         >
                             <div className="flex justify-between items-start">
                                 <div>
@@ -751,11 +681,11 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                                 <div className="text-right flex-shrink-0 ml-4">
                                     <div className="flex items-center justify-end gap-1 text-green-600">
                                         <ShoppingCart size={14} />
-                                        <span className="font-semibold">₹{customer.totalPurchase.toLocaleString('en-IN')}</span>
+                                        <span className="font-semibold">₹{totalPurchase.toLocaleString('en-IN')}</span>
                                     </div>
-                                     <div className={`flex items-center justify-end gap-1 ${customer.totalDue > 0.01 ? 'text-red-600' : 'text-gray-600'}`}>
+                                     <div className={`flex items-center justify-end gap-1 ${totalDue > 0 ? 'text-red-600' : 'text-gray-600'}`}>
                                         <IndianRupee size={14} />
-                                        <span className="font-semibold">₹{customer.totalDue.toLocaleString('en-IN')}</span>
+                                        <span className="font-semibold">₹{totalDue.toLocaleString('en-IN')}</span>
                                     </div>
                                 </div>
                             </div>
@@ -763,18 +693,6 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                     );
                 })}
             </div>
-
-            {totalListPages > 1 && (
-                <div className="flex justify-center items-center gap-4 mt-4">
-                    <Button onClick={() => setListCurrentPage(p => Math.max(1, p - 1))} disabled={listCurrentPage === 1} variant="secondary">
-                        Previous
-                    </Button>
-                    <span className="font-semibold text-gray-700">Page {listCurrentPage} of {totalListPages}</span>
-                    <Button onClick={() => setListCurrentPage(p => Math.min(totalListPages, p + 1))} disabled={listCurrentPage === totalListPages} variant="secondary">
-                        Next
-                    </Button>
-                </div>
-            )}
         </div>
     );
 };

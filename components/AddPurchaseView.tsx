@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Upload, IndianRupee, Search, QrCode, Info, CheckCircle, XCircle, X, Edit } from 'lucide-react';
+import { Plus, Upload, IndianRupee, Search, QrCode, Info, CheckCircle, XCircle, X } from 'lucide-react';
 import { Supplier, Product, PurchaseItem, Purchase } from '../types';
 import Card from './Card';
 import Button from './Button';
@@ -123,13 +123,8 @@ const NewProductModal: React.FC<{
         
         const trimmedId = id.trim();
         if(currentPurchaseItems.some(item => item.productId.toLowerCase() === trimmedId.toLowerCase())) return alert(`Product with ID "${trimmedId}" is already in this purchase.`);
-        
-        if (mode === 'add') {
-            const isProductInGlobalStock = existingProducts.some(p => p.id.toLowerCase() === trimmedId.toLowerCase());
-            if (isProductInGlobalStock) {
-                return alert(`Product with ID "${trimmedId}" already exists in stock. Please use 'Select Existing' to add stock to it.`);
-            }
-        }
+        // In edit mode for a purchase, we don't need to check against existing stock, as we might be adding a new product line to an old invoice.
+        if(mode === 'add' && existingProducts.some(p => p.id.toLowerCase() === trimmedId.toLowerCase())) return alert(`Product with ID "${trimmedId}" already exists in stock. Please select it from the list instead of creating a new one.`);
 
         const item: PurchaseItem = {
             productId: trimmedId,
@@ -192,11 +187,9 @@ interface PurchaseFormProps {
     onSubmit: (purchaseData: Purchase, originalPurchase?: Purchase) => void;
     onBack: () => void;
     setIsDirty: (isDirty: boolean) => void;
-    lastTenPurchases: Purchase[];
-    onEdit: (purchase: Purchase) => void;
 }
 
-const PurchaseFormComponent: React.FC<PurchaseFormProps> = ({ mode, initialData, suppliers, products, onSubmit, onBack, setIsDirty, lastTenPurchases, onEdit }) => {
+const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, suppliers, products, onSubmit, onBack, setIsDirty }) => {
     
     const [supplierId, setSupplierId] = useState('');
     const [items, setItems] = useState<PurchaseItem[]>([]);
@@ -400,7 +393,7 @@ const PurchaseFormComponent: React.FC<PurchaseFormProps> = ({ mode, initialData,
                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Supplier</label>
-                        <select value={supplierId} onChange={e => setSupplierId(e.target.value)} className="w-full p-2 border rounded custom-select mt-1" disabled={mode === 'edit'}>
+                        <select value={supplierId} onChange={e => setSupplierId(e.target.value)} className="w-full p-2 border rounded custom-select mt-1">
                             <option value="">Select a Supplier</option>
                             {suppliers.map(s => <option key={s.id} value={s.id}>{s.name} - {s.location}</option>)}
                         </select>
@@ -445,39 +438,10 @@ const PurchaseFormComponent: React.FC<PurchaseFormProps> = ({ mode, initialData,
                 </div>
             </Card>
             
-            <div className="space-y-2">
-                 <Button onClick={handleSubmit} className="w-full">{mode === 'add' ? 'Complete Purchase' : 'Update Purchase'}</Button>
-                 <Button onClick={resetForm} variant="secondary" className="w-full">Clear Form</Button>
-            </div>
-
-            {mode === 'add' && (
-                 <Card title="Last 10 Purchases">
-                    <div className="space-y-3 max-h-80 overflow-y-auto">
-                        {lastTenPurchases.length > 0 ? lastTenPurchases.map(purchase => {
-                            const supplier = suppliers.find(s => s.id === purchase.supplierId);
-                            return (
-                                <div key={purchase.id} className="p-3 bg-gray-50 rounded-lg border flex justify-between items-center">
-                                    <div>
-                                        <p className="font-semibold text-primary">{supplier?.name || 'Unknown Supplier'}</p>
-                                        <p className="text-xs text-gray-500">ID: {purchase.id}</p>
-                                        <p className="text-sm">Total: <span className="font-bold">₹{purchase.totalAmount.toLocaleString('en-IN')}</span> on {new Date(purchase.date).toLocaleDateString()}</p>
-                                    </div>
-                                    <Button 
-                                        onClick={() => onEdit(purchase)} 
-                                        variant="secondary" 
-                                        className="px-3 py-1 text-sm flex-shrink-0"
-                                    >
-                                        <Edit size={14} className="mr-1" /> Edit
-                                    </Button>
-                                </div>
-                            );
-                        }) : <p className="text-gray-500 text-center">No purchases recorded yet.</p>}
-                    </div>
-                </Card>
-            )}
+            <Button onClick={handleSubmit} className="w-full">{mode === 'add' ? 'Complete Purchase' : 'Update Purchase'}</Button>
+            <Button onClick={resetForm} variant="secondary" className="w-full">Clear Form</Button>
         </div>
     );
 };
 
-// FIX: Changed to a named export to resolve module resolution issue.
-export const PurchaseForm = React.memo(PurchaseFormComponent);
+export default React.memo(PurchaseForm);

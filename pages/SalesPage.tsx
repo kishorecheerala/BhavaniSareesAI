@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Trash2, Share2, Search, X, IndianRupee, QrCode, Edit } from 'lucide-react';
+import { Plus, Trash2, Share2, Search, X, IndianRupee, QrCode } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Sale, SaleItem, Customer, Product, Payment } from '../types';
 import Card from '../components/Card';
@@ -22,9 +22,6 @@ interface SalesPageProps {
 
 const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     const { state, dispatch, showToast } = useAppContext();
-    const [mode, setMode] = useState<'add' | 'edit'>('add');
-    const [saleToEdit, setSaleToEdit] = useState<Sale | null>(null);
-
     const [customerId, setCustomerId] = useState('');
     const [items, setItems] = useState<SaleItem[]>([]);
     const [discount, setDiscount] = useState('0');
@@ -43,24 +40,6 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     const [isAddingCustomer, setIsAddingCustomer] = useState(false);
     const [newCustomer, setNewCustomer] = useState({ id: '', name: '', phone: '', address: '', area: '', reference: '' });
     const isDirtyRef = useRef(false);
-    
-    useEffect(() => {
-        if (state.selection && state.selection.page === 'SALES' && state.selection.action === 'edit') {
-            const sale = state.sales.find(s => s.id === state.selection.id);
-            if (sale) {
-                setMode('edit');
-                setSaleToEdit(sale);
-                setCustomerId(sale.customerId);
-                setItems(sale.items);
-                setDiscount(String(sale.discount));
-                // For simplicity in edit mode, we don't load payments into the form.
-                // Payments are managed on the customer detail page.
-                setPaymentDetails({ amount: '', method: 'CASH', date: getLocalDateString(), reference: '' });
-            }
-            dispatch({ type: 'CLEAR_SELECTION' });
-        }
-    }, [state.selection, state.sales, dispatch]);
-
 
     useEffect(() => {
         const formIsDirty = !!customerId || items.length > 0 || discount !== '0' || !!paymentDetails.amount;
@@ -80,8 +59,6 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     }, [setIsDirty]);
 
     const resetForm = () => {
-        setMode('add');
-        setSaleToEdit(null);
         setCustomerId('');
         setItems([]);
         setDiscount('0');
@@ -102,21 +79,17 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             price: product.salePrice,
             quantity: 1,
         };
-        
-        const stockAvailable = mode === 'edit'
-            ? (product.quantity + (saleToEdit?.items.find(i => i.productId === product.id)?.quantity || 0))
-            : product.quantity;
 
         const existingItem = items.find(i => i.productId === newItem.productId);
         if (existingItem) {
-            if (existingItem.quantity + 1 > stockAvailable) {
-                 alert(`Not enough stock for ${product.name}. Only ${stockAvailable} available.`);
+            if (existingItem.quantity + 1 > product.quantity) {
+                 alert(`Not enough stock for ${product.name}. Only ${product.quantity} available.`);
                  return;
             }
             setItems(items.map(i => i.productId === newItem.productId ? { ...i, quantity: i.quantity + 1 } : i));
         } else {
-             if (1 > stockAvailable) {
-                 alert(`Not enough stock for ${product.name}. Only ${stockAvailable} available.`);
+             if (1 > product.quantity) {
+                 alert(`Not enough stock for ${product.name}. Only ${product.quantity} available.`);
                  return;
             }
             setItems([...items, newItem]);
@@ -353,30 +326,6 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         alert(`Sale created successfully, but the PDF invoice could not be generated or shared. Error: ${(error as Error).message}`);
       }
     };
-    
-    const handleUpdateSale = () => {
-        if (!saleToEdit) {
-            alert("No sale selected for editing.");
-            return;
-        }
-
-        const { totalAmount, gstAmount, discountAmount } = calculations;
-        const updatedSale: Sale = {
-            ...saleToEdit,
-            items,
-            discount: discountAmount,
-            gstAmount: gstAmount,
-            totalAmount,
-        };
-
-        dispatch({ type: 'UPDATE_SALE', payload: { oldSale: saleToEdit, updatedSale } });
-        showToast('Sale updated successfully!');
-        resetForm();
-        // Navigate back to customer page to see the changes
-        dispatch({ type: 'SET_SELECTION', payload: { page: 'CUSTOMERS', id: customerId } });
-        dispatch({ type: 'SET_CURRENT_PAGE', payload: 'CUSTOMERS' });
-    };
-
 
     const handleCompleteSale = async () => {
         if (!customerId || items.length === 0) {
@@ -606,34 +555,15 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         );
     };
 
-    const lastTenSales = useMemo(() => {
-        return state.sales.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
-    }, [state.sales]);
-
-    const handleEditSaleFromHistory = (sale: Sale) => {
-        setMode('edit');
-        setSaleToEdit(sale);
-        setCustomerId(sale.customerId);
-        setItems(sale.items);
-        setDiscount(String(sale.discount));
-        // Reset payment details for edit mode
-        setPaymentDetails({ amount: '', method: 'CASH', date: getLocalDateString(), reference: '' });
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        showToast('Editing Sale. Make your changes and click "Update Sale".', 'info');
-    };
-
-    const canCreateSale = customerId && items.length > 0 && mode === 'add';
-    const canUpdateSale = customerId && items.length > 0 && mode === 'edit';
-    const canRecordPayment = customerId && items.length === 0 && parseFloat(paymentDetails.amount || '0') > 0 && customerTotalDue != null && customerTotalDue > 0.01 && mode === 'add';
-    const pageTitle = mode === 'edit' ? `Editing Sale: ${saleToEdit?.id}` : 'New Sale / Payment';
-
+    const canCreateSale = customerId && items.length > 0;
+    const canRecordPayment = customerId && items.length === 0 && parseFloat(paymentDetails.amount || '0') > 0 && customerTotalDue != null && customerTotalDue > 0.01;
 
     return (
         <div className="space-y-4">
             {isAddingCustomer && <AddCustomerModal />}
             {isSelectingProduct && <ProductSearchModal />}
             {isScanning && <QRScannerModal />}
-            <h1 className="text-2xl font-bold text-primary">{pageTitle}</h1>
+            <h1 className="text-2xl font-bold text-primary">New Sale / Payment</h1>
             
             <Card>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
@@ -642,12 +572,12 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                         value={customerId} 
                         onChange={e => setCustomerId(e.target.value)} 
                         className="w-full p-2 border rounded custom-select"
-                        disabled={items.length > 0 || mode === 'edit'}
+                        disabled={items.length > 0}
                     >
                         <option value="">Select a Customer</option>
                         {state.customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.area}</option>)}
                     </select>
-                    {!customerId && mode === 'add' && (
+                    {!customerId && (
                         <Button onClick={() => setIsAddingCustomer(true)} variant="secondary" className="flex-shrink-0">
                             <Plus size={16}/> New Customer
                         </Button>
@@ -716,41 +646,34 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                                 </div>
                             </div>
                         </div>
-                        {mode === 'add' && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Amount Paid</label>
-                                    <input type="number" value={paymentDetails.amount} onChange={e => setPaymentDetails({...paymentDetails, amount: e.target.value })} placeholder={`Total is ₹${calculations.totalAmount.toLocaleString('en-IN')}`} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Payment Method</label>
-                                    <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any})} className="w-full p-2 border rounded custom-select">
-                                        <option value="CASH">Cash</option>
-                                        <option value="UPI">UPI</option>
-                                        <option value="CHEQUE">Cheque</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Payment Date</label>
-                                    <input type="date" value={paymentDetails.date} onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} className="w-full p-2 border rounded" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Payment Reference (Optional)</label>
-                                    <input type="text" value={paymentDetails.reference} onChange={e => setPaymentDetails({ ...paymentDetails, reference: e.target.value })} placeholder="e.g. Transaction ID, Cheque No." className="w-full p-2 border rounded" />
-                                </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Amount Paid</label>
+                                <input type="number" value={paymentDetails.amount} onChange={e => setPaymentDetails({...paymentDetails, amount: e.target.value })} placeholder={`Total is ₹${calculations.totalAmount.toLocaleString('en-IN')}`} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500" />
                             </div>
-                        )}
-                         {mode === 'edit' && (
-                            <div className="pt-4 border-t text-sm text-gray-600">
-                                Note: Payments for an existing invoice can be managed from the Customer's detail page.
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Payment Method</label>
+                                <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any})} className="w-full p-2 border rounded custom-select">
+                                    <option value="CASH">Cash</option>
+                                    <option value="UPI">UPI</option>
+                                    <option value="CHEQUE">Cheque</option>
+                                </select>
                             </div>
-                        )}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Payment Date</label>
+                                <input type="date" value={paymentDetails.date} onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} className="w-full p-2 border rounded" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Payment Reference (Optional)</label>
+                                <input type="text" value={paymentDetails.reference} onChange={e => setPaymentDetails({ ...paymentDetails, reference: e.target.value })} placeholder="e.g. Transaction ID, Cheque No." className="w-full p-2 border rounded" />
+                            </div>
+                        </div>
                     </Card>
                 </>
             )}
 
             {/* If cart is empty, we are in "Idle" or "Payment Mode" */}
-            {items.length === 0 && mode === 'add' && (
+            {items.length === 0 && (
                  <>
                     {customerId && customerTotalDue != null && customerTotalDue > 0.01 && (
                         <Card title="Record Payment for Dues">
@@ -798,11 +721,6 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                         <Share2 className="w-4 h-4 mr-2"/>
                         Create Sale & Share Invoice
                     </Button>
-                ) : canUpdateSale ? (
-                     <Button onClick={handleUpdateSale} className="w-full">
-                        <Share2 className="w-4 h-4 mr-2"/>
-                        Update Sale
-                    </Button>
                 ) : canRecordPayment ? (
                      <Button onClick={handleRecordStandalonePayment} className="w-full">
                         <IndianRupee className="w-4 h-4 mr-2" />
@@ -810,38 +728,11 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                     </Button>
                 ) : (
                      <Button className="w-full" disabled>
-                        {mode === 'add' ? 
-                            (customerId ? (items.length === 0 ? 'Enter payment amount for dues, or add items for a new sale' : 'Complete billing details') : 'Select a customer to begin')
-                            : 'Modify items or discount'
-                        }
+                        {customerId ? (items.length === 0 ? 'Enter payment amount for dues, or add items for a new sale' : 'Complete billing details') : 'Select a customer to begin'}
                     </Button>
                 )}
-                <Button onClick={resetForm} variant="secondary" className="w-full">
-                    {mode === 'edit' ? 'Cancel Edit' : 'Clear Form'}
-                </Button>
+                <Button onClick={resetForm} variant="secondary" className="w-full">Clear Form</Button>
             </div>
-            
-            {mode === 'add' && items.length === 0 && (
-                <Card title="Last 10 Transactions">
-                    <div className="space-y-3 max-h-80 overflow-y-auto">
-                        {lastTenSales.length > 0 ? lastTenSales.map(sale => {
-                            const customer = state.customers.find(c => c.id === sale.customerId);
-                            return (
-                                <div key={sale.id} className="p-3 bg-gray-50 rounded-lg border flex justify-between items-center">
-                                    <div>
-                                        <p className="font-semibold text-primary">{customer?.name || 'Unknown Customer'}</p>
-                                        <p className="text-xs text-gray-500">ID: {sale.id}</p>
-                                        <p className="text-sm">Total: <span className="font-bold">₹{sale.totalAmount.toLocaleString('en-IN')}</span> on {new Date(sale.date).toLocaleDateString()}</p>
-                                    </div>
-                                    <Button onClick={() => handleEditSaleFromHistory(sale)} variant="secondary" className="px-3 py-1 text-sm flex-shrink-0">
-                                        <Edit size={14} className="mr-1" /> Edit
-                                    </Button>
-                                </div>
-                            );
-                        }) : <p className="text-gray-500 text-center">No sales recorded yet.</p>}
-                    </div>
-                </Card>
-            )}
         </div>
     );
 };

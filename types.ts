@@ -123,9 +123,3 @@ export interface ProfileData {
   address: string;
   gstNumber: string;
 }
-
-export interface SelectionPayload {
-    page: Page;
-    id: string;
-    action?: 'edit' | 'new';
-}

@@ -1,6 +1,4 @@
-
-
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle, Bell, Menu, Plus } from 'lucide-react';
 
 import { AppProvider, useAppContext } from './context/AppContext';
@@ -17,7 +15,7 @@ import AppSkeletonLoader from './components/AppSkeletonLoader';
 import NotificationsPanel from './components/NotificationsPanel';
 import MenuPanel from './components/MenuPanel';
 import ProfileModal from './components/ProfileModal';
-import { BeforeInstallPromptEvent, Notification, Page, SelectionPayload } from './types';
+import { BeforeInstallPromptEvent, Notification, Page } from './types';
 import { useOnClickOutside } from './hooks/useOnClickOutside';
 import ConfirmationModal from './components/ConfirmationModal';
 
@@ -43,23 +41,10 @@ const Toast = () => {
     );
 };
 
-const NavItem: React.FC<{ page: Page; label: string; icon: React.ElementType; currentPage: Page; onClick: () => void; }> = ({ page, label, icon: Icon, currentPage, onClick }) => (
-  <button
-    onClick={onClick}
-    className={`relative flex flex-col items-center justify-center w-full pt-2 pb-1 text-xs transition-colors duration-200 ${
-      currentPage === page ? 'text-white' : 'text-purple-200 hover:text-white'
-    }`}
-  >
-    {currentPage === page && <div className="absolute inset-x-2 top-0 h-full bg-white/10 rounded-lg -z-10"></div>}
-    <Icon className="w-6 h-6 mb-1" />
-    <span>{label}</span>
-  </button>
-);
-
-
 const MainApp: React.FC = () => {
-  const { state, dispatch, isDbLoaded } = useAppContext();
-  const { currentPage } = state;
+  const [currentPage, _setCurrentPage] = useState<Page>(
+    () => (sessionStorage.getItem('currentPage') as Page) || 'DASHBOARD'
+  );
   const [isDirty, setIsDirty] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
@@ -69,6 +54,7 @@ const MainApp: React.FC = () => {
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [navConfirm, setNavConfirm] = useState<{ show: boolean, page: Page | null }>({ show: false, page: null });
 
+  const { state, dispatch, isDbLoaded } = useAppContext();
   const canExitApp = useRef(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
@@ -189,28 +175,28 @@ const MainApp: React.FC = () => {
     // will then see this and update the isSearchOpen state to false.
     window.history.back();
   };
-  
-  const setCurrentPage = (page: Page) => {
-      if (page === currentPage) {
-          return;
-      }
 
-      if (isDirty) {
-          setNavConfirm({ show: true, page });
-      } else {
-          dispatch({ type: 'SET_CURRENT_PAGE', payload: page });
-      }
+  const setCurrentPage = (page: Page) => {
+    if (page === currentPage) {
+        return;
+    }
+
+    if (isDirty) {
+      setNavConfirm({ show: true, page });
+    } else {
+      _setCurrentPage(page);
+    }
   };
 
-  const handleSearchResultClick = (selection: SelectionPayload) => {
-    dispatch({ type: 'SET_SELECTION', payload: selection });
-    dispatch({ type: 'SET_CURRENT_PAGE', payload: selection.page });
+  const handleSearchResultClick = (page: Page, id: string) => {
+    dispatch({ type: 'SET_SELECTION', payload: { page, id } });
+    _setCurrentPage(page);
     // When navigating from search, we also need to close it.
     closeSearch();
   };
   
   const handleNotificationClick = (page: Page) => {
-    dispatch({ type: 'SET_CURRENT_PAGE', payload: page });
+    _setCurrentPage(page);
     setIsNotificationsOpen(false);
   }
 
@@ -232,7 +218,7 @@ const MainApp: React.FC = () => {
     const commonProps = { setIsDirty };
     switch (currentPage) {
       case 'DASHBOARD':
-        return <Dashboard setCurrentPage={setCurrentPage} />;
+        return <Dashboard setCurrentPage={_setCurrentPage} />;
       case 'CUSTOMERS':
         return <CustomersPage {...commonProps} />;
       case 'SALES':
@@ -246,9 +232,22 @@ const MainApp: React.FC = () => {
       case 'PRODUCTS':
         return <ProductsPage {...commonProps} />;
       default:
-        return <Dashboard setCurrentPage={setCurrentPage} />;
+        return <Dashboard setCurrentPage={_setCurrentPage} />;
     }
   };
+  
+  // FIX: Use React.FC to correctly type the component and handle the 'key' prop, which is managed by React and not part of the component's own props.
+  const NavItem: React.FC<{ page: Page; label: string; icon: React.ElementType }> = ({ page, label, icon: Icon }) => (
+    <button
+      onClick={() => setCurrentPage(page)}
+      className={`flex flex-col items-center justify-center w-full pt-2 pb-1 text-xs transition-colors duration-200 ${
+        currentPage === page ? 'text-white scale-[1.02]' : 'text-purple-200 hover:text-white'
+      }`}
+    >
+      <Icon className="w-6 h-6 mb-1" />
+      <span>{label}</span>
+    </button>
+  );
   
   const hasUnreadNotifications = state.notifications.some(n => !n.read);
 
@@ -270,7 +269,7 @@ const MainApp: React.FC = () => {
 
 
   return (
-    <div className="flex flex-col min-h-screen font-sans text-text bg-background">
+    <div className="flex flex-col h-screen font-sans text-text bg-background">
       <Toast />
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
@@ -285,7 +284,7 @@ const MainApp: React.FC = () => {
           onConfirm={() => {
               if (navConfirm.page) {
                   setIsDirty(false); 
-                  dispatch({ type: 'SET_CURRENT_PAGE', payload: navConfirm.page });
+                  _setCurrentPage(navConfirm.page);
               }
               setNavConfirm({ show: false, page: null });
           }}
@@ -345,22 +344,21 @@ const MainApp: React.FC = () => {
       <nav className="fixed bottom-0 left-0 right-0 bg-primary shadow-lg z-50">
         {/* Desktop nav */}
         <div className="hidden md:flex justify-around max-w-2xl mx-auto">
-            {allNavItems.map(item => <NavItem key={item.page} page={item.page} label={item.label} icon={item.icon} currentPage={currentPage} onClick={() => setCurrentPage(item.page)} />)}
+            {allNavItems.map(item => <NavItem key={item.page} page={item.page} label={item.label} icon={item.icon} />)}
         </div>
 
         {/* Mobile nav */}
         <div className="flex md:hidden justify-around max-w-2xl mx-auto">
-            {mainNavItems.map(item => <NavItem key={item.page} page={item.page} label={item.label} icon={item.icon} currentPage={currentPage} onClick={() => setCurrentPage(item.page)} />)}
+            {mainNavItems.map(item => <NavItem key={item.page} page={item.page} label={item.label} icon={item.icon} />)}
             <div className="relative flex flex-col items-center justify-center w-full pt-2 pb-1" ref={moreMenuRef}>
                  <button
                     onClick={() => setIsMoreMenuOpen(prev => !prev)}
-                    className={`relative flex flex-col items-center justify-center w-full h-full text-xs transition-colors duration-200 ${
-                        isMoreMenuActive ? 'text-white' : 'text-purple-200 hover:text-white'
+                    className={`flex flex-col items-center justify-center w-full h-full text-xs transition-colors duration-200 ${
+                        isMoreMenuActive ? 'text-white scale-[1.02]' : 'text-purple-200 hover:text-white'
                     }`}
                     aria-haspopup="true"
                     aria-expanded={isMoreMenuOpen}
                     >
-                    {isMoreMenuActive && <div className="absolute inset-x-2 top-0 h-full bg-white/10 rounded-lg -z-10"></div>}
                     <Plus className="w-6 h-6 mb-1" />
                     <span>More</span>
                 </button>
