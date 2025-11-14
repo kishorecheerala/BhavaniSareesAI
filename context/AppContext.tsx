@@ -169,38 +169,52 @@ const appReducer = (state: AppState, action: Action): AppState => {
     case 'UPDATE_PURCHASE': {
         const { oldPurchase, updatedPurchase } = action.payload;
 
-        const stockChanges = new Map<string, number>();
-        const productDetails = new Map<string, { purchasePrice: number, salePrice: number, gstPercent: number }>();
+        // Use a map for efficient product lookups and updates
+        const productMap = new Map<string, Product>(state.products.map(p => [p.id, { ...p }]));
 
+        // 1. Revert stock from the old purchase
         oldPurchase.items.forEach(item => {
-            stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) - item.quantity);
-        });
-
-        updatedPurchase.items.forEach(item => {
-            stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) + item.quantity);
-            productDetails.set(item.productId, { purchasePrice: item.price, salePrice: item.saleValue, gstPercent: item.gstPercent });
-        });
-
-        const updatedProducts = state.products.map(p => {
-            if (stockChanges.has(p.id)) {
-                const updatedProduct = {
-                    ...p,
-                    quantity: Math.max(0, p.quantity + (stockChanges.get(p.id) || 0)),
-                };
-                const details = productDetails.get(p.id);
-                if (details) {
-                    updatedProduct.purchasePrice = details.purchasePrice;
-                    updatedProduct.salePrice = details.salePrice;
-                    updatedProduct.gstPercent = details.gstPercent;
-                }
-                return updatedProduct;
+            const product = productMap.get(item.productId);
+            if (product) {
+                product.quantity -= item.quantity;
             }
-            return p;
         });
+
+        // 2. Apply new stock and update product details from the updated purchase
+        updatedPurchase.items.forEach(item => {
+            let product = productMap.get(item.productId);
+
+            if (product) {
+                // Product exists, update its stock and details
+                product.quantity += item.quantity;
+                product.purchasePrice = item.price;
+                product.salePrice = item.saleValue; // `PurchaseItem` uses `saleValue`
+                product.gstPercent = item.gstPercent;
+            } else {
+                // Product doesn't exist, it's a new item added during the edit
+                product = {
+                    id: item.productId,
+                    name: item.productName,
+                    quantity: item.quantity,
+                    purchasePrice: item.price,
+                    salePrice: item.saleValue,
+                    gstPercent: item.gstPercent,
+                };
+            }
+            productMap.set(item.productId, product);
+        });
+
+        // Convert map back to array, ensuring no negative quantities
+        const updatedProducts = Array.from(productMap.values()).map(p => ({
+            ...p,
+            quantity: Math.max(0, p.quantity)
+        }));
+
+        const updatedPurchases = state.purchases.map(p => p.id === updatedPurchase.id ? updatedPurchase : p);
 
         return {
             ...state,
-            purchases: state.purchases.map(p => p.id === updatedPurchase.id ? updatedPurchase : p),
+            purchases: updatedPurchases,
             products: updatedProducts,
         };
     }
