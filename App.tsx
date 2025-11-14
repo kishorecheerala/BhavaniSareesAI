@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle, Bell, Menu, Plus } from 'lucide-react';
 
@@ -270,7 +271,7 @@ const MainApp: React.FC = () => {
 
 
   return (
-    <div className="flex flex-col h-screen font-sans text-text bg-background">
+    <div className="flex flex-col min-h-screen font-sans text-text bg-background">
       <Toast />
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Plus, User, Phone, MapPin, Search, Edit, Save, X, Trash2, IndianRupee, ShoppingCart, Download, Share2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Customer, Payment, Sale } from '../types';
@@ -25,7 +25,12 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isAdding, setIsAdding] = useState(false);
     const [newCustomer, setNewCustomer] = useState({ id: '', name: '', phone: '', address: '', area: '', reference: '' });
-    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+    
+    const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+    const selectedCustomer = useMemo(() => {
+        if (!selectedCustomerId) return null;
+        return state.customers.find(c => c.id === selectedCustomerId) || null;
+    }, [selectedCustomerId, state.customers]);
 
     const [isEditing, setIsEditing] = useState(false);
     const [editedCustomer, setEditedCustomer] = useState<Customer | null>(null);
@@ -44,13 +49,10 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
 
     useEffect(() => {
         if (state.selection && state.selection.page === 'CUSTOMERS') {
-            const customerToSelect = state.customers.find(c => c.id === state.selection.id);
-            if (customerToSelect) {
-                setSelectedCustomer(customerToSelect);
-            }
+            setSelectedCustomerId(state.selection.id);
             dispatch({ type: 'CLEAR_SELECTION' });
         }
-    }, [state.selection, state.customers, dispatch]);
+    }, [state.selection, dispatch]);
 
 
     useEffect(() => {
@@ -67,19 +69,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
             setIsDirty(false);
         };
     }, [setIsDirty]);
-
-    // Effect to keep selectedCustomer data in sync with global state
-    useEffect(() => {
-        if (selectedCustomer) {
-            const currentCustomerData = state.customers.find(c => c.id === selectedCustomer.id);
-            // Deep comparison to avoid re-render if data is the same
-            if (JSON.stringify(currentCustomerData) !== JSON.stringify(selectedCustomer)) {
-                setSelectedCustomer(currentCustomerData || null);
-            }
-        }
-    }, [selectedCustomer?.id, state.customers]);
-
-
+    
     // Effect to reset the editing form when the selected customer changes
     useEffect(() => {
         if (selectedCustomer) {
@@ -129,7 +119,6 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
         if (editedCustomer) {
             if (window.confirm('Are you sure you want to save these changes to the customer details?')) {
                 dispatch({ type: 'UPDATE_CUSTOMER', payload: editedCustomer });
-                setSelectedCustomer(editedCustomer);
                 setIsEditing(false);
                 showToast("Customer details updated successfully.");
             }
@@ -456,8 +445,8 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
     };
     
     if (selectedCustomer && editedCustomer) {
-        const customerSales = state.sales.filter(s => s.customerId === selectedCustomer.id);
-        const customerReturns = state.returns.filter(r => r.type === 'CUSTOMER' && r.partyId === selectedCustomer.id);
+        const customerSales = useMemo(() => state.sales.filter(s => s.customerId === selectedCustomer.id), [state.sales, selectedCustomer.id]);
+        const customerReturns = useMemo(() => state.returns.filter(r => r.type === 'CUSTOMER' && r.partyId === selectedCustomer.id), [state.returns, selectedCustomer.id]);
         
         const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             setEditedCustomer({ ...editedCustomer, [e.target.name]: e.target.value });
@@ -474,7 +463,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                     Are you sure you want to delete this sale? This action cannot be undone and will add the items back to stock.
                 </ConfirmationModal>
                 {paymentModalState.isOpen && <PaymentModal />}
-                <Button onClick={() => setSelectedCustomer(null)}>&larr; Back to List</Button>
+                <Button onClick={() => setSelectedCustomerId(null)}>&larr; Back to List</Button>
                 <Card>
                     <div className="flex justify-between items-start mb-4">
                         <div>
@@ -693,7 +682,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                             key={customer.id} 
                             className="cursor-pointer transition-shadow animate-slide-up-fade" 
                             style={{ animationDelay: `${index * 50}ms` }}
-                            onClick={() => setSelectedCustomer(customer)}
+                            onClick={() => setSelectedCustomerId(customer.id)}
                         >
                             <div className="flex justify-between items-start">
                                 <div>

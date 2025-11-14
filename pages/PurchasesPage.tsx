@@ -25,7 +25,13 @@ interface PurchasesPageProps {
 const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     const { state, dispatch, showToast } = useAppContext();
     const [view, setView] = useState<'list' | 'add_supplier' | 'add_purchase' | 'edit_purchase'>('list');
-    const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+    
+    const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(null);
+    const selectedSupplier = useMemo(() => {
+        if (!selectedSupplierId) return null;
+        return state.suppliers.find(s => s.id === selectedSupplierId) || null;
+    }, [selectedSupplierId, state.suppliers]);
+
     const [searchTerm, setSearchTerm] = useState('');
     const [purchaseToEdit, setPurchaseToEdit] = useState<Purchase | null>(null);
     const [openPurchaseId, setOpenPurchaseId] = useState<string | null>(null);
@@ -46,7 +52,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         if (state.selection && state.selection.page === 'PURCHASES') {
             const supplierToSelect = state.suppliers.find(s => s.id === state.selection.id);
             if (supplierToSelect) {
-                setSelectedSupplier(supplierToSelect);
+                setSelectedSupplierId(state.selection.id);
                 setView('list'); // Ensure we are on the list view to see the detail
             } else if (state.selection.action === 'new') {
                  setView('add_purchase');
@@ -72,16 +78,6 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         };
     }, [setIsDirty]);
     
-    // Effect to sync selectedSupplier data with global state if it changes (e.g. after an edit)
-    useEffect(() => {
-        if (selectedSupplier) {
-            const currentSupplierData = state.suppliers.find(s => s.id === selectedSupplier.id);
-            if (JSON.stringify(currentSupplierData) !== JSON.stringify(selectedSupplier)) {
-                setSelectedSupplier(currentSupplierData || null);
-            }
-        }
-    }, [selectedSupplier?.id, state.suppliers]);
-
     // Effect to reset editing state when selected supplier changes
     useEffect(() => {
         if (selectedSupplier) {
@@ -183,8 +179,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             dispatch({ type: 'UPDATE_PURCHASE', payload: { oldPurchase, updatedPurchase } });
             showToast("Purchase updated successfully!");
             // After editing, go back to the supplier list and re-select that supplier to see the changes.
-            const supplier = state.suppliers.find(s => s.id === updatedPurchase.supplierId) || null;
-            setSelectedSupplier(supplier);
+            setSelectedSupplierId(updatedPurchase.supplierId);
             setPurchaseToEdit(null);
             setView('list'); 
         }
@@ -319,9 +314,9 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         )
     };
     
-    if (view === 'list' && selectedSupplier) {
-        const supplierPurchases = state.purchases.filter(p => p.supplierId === selectedSupplier.id);
-        const supplierReturns = state.returns.filter(r => r.type === 'SUPPLIER' && r.partyId === selectedSupplier.id);
+    if (view === 'list' && selectedSupplier && editedSupplier) {
+        const supplierPurchases = useMemo(() => state.purchases.filter(p => p.supplierId === selectedSupplier.id), [state.purchases, selectedSupplier.id]);
+        const supplierReturns = useMemo(() => state.returns.filter(r => r.type === 'SUPPLIER' && r.partyId === selectedSupplier.id), [state.returns, selectedSupplier.id]);
 
         const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             if (editedSupplier) {
@@ -335,7 +330,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                     Are you sure you want to delete this purchase? This will remove the items from your stock. This action cannot be undone.
                 </ConfirmationModal>
                 {paymentModalState.isOpen && <PaymentModal />}
-                <Button onClick={() => setSelectedSupplier(null)}>&larr; Back to Suppliers</Button>
+                <Button onClick={() => setSelectedSupplierId(null)}>&larr; Back to Suppliers</Button>
                 <Card>
                      <div className="flex justify-between items-center mb-4">
                         <h2 className="text-lg font-bold text-primary">Supplier Details: {selectedSupplier.name}</h2>
@@ -348,7 +343,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                             <Button onClick={() => setIsEditing(true)}><Edit size={16}/> Edit</Button>
                         )}
                     </div>
-                    {isEditing && editedSupplier ? (
+                    {isEditing ? (
                         <div className="space-y-3">
                             <div><label className="text-sm font-medium">Name</label><input type="text" name="name" value={editedSupplier.name} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
                             <div><label className="text-sm font-medium">Phone</label><input type="text" name="phone" value={editedSupplier.phone} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
@@ -577,7 +572,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                         return (
                             <div 
                                 key={supplier.id} 
-                                onClick={() => setSelectedSupplier(supplier)} 
+                                onClick={() => setSelectedSupplierId(supplier.id)} 
                                 className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-purple-100 border animate-slide-up-fade"
                                 style={{ animationDelay: `${index * 50}ms` }}
                             >

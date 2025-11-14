@@ -171,18 +171,38 @@ const appReducer = (state: AppState, action: Action): AppState => {
         const { oldPurchase, updatedPurchase } = action.payload;
 
         const stockChanges = new Map<string, number>();
-        const productDetails = new Map<string, { purchasePrice: number, salePrice: number, gstPercent: number }>();
+        const productDetails = new Map<string, { purchasePrice: number, salePrice: number, gstPercent: number, productName: string }>();
 
+        // Revert old purchase stock
         oldPurchase.items.forEach(item => {
             stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) - item.quantity);
         });
 
+        const newProductsToAdd: Product[] = [];
+        const existingProductIds = new Set(state.products.map(p => p.id));
+
+        // Apply new purchase stock and identify new products
         updatedPurchase.items.forEach(item => {
-            stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) + item.quantity);
-            productDetails.set(item.productId, { purchasePrice: item.price, salePrice: item.saleValue, gstPercent: item.gstPercent });
+            productDetails.set(item.productId, { purchasePrice: item.price, salePrice: item.saleValue, gstPercent: item.gstPercent, productName: item.productName });
+            
+            if (!existingProductIds.has(item.productId)) {
+                // This is a brand new product being added during an edit
+                newProductsToAdd.push({
+                    id: item.productId,
+                    name: item.productName,
+                    quantity: item.quantity,
+                    purchasePrice: item.price,
+                    salePrice: item.saleValue,
+                    gstPercent: item.gstPercent,
+                });
+            } else {
+                 // This is an existing product, so just calculate the stock change
+                 stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) + item.quantity);
+            }
         });
 
-        const updatedProducts = state.products.map(p => {
+        // Update existing products
+        const updatedExistingProducts = state.products.map(p => {
             if (stockChanges.has(p.id)) {
                 const updatedProduct = {
                     ...p,
@@ -190,19 +210,24 @@ const appReducer = (state: AppState, action: Action): AppState => {
                 };
                 const details = productDetails.get(p.id);
                 if (details) {
+                    // Update details of existing product based on this new purchase
                     updatedProduct.purchasePrice = details.purchasePrice;
                     updatedProduct.salePrice = details.salePrice;
                     updatedProduct.gstPercent = details.gstPercent;
+                    updatedProduct.name = details.productName; // Also update name in case it was changed
                 }
                 return updatedProduct;
             }
             return p;
         });
 
+        // Combine updated existing products with brand new ones
+        const finalProducts = [...updatedExistingProducts, ...newProductsToAdd];
+
         return {
             ...state,
             purchases: state.purchases.map(p => p.id === updatedPurchase.id ? updatedPurchase : p),
-            products: updatedProducts,
+            products: finalProducts,
         };
     }
     case 'DELETE_PURCHASE': {
