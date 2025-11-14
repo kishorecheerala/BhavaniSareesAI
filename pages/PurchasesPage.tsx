@@ -368,53 +368,47 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
 
                                 return (
                                 <div key={purchase.id} className="p-3 bg-gray-50 rounded-lg border">
-                                    <details>
-                                        <summary className="flex justify-between items-start cursor-pointer">
-                                            <div className="flex-grow">
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <div>
-                                                        <p className="font-semibold">{new Date(purchase.date).toLocaleString()}</p>
-                                                        <p className="text-xs text-gray-500">Internal ID: {purchase.id}</p>
-                                                        {purchase.supplierInvoiceId && <p className="text-xs text-gray-500">Supplier Invoice: {purchase.supplierInvoiceId}</p>}
-                                                        <p className={`text-sm font-bold ${isPaid ? 'text-green-600' : 'text-red-600'}`}>{isPaid ? 'Paid' : `Due: ₹${dueAmount.toLocaleString('en-IN')}`}</p>
-                                                    </div>
-                                                    <p className="font-bold text-lg text-primary">₹{purchase.totalAmount.toLocaleString('en-IN')}</p>
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex-grow">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div>
+                                                    <p className="font-semibold">{new Date(purchase.date).toLocaleString()}</p>
+                                                    <p className="text-xs text-gray-500">Internal ID: {purchase.id}</p>
+                                                    {purchase.supplierInvoiceId && <p className="text-xs text-gray-500">Supplier Invoice: {purchase.supplierInvoiceId}</p>}
+                                                    <p className={`text-sm font-bold ${isPaid ? 'text-green-600' : 'text-red-600'}`}>{isPaid ? 'Paid' : `Due: ₹${dueAmount.toLocaleString('en-IN')}`}</p>
                                                 </div>
+                                                <p className="font-bold text-lg text-primary">₹{purchase.totalAmount.toLocaleString('en-IN')}</p>
                                             </div>
-                                            <div className="flex items-center ml-2 flex-shrink-0">
-                                                <Button 
-                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPurchaseToEdit(purchase); setView('edit_purchase'); }} 
-                                                    variant="secondary"
-                                                    className="h-8 w-8 p-0"
-                                                >
-                                                    <Edit size={14} />
-                                                </Button>
-                                                <DeleteButton variant="delete" onClick={(e) => { e.stopPropagation(); handleDeletePurchase(purchase.id); }} />
-                                            </div>
-                                        </summary>
-                                        <div className="pl-4 mt-2 border-l-2 border-purple-200 space-y-3 animate-fade-in-fast">
+                                        </div>
+                                        <div className="flex items-center ml-2 flex-shrink-0">
+                                             <button onClick={() => { setPurchaseToEdit(purchase); setView('edit_purchase'); }} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Edit Purchase">
+                                                <Edit size={16} />
+                                            </button>
+                                            <DeleteButton variant="delete" onClick={() => handleDeletePurchase(purchase.id)} />
+                                        </div>
+                                    </div>
+                                    <div className="pl-4 mt-2 border-l-2 border-purple-200 space-y-3 animate-fade-in-fast">
+                                        <div>
+                                            <h4 className="font-semibold text-sm">Items:</h4>
+                                            <ul className="list-disc list-inside text-sm">
+                                                {purchase.items.map((item, index) => <li key={index}>{item.productName} (x{item.quantity}) @ ₹{item.price.toLocaleString('en-IN')}</li>)}
+                                            </ul>
+                                        </div>
+                                        {(purchase.payments || []).length > 0 && (
                                             <div>
-                                                <h4 className="font-semibold text-sm">Items:</h4>
+                                                <h4 className="font-semibold text-sm">Payments:</h4>
                                                 <ul className="list-disc list-inside text-sm">
-                                                    {purchase.items.map((item, index) => <li key={index}>{item.productName} (x{item.quantity}) @ ₹{item.price.toLocaleString('en-IN')}</li>)}
+                                                    {(purchase.payments || []).map(p => (
+                                                    <li key={p.id}>
+                                                        ₹{p.amount.toLocaleString('en-IN')} {p.method === 'RETURN_CREDIT' ? <span className="text-blue-600 font-semibold">(Return Credit)</span> : `via ${p.method}`} on {new Date(p.date).toLocaleDateString()}
+                                                        {p.reference && <span className="text-xs text-gray-500 block">Ref: {p.reference}</span>}
+                                                    </li>
+                                                    ))}
                                                 </ul>
                                             </div>
-                                            {(purchase.payments || []).length > 0 && (
-                                                <div>
-                                                    <h4 className="font-semibold text-sm">Payments:</h4>
-                                                    <ul className="list-disc list-inside text-sm">
-                                                        {(purchase.payments || []).map(p => (
-                                                        <li key={p.id}>
-                                                            ₹{p.amount.toLocaleString('en-IN')} {p.method === 'RETURN_CREDIT' ? <span className="text-blue-600 font-semibold">(Return Credit)</span> : `via ${p.method}`} on {new Date(p.date).toLocaleDateString()}
-                                                            {p.reference && <span className="text-xs text-gray-500 block">Ref: {p.reference}</span>}
-                                                        </li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                            )}
-                                            {!isPaid && <Button onClick={() => setPaymentModalState({ isOpen: true, purchaseId: purchase.id })}><Plus size={16}/> Add Payment</Button>}
-                                        </div>
-                                    </details>
+                                        )}
+                                        {!isPaid && <Button onClick={() => setPaymentModalState({ isOpen: true, purchaseId: purchase.id })}><Plus size={16}/> Add Payment</Button>}
+                                    </div>
                                 </div>
                             )})}
                         </div>
