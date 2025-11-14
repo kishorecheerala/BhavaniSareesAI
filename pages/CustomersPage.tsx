@@ -382,9 +382,35 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
           doc.save(`Dues-Summary-${selectedCustomer.id}.pdf`);
         }
     };
+    
+    const customersWithDues = useMemo(() => {
+        const salesByCustomer = new Map<string, Sale[]>();
+        for (const sale of state.sales) {
+            if (!salesByCustomer.has(sale.customerId)) {
+                salesByCustomer.set(sale.customerId, []);
+            }
+            salesByCustomer.get(sale.customerId)!.push(sale);
+        }
+
+        return state.customers.map(customer => {
+            const customerSales = salesByCustomer.get(customer.id) || [];
+            const totalPurchase = customerSales.reduce((sum, s) => sum + s.totalAmount, 0);
+            const totalPaid = customerSales.reduce((sum, s) => {
+                const paymentsTotal = (s.payments || []).reduce((pSum, p) => pSum + p.amount, 0);
+                return sum + paymentsTotal;
+            }, 0);
+            const totalDue = totalPurchase - totalPaid;
+            
+            return {
+                ...customer,
+                totalPurchase,
+                totalDue
+            };
+        });
+    }, [state.customers, state.sales]);
 
 
-    const filteredCustomers = state.customers.filter(c =>
+    const filteredCustomers = customersWithDues.filter(c =>
         c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         c.phone.includes(searchTerm) ||
         c.area.toLowerCase().includes(searchTerm.toLowerCase())
@@ -405,11 +431,11 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                         <p>Amount Due: <span className="font-bold text-red-600">₹{dueAmount.toLocaleString('en-IN')}</span></p>
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Amount</label>
-                            <input type="number" placeholder="Enter amount" value={paymentDetails.amount} onChange={e => setPaymentDetails({ ...paymentDetails, amount: e.target.value })} className="w-full p-2 border rounded" autoFocus/>
+                            <input type="number" placeholder="Enter amount" value={paymentDetails.amount} onChange={e => setPaymentDetails({ ...paymentDetails, amount: e.target.value })} autoFocus/>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Method</label>
-                            <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any })} className="w-full p-2 border rounded custom-select">
+                            <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any })} className="custom-select">
                                 <option value="CASH">Cash</option>
                                 <option value="UPI">UPI</option>
                                 <option value="CHEQUE">Cheque</option>
@@ -421,7 +447,6 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                                 type="date" 
                                 value={paymentDetails.date} 
                                 onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} 
-                                className="w-full p-2 border rounded"
                             />
                         </div>
                         <div>
@@ -431,7 +456,6 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                                 placeholder="e.g. UPI ID, Cheque No."
                                 value={paymentDetails.reference}
                                 onChange={e => setPaymentDetails({ ...paymentDetails, reference: e.target.value })}
-                                className="w-full p-2 border rounded"
                             />
                         </div>
                         <div className="flex gap-2">
@@ -484,11 +508,11 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                     </div>
                     {isEditing ? (
                         <div className="space-y-3">
-                            <div><label className="text-sm font-medium">Name</label><input type="text" name="name" value={editedCustomer.name} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
-                            <div><label className="text-sm font-medium">Phone</label><input type="text" name="phone" value={editedCustomer.phone} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
-                            <div><label className="text-sm font-medium">Address</label><input type="text" name="address" value={editedCustomer.address} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
-                            <div><label className="text-sm font-medium">Area</label><input type="text" name="area" value={editedCustomer.area} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
-                            <div><label className="text-sm font-medium">Reference</label><input type="text" name="reference" value={editedCustomer.reference ?? ''} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
+                            <div><label className="text-sm font-medium">Name</label><input type="text" name="name" value={editedCustomer.name} onChange={handleInputChange} /></div>
+                            <div><label className="text-sm font-medium">Phone</label><input type="text" name="phone" value={editedCustomer.phone} onChange={handleInputChange} /></div>
+                            <div><label className="text-sm font-medium">Address</label><input type="text" name="address" value={editedCustomer.address} onChange={handleInputChange} /></div>
+                            <div><label className="text-sm font-medium">Area</label><input type="text" name="area" value={editedCustomer.area} onChange={handleInputChange} /></div>
+                            <div><label className="text-sm font-medium">Reference</label><input type="text" name="reference" value={editedCustomer.reference ?? ''} onChange={handleInputChange} /></div>
                         </div>
                     ) : (
                         <div className="space-y-1 text-gray-700">
@@ -516,26 +540,24 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                                 const isSaleOpen = openSaleId === sale.id;
 
                                 return (
-                                <div key={sale.id} className="p-3 bg-gray-50 rounded-lg border overflow-hidden">
-                                    <div className="flex justify-between items-start cursor-pointer" onClick={() => setOpenSaleId(isSaleOpen ? null : sale.id)}>
+                                <div key={sale.id} className="bg-gray-50 rounded-lg border overflow-hidden">
+                                    <button type="button" className="w-full flex justify-between items-start text-left p-3 transition-colors hover:bg-purple-50" onClick={() => setOpenSaleId(isSaleOpen ? null : sale.id)}>
                                         <div className="flex-grow pr-4">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <div>
-                                                    <p className="font-semibold">{new Date(sale.date).toLocaleString()}</p>
-                                                    <p className="text-xs text-gray-500">Invoice ID: {sale.id}</p>
-                                                    <p className={`text-sm font-bold ${isPaid ? 'text-green-600' : 'text-red-600'}`}>
-                                                        {isPaid ? 'Paid' : `Due: ₹${dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
-                                                    </p>
-                                                </div>
-                                                <p className="font-bold text-lg text-primary">
-                                                    ₹{sale.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                                </p>
-                                            </div>
+                                            <p className="font-semibold">{new Date(sale.date).toLocaleString()}</p>
+                                            <p className="text-xs text-gray-500">Invoice ID: {sale.id}</p>
+                                            <p className={`text-sm font-bold ${isPaid ? 'text-green-600' : 'text-red-600'}`}>
+                                                {isPaid ? 'Paid' : `Due: ₹${dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
+                                            </p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-bold text-lg text-primary">
+                                                ₹{sale.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                            </p>
                                         </div>
                                         <div className="flex items-center ml-2 flex-shrink-0">
                                             {isSaleOpen ? <ChevronUp className="text-gray-500"/> : <ChevronDown className="text-gray-500"/>}
                                         </div>
-                                    </div>
+                                    </button>
                                     <div
                                         style={{
                                             display: 'grid',
@@ -544,7 +566,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                                         }}
                                     >
                                         <div className="overflow-hidden">
-                                            <div className="pl-4 mt-2 border-l-2 border-purple-200 space-y-3 pt-2">
+                                            <div className="p-3 border-t border-purple-100 bg-white space-y-3">
                                                 <div className="flex items-center flex-wrap gap-2">
                                                     <button onClick={(e) => { e.stopPropagation(); handleEditSale(sale.id); }} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Edit Sale"><Edit size={16} /></button>
                                                     <button onClick={(e) => { e.stopPropagation(); handleDownloadInvoice(sale); }} className="p-2 text-gray-600 hover:bg-gray-100 rounded-full" aria-label="Download Invoice"><Download size={16} /></button>
@@ -645,15 +667,15 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                                     placeholder="Enter unique ID" 
                                     value={newCustomer.id} 
                                     onChange={e => setNewCustomer({ ...newCustomer, id: e.target.value })} 
-                                    className="w-full p-2 border rounded-r-md" 
+                                    className="rounded-l-none"
                                 />
                             </div>
                         </div>
-                        <input type="text" placeholder="Name" value={newCustomer.name} onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })} className="w-full p-2 border rounded" />
-                        <input type="text" placeholder="Phone" value={newCustomer.phone} onChange={e => setNewCustomer({ ...newCustomer, phone: e.target.value })} className="w-full p-2 border rounded" />
-                        <input type="text" placeholder="Address" value={newCustomer.address} onChange={e => setNewCustomer({ ...newCustomer, address: e.target.value })} className="w-full p-2 border rounded" />
-                        <input type="text" placeholder="Area/Location" value={newCustomer.area} onChange={e => setNewCustomer({ ...newCustomer, area: e.target.value })} className="w-full p-2 border rounded" />
-                        <input type="text" placeholder="Reference (Optional)" value={newCustomer.reference} onChange={e => setNewCustomer({ ...newCustomer, reference: e.target.value })} className="w-full p-2 border rounded" />
+                        <input type="text" placeholder="Name" value={newCustomer.name} onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })} />
+                        <input type="text" placeholder="Phone" value={newCustomer.phone} onChange={e => setNewCustomer({ ...newCustomer, phone: e.target.value })} />
+                        <input type="text" placeholder="Address" value={newCustomer.address} onChange={e => setNewCustomer({ ...newCustomer, address: e.target.value })} />
+                        <input type="text" placeholder="Area/Location" value={newCustomer.area} onChange={e => setNewCustomer({ ...newCustomer, area: e.target.value })} />
+                        <input type="text" placeholder="Reference (Optional)" value={newCustomer.reference} onChange={e => setNewCustomer({ ...newCustomer, reference: e.target.value })} />
                         <Button onClick={handleAddCustomer} className="w-full">Save Customer</Button>
                     </div>
                 </Card>
@@ -666,17 +688,12 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                     placeholder="Search customers by name, phone, or area..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full p-2 pl-10 border rounded-lg"
+                    className="pl-10"
                 />
             </div>
 
             <div className="space-y-3">
                 {filteredCustomers.map((customer, index) => {
-                    const customerSales = state.sales.filter(s => s.customerId === customer.id);
-                    const totalPurchase = customerSales.reduce((sum, s) => sum + s.totalAmount, 0);
-                    const totalPaid = customerSales.reduce((sum, s) => sum + s.payments.reduce((pSum, p) => pSum + p.amount, 0), 0);
-                    const totalDue = totalPurchase - totalPaid;
-
                     return (
                         <Card 
                             key={customer.id} 
@@ -693,11 +710,11 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                                 <div className="text-right flex-shrink-0 ml-4">
                                     <div className="flex items-center justify-end gap-1 text-green-600">
                                         <ShoppingCart size={14} />
-                                        <span className="font-semibold">₹{totalPurchase.toLocaleString('en-IN')}</span>
+                                        <span className="font-semibold">₹{customer.totalPurchase.toLocaleString('en-IN')}</span>
                                     </div>
-                                     <div className={`flex items-center justify-end gap-1 ${totalDue > 0.01 ? 'text-red-600' : 'text-gray-600'}`}>
+                                     <div className={`flex items-center justify-end gap-1 ${customer.totalDue > 0.01 ? 'text-red-600' : 'text-gray-600'}`}>
                                         <IndianRupee size={14} />
-                                        <span className="font-semibold">₹{totalDue.toLocaleString('en-IN')}</span>
+                                        <span className="font-semibold">₹{customer.totalDue.toLocaleString('en-IN')}</span>
                                     </div>
                                 </div>
                             </div>

@@ -29,27 +29,45 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-    const totalCustomerDues = state.sales.reduce((sum, sale) => {
-        const amountPaid = (sale.payments || []).reduce((paidSum, p) => paidSum + p.amount, 0);
-        const due = sale.totalAmount - amountPaid;
-        return sum + (due > 0 ? due : 0);
-    }, 0);
+    const {
+        totalCustomerDues,
+        totalPurchaseDues,
+        totalInventoryValue,
+        totalStockQuantity,
+        totalSales,
+        totalPurchases,
+    } = useMemo(() => {
+        const customerDues = state.sales.reduce((sum, sale) => {
+            const amountPaid = (sale.payments || []).reduce((paidSum, p) => paidSum + p.amount, 0);
+            const due = sale.totalAmount - amountPaid;
+            return sum + (due > 0 ? due : 0);
+        }, 0);
 
-    const totalPurchaseDues = state.purchases.reduce((sum, purchase) => {
-        const amountPaid = (purchase.payments || []).reduce((paidSum, p) => paidSum + p.amount, 0);
-        const due = purchase.totalAmount - amountPaid;
-        return sum + (due > 0 ? due : 0);
-    }, 0);
+        const purchaseDues = state.purchases.reduce((sum, purchase) => {
+            const amountPaid = (purchase.payments || []).reduce((paidSum, p) => paidSum + p.amount, 0);
+            const due = purchase.totalAmount - amountPaid;
+            return sum + (due > 0 ? due : 0);
+        }, 0);
 
-    const totalInventoryValue = state.products.reduce((sum, product) => {
-        return sum + (product.purchasePrice * product.quantity);
-    }, 0);
-    
-    const totalStockQuantity = state.products.reduce((sum, product) => sum + product.quantity, 0);
-    
-    const totalSales = state.sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
-    const totalPurchases = state.purchases.reduce((sum, purchase) => sum + purchase.totalAmount, 0);
-    
+        const inventoryValue = state.products.reduce((sum, product) => {
+            return sum + (product.purchasePrice * product.quantity);
+        }, 0);
+
+        const stockQuantity = state.products.reduce((sum, product) => sum + product.quantity, 0);
+
+        const salesTotal = state.sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+        const purchasesTotal = state.purchases.reduce((sum, purchase) => sum + purchase.totalAmount, 0);
+
+        return {
+            totalCustomerDues: customerDues,
+            totalPurchaseDues: purchaseDues,
+            totalInventoryValue: inventoryValue,
+            totalStockQuantity: stockQuantity,
+            totalSales: salesTotal,
+            totalPurchases: purchasesTotal,
+        };
+    }, [state.sales, state.purchases, state.products]);
+
     const availableYears = useMemo(() => {
         const years = new Set(state.sales.map(s => new Date(s.date).getFullYear()));
         if (!years.has(new Date().getFullYear())) {
@@ -269,7 +287,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
 
 
     const MetricCard = ({ icon: Icon, title, value, color, unit = '₹' }: {icon: React.ElementType, title: string, value: string | number, color: string, unit?: string}) => (
-        <Card className={`flex items-center p-4 ${color}`}>
+        <Card className={`flex items-center p-4 !border-0 ${color}`}>
             <div className="p-3 bg-white/20 rounded-full">
                 <Icon className="w-8 h-8 text-white" />
             </div>
@@ -409,7 +427,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     <select
                         value={selectedMonth}
                         onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                        className="w-full p-2 border rounded-lg custom-select"
+                        className="custom-select"
                     >
                         {monthNames.map((month, index) => (
                             <option key={month} value={index}>{month}</option>
@@ -418,7 +436,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     <select
                         value={selectedYear}
                         onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                        className="w-full p-2 border rounded-lg custom-select"
+                        className="custom-select"
                     >
                         {availableYears.map(year => (
                             <option key={year} value={year}>{year}</option>

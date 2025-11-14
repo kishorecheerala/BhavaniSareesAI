@@ -1,6 +1,6 @@
 
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle, Bell, Menu, Plus } from 'lucide-react';
 
 import { AppProvider, useAppContext } from './context/AppContext';
@@ -42,6 +42,20 @@ const Toast = () => {
         </div>
     );
 };
+
+const NavItem: React.FC<{ page: Page; label: string; icon: React.ElementType; currentPage: Page; onClick: () => void; }> = ({ page, label, icon: Icon, currentPage, onClick }) => (
+  <button
+    onClick={onClick}
+    className={`relative flex flex-col items-center justify-center w-full pt-2 pb-1 text-xs transition-colors duration-200 ${
+      currentPage === page ? 'text-white' : 'text-purple-200 hover:text-white'
+    }`}
+  >
+    {currentPage === page && <div className="absolute inset-x-2 top-0 h-full bg-white/10 rounded-lg -z-10"></div>}
+    <Icon className="w-6 h-6 mb-1" />
+    <span>{label}</span>
+  </button>
+);
+
 
 const MainApp: React.FC = () => {
   const { state, dispatch, isDbLoaded } = useAppContext();
@@ -218,7 +232,6 @@ const MainApp: React.FC = () => {
     const commonProps = { setIsDirty };
     switch (currentPage) {
       case 'DASHBOARD':
-        // FIX: Pass the `setCurrentPage` prop to the Dashboard component.
         return <Dashboard setCurrentPage={setCurrentPage} />;
       case 'CUSTOMERS':
         return <CustomersPage {...commonProps} />;
@@ -233,23 +246,9 @@ const MainApp: React.FC = () => {
       case 'PRODUCTS':
         return <ProductsPage {...commonProps} />;
       default:
-        // FIX: Pass the `setCurrentPage` prop to the Dashboard component.
         return <Dashboard setCurrentPage={setCurrentPage} />;
     }
   };
-  
-  // FIX: Use React.FC to correctly type the component and handle the 'key' prop, which is managed by React and not part of the component's own props.
-  const NavItem: React.FC<{ page: Page; label: string; icon: React.ElementType }> = ({ page, label, icon: Icon }) => (
-    <button
-      onClick={() => setCurrentPage(page)}
-      className={`flex flex-col items-center justify-center w-full pt-2 pb-1 text-xs transition-colors duration-200 ${
-        currentPage === page ? 'text-white scale-[1.02]' : 'text-purple-200 hover:text-white'
-      }`}
-    >
-      <Icon className="w-6 h-6 mb-1" />
-      <span>{label}</span>
-    </button>
-  );
   
   const hasUnreadNotifications = state.notifications.some(n => !n.read);
 
@@ -346,21 +345,22 @@ const MainApp: React.FC = () => {
       <nav className="fixed bottom-0 left-0 right-0 bg-primary shadow-lg z-50">
         {/* Desktop nav */}
         <div className="hidden md:flex justify-around max-w-2xl mx-auto">
-            {allNavItems.map(item => <NavItem key={item.page} page={item.page} label={item.label} icon={item.icon} />)}
+            {allNavItems.map(item => <NavItem key={item.page} page={item.page} label={item.label} icon={item.icon} currentPage={currentPage} onClick={() => setCurrentPage(item.page)} />)}
         </div>
 
         {/* Mobile nav */}
         <div className="flex md:hidden justify-around max-w-2xl mx-auto">
-            {mainNavItems.map(item => <NavItem key={item.page} page={item.page} label={item.label} icon={item.icon} />)}
+            {mainNavItems.map(item => <NavItem key={item.page} page={item.page} label={item.label} icon={item.icon} currentPage={currentPage} onClick={() => setCurrentPage(item.page)} />)}
             <div className="relative flex flex-col items-center justify-center w-full pt-2 pb-1" ref={moreMenuRef}>
                  <button
                     onClick={() => setIsMoreMenuOpen(prev => !prev)}
-                    className={`flex flex-col items-center justify-center w-full h-full text-xs transition-colors duration-200 ${
-                        isMoreMenuActive ? 'text-white scale-[1.02]' : 'text-purple-200 hover:text-white'
+                    className={`relative flex flex-col items-center justify-center w-full h-full text-xs transition-colors duration-200 ${
+                        isMoreMenuActive ? 'text-white' : 'text-purple-200 hover:text-white'
                     }`}
                     aria-haspopup="true"
                     aria-expanded={isMoreMenuOpen}
                     >
+                    {isMoreMenuActive && <div className="absolute inset-x-2 top-0 h-full bg-white/10 rounded-lg -z-10"></div>}
                     <Plus className="w-6 h-6 mb-1" />
                     <span>More</span>
                 </button>
