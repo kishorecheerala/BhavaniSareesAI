@@ -312,8 +312,6 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         )
     };
     
-    // ARCHITECTURAL FIX: Create a memoized index of purchases by supplier ID.
-    // This prevents re-filtering the entire purchases array, which could cause a freeze.
     const purchasesBySupplier = useMemo(() => {
         const map = new Map<string, Purchase[]>();
         for (const purchase of state.purchases) {
@@ -329,7 +327,6 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     }, [state.purchases]);
 
     if (view === 'list' && selectedSupplier && editedSupplier) {
-        // PERF FIX: Use the memoized index for instantaneous lookup.
         const supplierPurchasesWithDues = useMemo(() => {
             const supplierPurchases = purchasesBySupplier.get(selectedSupplier.id) || [];
             return supplierPurchases.map(purchase => {
@@ -551,7 +548,10 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
 
     // Default 'list' view
     const suppliersWithDues = useMemo(() => {
+        // PROACTIVE ARCHITECTURAL FIX: Use the same performant pattern as the customers page.
         const purchasesSummary = new Map<string, { totalSpent: number, totalPaid: number }>();
+
+        // Step 1: Create a summary of all purchases in one pass (O(M))
         for (const purchase of state.purchases) {
             const summary = purchasesSummary.get(purchase.supplierId) || { totalSpent: 0, totalPaid: 0 };
             summary.totalSpent += purchase.totalAmount;
@@ -559,7 +559,8 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             summary.totalPaid += paymentsTotal;
             purchasesSummary.set(purchase.supplierId, summary);
         }
-
+        
+        // Step 2: Map over suppliers and do an instant lookup (O(N))
         return state.suppliers.map(supplier => {
             const summary = purchasesSummary.get(supplier.id) || { totalSpent: 0, totalPaid: 0 };
             const totalDue = summary.totalSpent - summary.totalPaid;

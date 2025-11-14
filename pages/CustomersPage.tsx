@@ -384,7 +384,11 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
     };
     
     const customersWithDues = useMemo(() => {
+        // ARCHITECTURAL FIX: Use a highly performant map-based aggregation (O(N+M))
+        // This processes all sales in one pass, preventing the UI freeze.
         const salesSummary = new Map<string, { totalPurchase: number, totalPaid: number }>();
+
+        // Step 1: Create a summary of all sales in a single pass (O(M))
         for (const sale of state.sales) {
             const summary = salesSummary.get(sale.customerId) || { totalPurchase: 0, totalPaid: 0 };
             summary.totalPurchase += sale.totalAmount;
@@ -393,6 +397,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
             salesSummary.set(sale.customerId, summary);
         }
 
+        // Step 2: Map over customers and do an instant lookup (O(N))
         return state.customers.map(customer => {
             const summary = salesSummary.get(customer.id) || { totalPurchase: 0, totalPaid: 0 };
             const totalDue = summary.totalPurchase - summary.totalPaid;
@@ -464,19 +469,14 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
         )
     };
     
-    // ARCHITECTURAL FIX: Create a memoized index of sales by customer ID.
-    // This prevents re-filtering the entire sales array on every interaction,
-    // which was the root cause of the application freezing.
     const salesByCustomer = useMemo(() => {
         const map = new Map<string, Sale[]>();
         for (const sale of state.sales) {
             if (!map.has(sale.customerId)) {
                 map.set(sale.customerId, []);
             }
-            // Using non-null assertion as we've just ensured the key exists.
             map.get(sale.customerId)!.push(sale);
         }
-        // Pre-sort the sales for each customer to avoid doing it on every render.
         for (const sales of map.values()) {
             sales.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         }
@@ -484,7 +484,6 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
     }, [state.sales]);
 
     if (selectedCustomer && editedCustomer) {
-        // PERF FIX: Use the memoized index for instantaneous lookup.
         const customerSalesWithDues = useMemo(() => {
             const customerSales = salesByCustomer.get(selectedCustomer.id) || [];
             return customerSales.map(sale => {
