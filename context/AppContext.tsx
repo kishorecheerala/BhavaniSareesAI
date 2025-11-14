@@ -178,7 +178,6 @@ const appReducer = (state: AppState, action: Action): AppState => {
 
         updatedPurchase.items.forEach(item => {
             stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) + item.quantity);
-            // FIX: The property name in the object literal should be 'salePrice' to match the type definition of `productDetails`.
             productDetails.set(item.productId, { purchasePrice: item.price, salePrice: item.saleValue, gstPercent: item.gstPercent });
         });
 
@@ -191,7 +190,6 @@ const appReducer = (state: AppState, action: Action): AppState => {
                 const details = productDetails.get(p.id);
                 if (details) {
                     updatedProduct.purchasePrice = details.purchasePrice;
-                    // FIX: The `details` object has a `salePrice` property, not `saleValue`.
                     updatedProduct.salePrice = details.salePrice;
                     updatedProduct.gstPercent = details.gstPercent;
                 }

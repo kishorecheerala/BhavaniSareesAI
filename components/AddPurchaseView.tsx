@@ -201,7 +201,7 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
     useEffect(() => {
         if (mode === 'edit' && initialData) {
             setSupplierId(initialData.supplierId);
-            setItems(initialData.items);
+            setItems(initialData.items.map(item => ({ ...item }))); // Deep copy
             setSupplierInvoiceId(initialData.supplierInvoiceId || '');
             setPurchaseDate(getLocalDateString(new Date(initialData.date)));
         }
