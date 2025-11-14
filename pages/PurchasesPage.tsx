@@ -313,7 +313,17 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     };
     
     if (view === 'list' && selectedSupplier && editedSupplier) {
-        const supplierPurchases = useMemo(() => state.purchases.filter(p => p.supplierId === selectedSupplier.id), [state.purchases, selectedSupplier.id]);
+        const supplierPurchasesWithDues = useMemo(() => {
+            return state.purchases
+                .filter(p => p.supplierId === selectedSupplier.id)
+                .map(purchase => {
+                    const amountPaid = (purchase.payments || []).reduce((sum, p) => sum + p.amount, 0);
+                    const dueAmount = purchase.totalAmount - amountPaid;
+                    return { ...purchase, amountPaid, dueAmount };
+                })
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        }, [state.purchases, selectedSupplier.id]);
+        
         const supplierReturns = useMemo(() => state.returns.filter(r => r.type === 'SUPPLIER' && r.partyId === selectedSupplier.id), [state.returns, selectedSupplier.id]);
 
         const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -366,11 +376,10 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                     )}
                 </Card>
                 <Card title="Purchase History">
-                    {supplierPurchases.length > 0 ? (
+                    {supplierPurchasesWithDues.length > 0 ? (
                         <div className="space-y-4">
-                            {supplierPurchases.slice().reverse().map(purchase => {
-                                const amountPaid = (purchase.payments || []).reduce((sum, p) => sum + p.amount, 0);
-                                const dueAmount = purchase.totalAmount - amountPaid;
+                            {supplierPurchasesWithDues.map(purchase => {
+                                const { dueAmount } = purchase;
                                 const isPaid = dueAmount <= 0.01;
                                 const isPurchaseOpen = openPurchaseId === purchase.id;
 

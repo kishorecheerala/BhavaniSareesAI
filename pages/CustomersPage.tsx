@@ -469,7 +469,17 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
     };
     
     if (selectedCustomer && editedCustomer) {
-        const customerSales = useMemo(() => state.sales.filter(s => s.customerId === selectedCustomer.id), [state.sales, selectedCustomer.id]);
+        const customerSalesWithDues = useMemo(() => {
+            return state.sales
+                .filter(s => s.customerId === selectedCustomer.id)
+                .map(sale => {
+                    const amountPaid = (sale.payments || []).reduce((sum, p) => sum + p.amount, 0);
+                    const dueAmount = sale.totalAmount - amountPaid;
+                    return { ...sale, amountPaid, dueAmount };
+                })
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        }, [state.sales, selectedCustomer.id]);
+        
         const customerReturns = useMemo(() => state.returns.filter(r => r.type === 'CUSTOMER' && r.partyId === selectedCustomer.id), [state.returns, selectedCustomer.id]);
         
         const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -531,11 +541,10 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                     </div>
                 </Card>
                 <Card title="Sales History">
-                    {customerSales.length > 0 ? (
+                    {customerSalesWithDues.length > 0 ? (
                         <div className="space-y-4">
-                            {customerSales.slice().reverse().map(sale => {
-                                const amountPaid = sale.payments.reduce((sum, p) => sum + p.amount, 0);
-                                const dueAmount = sale.totalAmount - amountPaid;
+                            {customerSalesWithDues.map(sale => {
+                                const { dueAmount } = sale;
                                 const isPaid = dueAmount <= 0.01;
                                 const isSaleOpen = openSaleId === sale.id;
 
