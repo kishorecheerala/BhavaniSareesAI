@@ -384,26 +384,24 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
     };
     
     const customersWithDues = useMemo(() => {
-        const salesByCustomer = new Map<string, Sale[]>();
+        // Step 1: Create a summary map in a single pass over sales. This is highly performant.
+        const salesSummary = new Map<string, { totalPurchase: number, totalPaid: number }>();
         for (const sale of state.sales) {
-            if (!salesByCustomer.has(sale.customerId)) {
-                salesByCustomer.set(sale.customerId, []);
-            }
-            salesByCustomer.get(sale.customerId)!.push(sale);
+            const summary = salesSummary.get(sale.customerId) || { totalPurchase: 0, totalPaid: 0 };
+            summary.totalPurchase += sale.totalAmount;
+            const paymentsTotal = (sale.payments || []).reduce((pSum, p) => pSum + p.amount, 0);
+            summary.totalPaid += paymentsTotal;
+            salesSummary.set(sale.customerId, summary);
         }
 
+        // Step 2: Map over customers and use the summary map for instant lookups.
         return state.customers.map(customer => {
-            const customerSales = salesByCustomer.get(customer.id) || [];
-            const totalPurchase = customerSales.reduce((sum, s) => sum + s.totalAmount, 0);
-            const totalPaid = customerSales.reduce((sum, s) => {
-                const paymentsTotal = (s.payments || []).reduce((pSum, p) => pSum + p.amount, 0);
-                return sum + paymentsTotal;
-            }, 0);
-            const totalDue = totalPurchase - totalPaid;
+            const summary = salesSummary.get(customer.id) || { totalPurchase: 0, totalPaid: 0 };
+            const totalDue = summary.totalPurchase - summary.totalPaid;
             
             return {
                 ...customer,
-                totalPurchase,
+                totalPurchase: summary.totalPurchase,
                 totalDue
             };
         });

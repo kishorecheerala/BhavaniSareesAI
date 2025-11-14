@@ -536,26 +536,22 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
 
     // Default 'list' view
     const suppliersWithDues = useMemo(() => {
-        const purchasesBySupplier = new Map<string, Purchase[]>();
+        const purchasesSummary = new Map<string, { totalSpent: number, totalPaid: number }>();
         for (const purchase of state.purchases) {
-            if (!purchasesBySupplier.has(purchase.supplierId)) {
-                purchasesBySupplier.set(purchase.supplierId, []);
-            }
-            purchasesBySupplier.get(purchase.supplierId)!.push(purchase);
+            const summary = purchasesSummary.get(purchase.supplierId) || { totalSpent: 0, totalPaid: 0 };
+            summary.totalSpent += purchase.totalAmount;
+            const paymentsTotal = (purchase.payments || []).reduce((pSum, payment) => pSum + payment.amount, 0);
+            summary.totalPaid += paymentsTotal;
+            purchasesSummary.set(purchase.supplierId, summary);
         }
 
         return state.suppliers.map(supplier => {
-            const supplierPurchases = purchasesBySupplier.get(supplier.id) || [];
-            const totalSpent = supplierPurchases.reduce((sum, p) => sum + p.totalAmount, 0);
-            const totalPaid = supplierPurchases.reduce((sum, p) => {
-                const paymentsTotal = (p.payments || []).reduce((pSum, payment) => pSum + payment.amount, 0);
-                return sum + paymentsTotal;
-            }, 0);
-            const totalDue = totalSpent - totalPaid;
+            const summary = purchasesSummary.get(supplier.id) || { totalSpent: 0, totalPaid: 0 };
+            const totalDue = summary.totalSpent - summary.totalPaid;
             
             return {
                 ...supplier,
-                totalSpent,
+                totalSpent: summary.totalSpent,
                 totalDue
             };
         });
