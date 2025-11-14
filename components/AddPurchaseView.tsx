@@ -227,7 +227,6 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
     const [isScanning, setIsScanning] = useState(false);
     const [scannedProductId, setScannedProductId] = useState('');
     const [importStatus, setImportStatus] = useState<{ type: 'info' | 'success' | 'error', message: string } | null>(null);
-    const csvInputRef = useRef<HTMLInputElement>(null);
 
     const handleSelectProduct = (product: Product) => {
         const quantityStr = prompt(`Enter quantity for ${product.name}:`, '1');
@@ -281,12 +280,30 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
         }
     };
     
+    const handleDownloadTemplate = (e: React.MouseEvent<HTMLAnchorElement>) => {
+        e.preventDefault();
+        const headers = ['id', 'name', 'quantity', 'purchaseprice', 'saleprice', 'gstpercent'];
+        const exampleRow1 = ['PROD-UNIQUE-1', 'New Saree Model A', '10', '1500', '3000', '5'];
+        const exampleRow2 = ['PROD-UNIQUE-2', 'New Saree Model B', '25', '800', '1600', '12'];
+        
+        const csvContent = "data:text/csv;charset=utf-8," 
+            + [headers.join(','), exampleRow1.join(','), exampleRow2.join(',')].join('\n');
+        
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "purchase-import-template.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     const handleImportCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
 
         if (items.length > 0 && !window.confirm("Importing from CSV will replace all current items. Continue?")) {
-            if (csvInputRef.current) csvInputRef.current.value = "";
+            if (event.target) (event.target as HTMLInputElement).value = '';
             return;
         }
 
@@ -337,7 +354,7 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
             } catch (error) {
                 setImportStatus({ type: 'error', message: `Import error: ${(error as Error).message}`});
             } finally {
-                 if (csvInputRef.current) csvInputRef.current.value = "";
+                 if (event.target) (event.target as HTMLInputElement).value = '';
             }
         };
         reader.readAsText(file);
@@ -393,7 +410,14 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
 
     return (
         <div className="space-y-4">
-            <input type="file" accept=".csv" ref={csvInputRef} onChange={handleImportCSV} className="hidden" />
+            <input 
+                type="file" 
+                accept=".csv, text/csv" 
+                id="csv-purchase-import"
+                onChange={handleImportCSV} 
+                className="hidden"
+                onClick={(event) => { (event.target as HTMLInputElement).value = '' }}
+            />
             {isScanning && <QRScannerModal onClose={() => setIsScanning(false)} onScanned={handleProductScanned} />}
             <ProductSearchModal isOpen={isSelectingProduct} onClose={() => setIsSelectingProduct(false)} onSelect={handleSelectProduct} products={products} />
             <NewProductModal
@@ -431,7 +455,15 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
                     <Button onClick={() => setIsAddingProduct(true)}><Plus size={16} className="mr-2"/> Add New Product</Button>
                     <Button onClick={() => setIsSelectingProduct(true)} variant="secondary"><Search size={16} className="mr-2"/> Select Existing</Button>
                     <Button onClick={() => setIsScanning(true)} variant="secondary"><QrCode size={16} className="mr-2"/> Scan Product</Button>
-                    <Button onClick={() => csvInputRef.current?.click()} variant="secondary"><Upload size={16} className="mr-2"/> Import from CSV</Button>
+                    <label htmlFor="csv-purchase-import" className="px-4 py-2 rounded-md font-semibold text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-sm flex items-center justify-center gap-2 transform hover:scale-[1.02] active:scale-[0.98] bg-secondary hover:bg-purple-600 focus:ring-secondary cursor-pointer">
+                        <Upload size={16} className="mr-2"/> Import from CSV
+                    </label>
+                </div>
+                <div className="text-center text-xs text-gray-500 -mt-2 mb-4">
+                    <span>CSV format issues? </span>
+                    <a href="#" onClick={handleDownloadTemplate} className="font-semibold text-primary underline hover:text-purple-800">
+                        Download sample template
+                    </a>
                 </div>
                 <StatusNotification />
                 <div className="space-y-2 mt-4">

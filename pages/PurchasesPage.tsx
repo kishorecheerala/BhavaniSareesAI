@@ -69,16 +69,25 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         };
     }, [setIsDirty]);
     
+    // Effect to keep selectedSupplier data in sync with global state.
+    // This runs if the global supplier data changes while viewing a supplier.
     useEffect(() => {
         if (selectedSupplier) {
-            const currentSupplier = state.suppliers.find(s => s.id === selectedSupplier.id);
-            setSelectedSupplier(currentSupplier || null);
-            setEditedSupplier(currentSupplier || null);
-        } else {
-            setEditedSupplier(null);
+            const currentSupplierData = state.suppliers.find(s => s.id === selectedSupplier.id);
+            // Deep comparison to avoid re-render loops if data hasn't changed
+            if (JSON.stringify(currentSupplierData) !== JSON.stringify(selectedSupplier)) {
+                setSelectedSupplier(currentSupplierData || null);
+            }
         }
-        setIsEditing(false);
-    }, [selectedSupplier, state.suppliers, state.purchases]);
+    }, [selectedSupplier?.id, state.suppliers]);
+
+    // Effect to reset the editing form for the supplier's details when the selected supplier changes.
+    useEffect(() => {
+        if (selectedSupplier) {
+            setEditedSupplier(selectedSupplier);
+        }
+        setIsEditing(false); // Always reset edit mode when supplier changes
+    }, [selectedSupplier]);
     
     const handleAddSupplier = () => {
         const trimmedId = newSupplier.id.trim();
@@ -166,11 +175,16 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     };
 
     const handleUpdatePurchase = (updatedPurchase: Purchase) => {
-        dispatch({ type: 'UPDATE_PURCHASE', payload: updatedPurchase });
+        if (!purchaseToEdit) {
+            showToast("Error updating purchase: Original data not found.", 'info');
+            return;
+        }
+
+        dispatch({ type: 'UPDATE_PURCHASE', payload: { oldPurchase: purchaseToEdit, updatedPurchase } });
         showToast("Purchase updated successfully!");
-        // After editing, go back to the supplier list and re-select that supplier to see the changes.
-        const supplier = state.suppliers.find(s => s.id === updatedPurchase.supplierId) || null;
-        setSelectedSupplier(supplier);
+        
+        // After editing, simply reset the view. The component will re-render with the new data.
+        setPurchaseToEdit(null);
         setView('list');
     };
     
@@ -381,7 +395,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                                     <p className="font-semibold">{new Date(purchase.date).toLocaleString()}</p>
                                                     <p className="text-xs text-gray-500">Internal ID: {purchase.id}</p>
                                                     {purchase.supplierInvoiceId && <p className="text-xs text-gray-500">Supplier Invoice: {purchase.supplierInvoiceId}</p>}
-                                                    <p className={`text-sm font-bold ${isPaid ? 'text-green-600' : 'text-red-600'}`}>{isPaid ? 'Paid' : `Due: ₹${dueAmount.toLocaleString('en-IN')}`}</p>
+                                                    <p className={`text-sm font-bold ${isPaid ? 'text-green-600' : 'text-red-600'}`}>Due: ₹{dueAmount.toLocaleString('en-IN')}</p>
                                                 </div>
                                                 <p className="font-bold text-lg text-primary">₹{purchase.totalAmount.toLocaleString('en-IN')}</p>
                                             </div>
@@ -404,8 +418,8 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                         <div className="p-2 bg-purple-50 rounded-md text-sm">
                                             <h4 className="font-semibold text-gray-700 mb-2">Transaction Details:</h4>
                                             <div className="space-y-1">
-                                                <div className="flex justify-between"><span>Subtotal (excl. GST):</span> <span>₹{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
-                                                <div className="flex justify-between"><span>GST Amount:</span> <span>+ ₹{totalGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                                                <div className="flex justify-between"><span>Subtotal (excl. GST):</span> <span>₹{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 3 })}</span></div>
+                                                <div className="flex justify-between"><span>GST Amount:</span> <span>+ ₹{totalGst.toLocaleString('en-IN', { minimumFractionDigits: 3 })}</span></div>
                                                 <div className="flex justify-between font-bold border-t pt-1 mt-1"><span>Grand Total:</span> <span>₹{purchase.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
                                             </div>
                                         </div>

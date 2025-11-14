@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Download, Filter, XCircle, Upload, Info, CheckCircle } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Customer, Sale, SaleItem } from '../types';
@@ -40,7 +40,6 @@ const ReportsPage: React.FC = () => {
     const [selectedArea, setSelectedArea] = useState<string>('');
     const [startDate, setStartDate] = useState<string>('');
     const [endDate, setEndDate] = useState<string>('');
-    const csvInputRef = useRef<HTMLInputElement>(null);
     const [importStatus, setImportStatus] = useState<{ type: 'info' | 'success' | 'error', message: string } | null>(null);
 
 
@@ -221,7 +220,6 @@ const ReportsPage: React.FC = () => {
             }
 
             if (!window.confirm("Are you sure you want to import sales from this file? This will create new sales and update stock levels. It will skip any sales where the Sale ID already exists.")) {
-                 if (csvInputRef.current) csvInputRef.current.value = "";
                  setImportStatus(null);
                  return;
             }
@@ -319,13 +317,13 @@ const ReportsPage: React.FC = () => {
             } catch (error) {
                 setImportStatus({ type: 'error', message: `Import failed: ${(error as Error).message}` });
             } finally {
-                if (csvInputRef.current) csvInputRef.current.value = "";
+                if (event.target) (event.target as HTMLInputElement).value = '';
             }
         };
 
         reader.onerror = () => {
             setImportStatus({ type: 'error', message: 'Failed to read the file.' });
-            if (csvInputRef.current) csvInputRef.current.value = "";
+            if (event.target) (event.target as HTMLInputElement).value = '';
         };
 
         reader.readAsText(file);
@@ -358,6 +356,14 @@ const ReportsPage: React.FC = () => {
 
     return (
         <div className="space-y-6">
+            <input
+                type="file"
+                id="csv-sales-import"
+                onChange={handleImportCSV}
+                className="hidden"
+                accept=".csv, text/csv"
+                onClick={(event) => { (event.target as HTMLInputElement).value = '' }}
+            />
             <h1 className="text-2xl font-bold text-primary">Reports</h1>
 
             <Card title="Filters">
@@ -457,10 +463,10 @@ const ReportsPage: React.FC = () => {
                     Bulk import historical sales data. The CSV must contain the columns: `saleid`, `date`, `customerid`, `productid`, `quantity`, `price`, `discount`. Any sales with an ID that already exists will be skipped. Customers and products must exist in the app before importing.
                  </p>
                  <StatusNotification />
-                 <Button onClick={() => csvInputRef.current?.click()} className="w-full">
+                 <label htmlFor="csv-sales-import" className="px-4 py-2 rounded-md font-semibold text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-sm flex items-center justify-center gap-2 transform hover:scale-[1.02] active:scale-[0.98] bg-primary hover:bg-purple-800 focus:ring-primary w-full cursor-pointer">
                     <Upload className="w-4 h-4 mr-2" />
                     Import Sales CSV
-                 </Button>
+                 </label>
             </Card>
         </div>
     );
