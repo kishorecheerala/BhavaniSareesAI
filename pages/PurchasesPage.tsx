@@ -21,6 +21,9 @@ interface PurchasesPageProps {
   setIsDirty: (isDirty: boolean) => void;
 }
 
+const ITEMS_PER_PAGE = 25;
+const PURCHASE_HISTORY_PAGE_SIZE = 10;
+
 const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     const { state, dispatch, showToast } = useAppContext();
     const [view, setView] = useState<'list' | 'add_supplier' | 'add_purchase' | 'edit_purchase'>('list');
@@ -46,6 +49,10 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
     const [confirmModalState, setConfirmModalState] = useState<{ isOpen: boolean, purchaseIdToDelete: string | null }>({ isOpen: false, purchaseIdToDelete: null });
     
     const isDirtyRef = useRef(false);
+
+    // Pagination state
+    const [listCurrentPage, setListCurrentPage] = useState(1);
+    const [visiblePurchasesCount, setVisiblePurchasesCount] = useState(PURCHASE_HISTORY_PAGE_SIZE);
 
     useEffect(() => {
         if (state.selection && state.selection.page === 'PURCHASES') {
@@ -86,6 +93,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         }
         setIsEditing(false);
         setOpenPurchaseId(null);
+        setVisiblePurchasesCount(PURCHASE_HISTORY_PAGE_SIZE); // Reset history pagination
     }, [selectedSupplier]);
     
     const handleAddSupplier = () => {
@@ -344,6 +352,8 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             }
         };
 
+        const purchasesToShow = supplierPurchasesWithDues.slice(0, visiblePurchasesCount);
+
         return (
             <div className="space-y-4">
                 <ConfirmationModal isOpen={confirmModalState.isOpen} onClose={() => setConfirmModalState({isOpen: false, purchaseIdToDelete: null})} onConfirm={confirmDeletePurchase} title="Confirm Purchase Deletion">
@@ -390,7 +400,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                 <Card title="Purchase History">
                     {supplierPurchasesWithDues.length > 0 ? (
                         <div className="space-y-4">
-                            {supplierPurchasesWithDues.map(purchase => {
+                            {purchasesToShow.map(purchase => {
                                 const { dueAmount } = purchase;
                                 const isPaid = dueAmount <= 0.01;
                                 const isPurchaseOpen = openPurchaseId === purchase.id;
@@ -449,6 +459,11 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                     </div>
                                 </div>
                             )})}
+                            {supplierPurchasesWithDues.length > visiblePurchasesCount && (
+                                <Button onClick={() => setVisiblePurchasesCount(prev => prev + PURCHASE_HISTORY_PAGE_SIZE)} variant="secondary" className="w-full mt-4">
+                                    Show More
+                                </Button>
+                            )}
                         </div>
                     ) : <p className="text-gray-500">No purchases recorded for this supplier.</p>}
                 </Card>
@@ -548,10 +563,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
 
     // Default 'list' view
     const suppliersWithDues = useMemo(() => {
-        // PROACTIVE ARCHITECTURAL FIX: Use the same performant pattern as the customers page.
         const purchasesSummary = new Map<string, { totalSpent: number, totalPaid: number }>();
-
-        // Step 1: Create a summary of all purchases in one pass (O(M))
         for (const purchase of state.purchases) {
             const summary = purchasesSummary.get(purchase.supplierId) || { totalSpent: 0, totalPaid: 0 };
             summary.totalSpent += purchase.totalAmount;
@@ -560,7 +572,6 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             purchasesSummary.set(purchase.supplierId, summary);
         }
         
-        // Step 2: Map over suppliers and do an instant lookup (O(N))
         return state.suppliers.map(supplier => {
             const summary = purchasesSummary.get(supplier.id) || { totalSpent: 0, totalPaid: 0 };
             const totalDue = summary.totalSpent - summary.totalPaid;
@@ -573,11 +584,20 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         });
     }, [state.suppliers, state.purchases]);
     
-    const filteredSuppliers = suppliersWithDues.filter(supplier =>
+    const filteredSuppliers = useMemo(() => suppliersWithDues.filter(supplier =>
         supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         supplier.phone.includes(searchTerm) ||
         supplier.location.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    ), [suppliersWithDues, searchTerm]);
+
+    // Derived state for pagination of the main supplier list
+    const paginatedSuppliers = useMemo(() => {
+        const startIndex = (listCurrentPage - 1) * ITEMS_PER_PAGE;
+        const endIndex = startIndex + ITEMS_PER_PAGE;
+        return filteredSuppliers.slice(startIndex, endIndex);
+    }, [filteredSuppliers, listCurrentPage]);
+
+    const totalListPages = Math.ceil(filteredSuppliers.length / ITEMS_PER_PAGE);
 
     return (
         <div className="space-y-4">
@@ -606,7 +626,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
 
             <Card title="All Suppliers">
                 <div className="space-y-3">
-                    {filteredSuppliers.map((supplier, index) => {
+                    {paginatedSuppliers.map((supplier, index) => {
                         return (
                             <div 
                                 key={supplier.id} 
@@ -634,6 +654,17 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                         );
                     })}
                 </div>
+                 {totalListPages > 1 && (
+                    <div className="flex justify-center items-center gap-4 mt-4">
+                        <Button onClick={() => setListCurrentPage(p => Math.max(1, p - 1))} disabled={listCurrentPage === 1} variant="secondary">
+                            Previous
+                        </Button>
+                        <span className="font-semibold text-gray-700">Page {listCurrentPage} of {totalListPages}</span>
+                        <Button onClick={() => setListCurrentPage(p => Math.min(totalListPages, p + 1))} disabled={listCurrentPage === totalListPages} variant="secondary">
+                            Next
+                        </Button>
+                    </div>
+                )}
             </Card>
         </div>
     );

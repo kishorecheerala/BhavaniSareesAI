@@ -20,6 +20,9 @@ interface CustomersPageProps {
   setIsDirty: (isDirty: boolean) => void;
 }
 
+const ITEMS_PER_PAGE = 25;
+const SALES_HISTORY_PAGE_SIZE = 10;
+
 const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
     const { state, dispatch, showToast } = useAppContext();
     const [searchTerm, setSearchTerm] = useState('');
@@ -46,6 +49,10 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
     const [confirmModalState, setConfirmModalState] = useState<{ isOpen: boolean, saleIdToDelete: string | null }>({ isOpen: false, saleIdToDelete: null });
     const [openSaleId, setOpenSaleId] = useState<string | null>(null);
     const isDirtyRef = useRef(false);
+
+    // State for pagination
+    const [listCurrentPage, setListCurrentPage] = useState(1);
+    const [visibleSalesCount, setVisibleSalesCount] = useState(SALES_HISTORY_PAGE_SIZE);
 
     useEffect(() => {
         if (state.selection && state.selection.page === 'CUSTOMERS') {
@@ -79,6 +86,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
         }
         setIsEditing(false);
         setOpenSaleId(null);
+        setVisibleSalesCount(SALES_HISTORY_PAGE_SIZE); // Reset sales history pagination
     }, [selectedCustomer]);
 
 
@@ -384,11 +392,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
     };
     
     const customersWithDues = useMemo(() => {
-        // ARCHITECTURAL FIX: Use a highly performant map-based aggregation (O(N+M))
-        // This processes all sales in one pass, preventing the UI freeze.
         const salesSummary = new Map<string, { totalPurchase: number, totalPaid: number }>();
-
-        // Step 1: Create a summary of all sales in a single pass (O(M))
         for (const sale of state.sales) {
             const summary = salesSummary.get(sale.customerId) || { totalPurchase: 0, totalPaid: 0 };
             summary.totalPurchase += sale.totalAmount;
@@ -397,7 +401,6 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
             salesSummary.set(sale.customerId, summary);
         }
 
-        // Step 2: Map over customers and do an instant lookup (O(N))
         return state.customers.map(customer => {
             const summary = salesSummary.get(customer.id) || { totalPurchase: 0, totalPaid: 0 };
             const totalDue = summary.totalPurchase - summary.totalPaid;
@@ -411,11 +414,20 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
     }, [state.customers, state.sales]);
 
 
-    const filteredCustomers = customersWithDues.filter(c =>
+    const filteredCustomers = useMemo(() => customersWithDues.filter(c =>
         c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         c.phone.includes(searchTerm) ||
         c.area.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    ), [customersWithDues, searchTerm]);
+    
+    // Derived state for pagination of the main customer list
+    const paginatedCustomers = useMemo(() => {
+        const startIndex = (listCurrentPage - 1) * ITEMS_PER_PAGE;
+        const endIndex = startIndex + ITEMS_PER_PAGE;
+        return filteredCustomers.slice(startIndex, endIndex);
+    }, [filteredCustomers, listCurrentPage]);
+
+    const totalListPages = Math.ceil(filteredCustomers.length / ITEMS_PER_PAGE);
     
     const PaymentModal = () => {
         const sale = state.sales.find(s => s.id === paymentModalState.saleId);
@@ -498,6 +510,8 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
         const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             setEditedCustomer({ ...editedCustomer, [e.target.name]: e.target.value });
         };
+        
+        const salesToShow = customerSalesWithDues.slice(0, visibleSalesCount);
 
         return (
             <div className="space-y-4">
@@ -556,7 +570,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                 <Card title="Sales History">
                     {customerSalesWithDues.length > 0 ? (
                         <div className="space-y-4">
-                            {customerSalesWithDues.map(sale => {
+                            {salesToShow.map(sale => {
                                 const { dueAmount } = sale;
                                 const isPaid = dueAmount <= 0.01;
                                 const isSaleOpen = openSaleId === sale.id;
@@ -629,6 +643,11 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                                     </div>
                                 </div>
                             )})}
+                            {customerSalesWithDues.length > visibleSalesCount && (
+                                <Button onClick={() => setVisibleSalesCount(prev => prev + SALES_HISTORY_PAGE_SIZE)} variant="secondary" className="w-full mt-4">
+                                    Show More
+                                </Button>
+                            )}
                         </div>
                     ) : (
                         <p className="text-gray-500">No sales recorded for this customer.</p>
@@ -715,7 +734,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
             </div>
 
             <div className="space-y-3">
-                {filteredCustomers.map((customer, index) => {
+                {paginatedCustomers.map((customer, index) => {
                     return (
                         <Card 
                             key={customer.id} 
@@ -744,6 +763,18 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
                     );
                 })}
             </div>
+
+            {totalListPages > 1 && (
+                <div className="flex justify-center items-center gap-4 mt-4">
+                    <Button onClick={() => setListCurrentPage(p => Math.max(1, p - 1))} disabled={listCurrentPage === 1} variant="secondary">
+                        Previous
+                    </Button>
+                    <span className="font-semibold text-gray-700">Page {listCurrentPage} of {totalListPages}</span>
+                    <Button onClick={() => setListCurrentPage(p => Math.min(totalListPages, p + 1))} disabled={listCurrentPage === totalListPages} variant="secondary">
+                        Next
+                    </Button>
+                </div>
+            )}
         </div>
     );
 };
