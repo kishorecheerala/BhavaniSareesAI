@@ -26,6 +26,67 @@ const fetchImageAsBase64 = (url: string): Promise<string> =>
         reader.readAsDataURL(blob);
     }));
 
+// Standalone PaymentModal component to prevent re-renders on parent state change
+const PaymentModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    onSubmit: () => void;
+    sale: Sale | null | undefined;
+    paymentDetails: { amount: string; method: 'CASH' | 'UPI' | 'CHEQUE'; date: string; reference: string; };
+    setPaymentDetails: React.Dispatch<React.SetStateAction<{ amount: string; method: 'CASH' | 'UPI' | 'CHEQUE'; date: string; reference: string; }>>;
+}> = ({ isOpen, onClose, onSubmit, sale, paymentDetails, setPaymentDetails }) => {
+    if (!isOpen || !sale) return null;
+    
+    const amountPaid = sale.payments.reduce((sum, p) => sum + p.amount, 0);
+    const dueAmount = sale.totalAmount - amountPaid;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+            <Card title="Add Payment" className="w-full max-w-sm animate-scale-in">
+                <div className="space-y-4">
+                    <p>Invoice Total: <span className="font-bold">₹{sale.totalAmount.toLocaleString('en-IN')}</span></p>
+                    <p>Amount Due: <span className="font-bold text-red-600">₹{dueAmount.toLocaleString('en-IN')}</span></p>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Amount</label>
+                        <input type="number" placeholder="Enter amount" value={paymentDetails.amount} onChange={e => setPaymentDetails({ ...paymentDetails, amount: e.target.value })} className="w-full p-2 border rounded" autoFocus/>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Method</label>
+                        <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any })} className="w-full p-2 border rounded custom-select">
+                            <option value="CASH">Cash</option>
+                            <option value="UPI">UPI</option>
+                            <option value="CHEQUE">Cheque</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Payment Date</label>
+                        <input 
+                            type="date" 
+                            value={paymentDetails.date} 
+                            onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} 
+                            className="w-full p-2 border rounded"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Payment Reference (Optional)</label>
+                        <input 
+                            type="text"
+                            placeholder="e.g. UPI ID, Cheque No."
+                            value={paymentDetails.reference}
+                            onChange={e => setPaymentDetails({ ...paymentDetails, reference: e.target.value })}
+                            className="w-full p-2 border rounded"
+                        />
+                    </div>
+                    <div className="flex gap-2">
+                       <Button onClick={onSubmit} className="w-full">Save Payment</Button>
+                       <Button onClick={onClose} variant="secondary" className="w-full">Cancel</Button>
+                    </div>
+                </div>
+            </Card>
+        </div>
+    );
+};
+
 
 interface CustomersPageProps {
   setIsDirty: (isDirty: boolean) => void;
@@ -207,10 +268,6 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             const paidAmountOnSale = sale.payments.reduce((sum, p) => sum + p.amount, 0);
             const dueAmountOnSale = sale.totalAmount - paidAmountOnSale;
 
-            doc.addFont('Times-Roman', 'Times', 'normal');
-            doc.addFont('Times-Bold', 'Times', 'bold');
-            doc.addFont('Times-Italic', 'Times', 'italic');
-
             const pageWidth = doc.internal.pageSize.getWidth();
             const centerX = pageWidth / 2;
             const margin = 5;
@@ -218,13 +275,13 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             let y = 5;
 
             y = 10;
-            doc.setFont('Times', 'italic');
+            doc.setFont('times', 'italic');
             doc.setFontSize(12);
             doc.setTextColor('#000000');
             doc.text('Om Namo Venkatesaya', centerX, y, { align: 'center' });
             y += 7;
             
-            doc.setFont('Times', 'bold');
+            doc.setFont('times', 'bold');
             doc.setFontSize(16);
             doc.setTextColor('#6a0dad'); // Primary Color
             doc.text('Bhavani Sarees', centerX, y, { align: 'center' });
@@ -427,60 +484,6 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         c.area.toLowerCase().includes(searchTerm.toLowerCase())
     );
     
-    const PaymentModal = () => {
-        const sale = state.sales.find(s => s.id === paymentModalState.saleId);
-        if (!paymentModalState.isOpen || !sale) return null;
-        
-        const amountPaid = sale.payments.reduce((sum, p) => sum + p.amount, 0);
-        const dueAmount = sale.totalAmount - amountPaid;
-
-        return (
-            <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
-                <Card title="Add Payment" className="w-full max-w-sm animate-scale-in">
-                    <div className="space-y-4">
-                        <p>Invoice Total: <span className="font-bold">₹{sale.totalAmount.toLocaleString('en-IN')}</span></p>
-                        <p>Amount Due: <span className="font-bold text-red-600">₹{dueAmount.toLocaleString('en-IN')}</span></p>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Amount</label>
-                            <input type="number" placeholder="Enter amount" value={paymentDetails.amount} onChange={e => setPaymentDetails({ ...paymentDetails, amount: e.target.value })} className="w-full p-2 border rounded" autoFocus/>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Method</label>
-                            <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any })} className="w-full p-2 border rounded custom-select">
-                                <option value="CASH">Cash</option>
-                                <option value="UPI">UPI</option>
-                                <option value="CHEQUE">Cheque</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Payment Date</label>
-                            <input 
-                                type="date" 
-                                value={paymentDetails.date} 
-                                onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} 
-                                className="w-full p-2 border rounded"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Payment Reference (Optional)</label>
-                            <input 
-                                type="text"
-                                placeholder="e.g. UPI ID, Cheque No."
-                                value={paymentDetails.reference}
-                                onChange={e => setPaymentDetails({ ...paymentDetails, reference: e.target.value })}
-                                className="w-full p-2 border rounded"
-                            />
-                        </div>
-                        <div className="flex gap-2">
-                           <Button onClick={handleAddPayment} className="w-full">Save Payment</Button>
-                           <Button onClick={() => setPaymentModalState({isOpen: false, saleId: null})} variant="secondary" className="w-full">Cancel</Button>
-                        </div>
-                    </div>
-                </Card>
-            </div>
-        )
-    };
-    
     if (selectedCustomer && editedCustomer) {
         const customerSales = state.sales.filter(s => s.customerId === selectedCustomer.id);
         const customerReturns = state.returns.filter(r => r.type === 'CUSTOMER' && r.partyId === selectedCustomer.id);
@@ -499,7 +502,14 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                 >
                     Are you sure you want to delete this sale? This action cannot be undone and will add the items back to stock.
                 </ConfirmationModal>
-                {paymentModalState.isOpen && <PaymentModal />}
+                <PaymentModal
+                    isOpen={paymentModalState.isOpen}
+                    onClose={() => setPaymentModalState({isOpen: false, saleId: null})}
+                    onSubmit={handleAddPayment}
+                    sale={state.sales.find(s => s.id === paymentModalState.saleId)}
+                    paymentDetails={paymentDetails}
+                    setPaymentDetails={setPaymentDetails}
+                />
                 <Button onClick={() => setSelectedCustomer(null)}>&larr; Back to List</Button>
                 <Card>
                     <div className="flex justify-between items-start mb-4">

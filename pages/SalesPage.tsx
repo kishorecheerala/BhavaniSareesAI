@@ -245,10 +245,6 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         }
 
         const renderContentOnDoc = (doc: jsPDF) => {
-          doc.addFont('Times-Roman', 'Times', 'normal');
-          doc.addFont('Times-Bold', 'Times', 'bold');
-          doc.addFont('Times-Italic', 'Times', 'italic');
-
           const pageWidth = doc.internal.pageSize.getWidth();
           const centerX = pageWidth / 2;
           const margin = 5;
@@ -257,13 +253,13 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
 
           // Always render text header for invoice
           y = 10;
-          doc.setFont('Times', 'italic');
+          doc.setFont('times', 'italic');
           doc.setFontSize(12);
           doc.setTextColor('#000000');
           doc.text('Om Namo Venkatesaya', centerX, y, { align: 'center' });
           y += 7;
           
-          doc.setFont('Times', 'bold');
+          doc.setFont('times', 'bold');
           doc.setFontSize(16);
           doc.setTextColor('#6a0dad'); // Primary Color
           doc.text('Bhavani Sarees', centerX, y, { align: 'center' });

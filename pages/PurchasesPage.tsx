@@ -17,6 +17,50 @@ const getLocalDateString = (date = new Date()) => {
   return `${year}-${month}-${day}`;
 };
 
+// Standalone PaymentModal component to prevent re-renders on parent state change
+const PaymentModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    onSubmit: () => void;
+    purchase: Purchase | null | undefined;
+    paymentDetails: { amount: string; method: 'CASH' | 'UPI' | 'CHEQUE'; date: string; reference: string; };
+    setPaymentDetails: React.Dispatch<React.SetStateAction<{ amount: string; method: 'CASH' | 'UPI' | 'CHEQUE'; date: string; reference: string; }>>;
+}> = ({ isOpen, onClose, onSubmit, purchase, paymentDetails, setPaymentDetails }) => {
+    if (!isOpen || !purchase) return null;
+
+    const amountPaid = (purchase.payments || []).reduce((sum, p) => sum + p.amount, 0);
+    const dueAmount = purchase.totalAmount - amountPaid;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+            <Card title="Add Payment" className="w-full max-w-sm animate-scale-in">
+                <div className="space-y-4">
+                    <p>Invoice Total: <span className="font-bold">₹{purchase.totalAmount.toLocaleString('en-IN')}</span></p>
+                    <p>Amount Due: <span className="font-bold text-red-600">₹{dueAmount.toLocaleString('en-IN')}</span></p>
+                    <input type="number" placeholder="Enter amount" value={paymentDetails.amount} onChange={e => setPaymentDetails({ ...paymentDetails, amount: e.target.value })} className="w-full p-2 border rounded" autoFocus/>
+                    <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any })} className="w-full p-2 border rounded custom-select">
+                        <option value="CASH">Cash</option>
+                        <option value="UPI">UPI</option>
+                        <option value="CHEQUE">Cheque</option>
+                    </select>
+                     <input type="date" value={paymentDetails.date} onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} className="w-full p-2 border rounded" />
+                     <input 
+                        type="text"
+                        placeholder="Payment Reference (Optional)"
+                        value={paymentDetails.reference}
+                        onChange={e => setPaymentDetails({ ...paymentDetails, reference: e.target.value })}
+                        className="w-full p-2 border rounded"
+                    />
+                    <div className="flex gap-2">
+                       <Button onClick={onSubmit} className="w-full">Save Payment</Button>
+                       <Button onClick={onClose} variant="secondary" className="w-full">Cancel</Button>
+                    </div>
+                </div>
+            </Card>
+        </div>
+    );
+};
+
 interface PurchasesPageProps {
   setIsDirty: (isDirty: boolean) => void;
 }
@@ -183,9 +227,11 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         dispatch({ type: 'UPDATE_PURCHASE', payload: { oldPurchase: purchaseToEdit, updatedPurchase } });
         showToast("Purchase updated successfully!");
         
-        // After editing, simply reset the view. The component will re-render with the new data.
-        setPurchaseToEdit(null);
+        // Return to the supplier detail view by setting the view to 'list'.
+        // The component will re-render, and since 'selectedSupplier' is still set,
+        // it will correctly display the detail view with the updated data.
         setView('list');
+        setPurchaseToEdit(null); // Clean up the state
     };
     
     const generateDebitNotePDF = async (newReturn: Return) => {
@@ -280,43 +326,53 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         doc.save(`DebitNote-${newReturn.id}.pdf`);
     };
 
-    const PaymentModal = () => {
-        const purchase = state.purchases.find(p => p.id === paymentModalState.purchaseId);
-        if (!paymentModalState.isOpen || !purchase) return null;
-        
-        const amountPaid = (purchase.payments || []).reduce((sum, p) => sum + p.amount, 0);
-        const dueAmount = purchase.totalAmount - amountPaid;
+    // --- Main Component Render Logic ---
 
+    // Highest priority views: forms for adding/editing purchases
+    if (view === 'add_purchase' || view === 'edit_purchase') {
+       return (
+            <PurchaseForm
+                mode={view === 'add_purchase' ? 'add' : 'edit'}
+                initialData={purchaseToEdit}
+                suppliers={state.suppliers}
+                products={state.products}
+                onSubmit={view === 'add_purchase' ? handleCompletePurchase : handleUpdatePurchase}
+                onBack={() => { setView('list'); setPurchaseToEdit(null); }}
+                setIsDirty={setIsDirty}
+            />
+        );
+    }
+
+    // View for adding a new supplier
+    if (view === 'add_supplier') {
         return (
-            <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
-                <Card title="Add Payment" className="w-full max-w-sm animate-scale-in">
-                    <div className="space-y-4">
-                        <p>Invoice Total: <span className="font-bold">₹{purchase.totalAmount.toLocaleString('en-IN')}</span></p>
-                        <p>Amount Due: <span className="font-bold text-red-600">₹{dueAmount.toLocaleString('en-IN')}</span></p>
-                        <input type="number" placeholder="Enter amount" value={paymentDetails.amount} onChange={e => setPaymentDetails({ ...paymentDetails, amount: e.target.value })} className="w-full p-2 border rounded" autoFocus/>
-                        <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any })} className="w-full p-2 border rounded custom-select">
-                            <option value="CASH">Cash</option>
-                            <option value="UPI">UPI</option>
-                            <option value="CHEQUE">Cheque</option>
-                        </select>
-                         <input type="date" value={paymentDetails.date} onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} className="w-full p-2 border rounded" />
-                         <input 
-                            type="text"
-                            placeholder="Payment Reference (Optional)"
-                            value={paymentDetails.reference}
-                            onChange={e => setPaymentDetails({ ...paymentDetails, reference: e.target.value })}
-                            className="w-full p-2 border rounded"
-                        />
-                        <div className="flex gap-2">
-                           <Button onClick={handleAddPayment} className="w-full">Save Payment</Button>
-                           <Button onClick={() => setPaymentModalState({isOpen: false, purchaseId: null})} variant="secondary" className="w-full">Cancel</Button>
+            <div className="space-y-4">
+                 <Button onClick={() => setView('list')}>&larr; Back to List</Button>
+                 <Card title="Add New Supplier">
+                     <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium">Supplier ID</label>
+                            <div className="flex items-center mt-1">
+                                <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 bg-gray-50 text-gray-500 text-sm">SUPP-</span>
+                                <input type="text" placeholder="Enter unique ID" value={newSupplier.id} onChange={e => setNewSupplier({ ...newSupplier, id: e.target.value })} className="w-full p-2 border rounded-r-md" autoFocus />
+                            </div>
                         </div>
-                    </div>
-                </Card>
+                        <input type="text" placeholder="Name*" value={newSupplier.name} onChange={e => setNewSupplier({ ...newSupplier, name: e.target.value })} className="w-full p-2 border rounded" />
+                        <input type="text" placeholder="Phone*" value={newSupplier.phone} onChange={e => setNewSupplier({ ...newSupplier, phone: e.target.value })} className="w-full p-2 border rounded" />
+                        <input type="text" placeholder="Location*" value={newSupplier.location} onChange={e => setNewSupplier({ ...newSupplier, location: e.target.value })} className="w-full p-2 border rounded" />
+                        <input type="text" placeholder="GST Number (Optional)" value={newSupplier.gstNumber} onChange={e => setNewSupplier({ ...newSupplier, gstNumber: e.target.value })} className="w-full p-2 border rounded" />
+                        <input type="text" placeholder="Reference (Optional)" value={newSupplier.reference} onChange={e => setNewSupplier({ ...newSupplier, reference: e.target.value })} className="w-full p-2 border rounded" />
+                        <input type="text" placeholder="Bank Account 1 (Optional)" value={newSupplier.account1} onChange={e => setNewSupplier({ ...newSupplier, account1: e.target.value })} className="w-full p-2 border rounded" />
+                        <input type="text" placeholder="Bank Account 2 (Optional)" value={newSupplier.account2} onChange={e => setNewSupplier({ ...newSupplier, account2: e.target.value })} className="w-full p-2 border rounded" />
+                        <input type="text" placeholder="UPI ID (Optional)" value={newSupplier.upi} onChange={e => setNewSupplier({ ...newSupplier, upi: e.target.value })} className="w-full p-2 border rounded" />
+                        <Button onClick={handleAddSupplier} className="w-full">Save Supplier</Button>
+                     </div>
+                 </Card>
             </div>
-        )
-    };
+        );
+    }
     
+    // View for a selected supplier's details
     if (selectedSupplier) {
         const supplierPurchases = state.purchases.filter(p => p.supplierId === selectedSupplier.id);
         const supplierReturns = state.returns.filter(r => r.type === 'SUPPLIER' && r.partyId === selectedSupplier.id);
@@ -332,7 +388,14 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                 <ConfirmationModal isOpen={confirmModalState.isOpen} onClose={() => setConfirmModalState({isOpen: false, purchaseIdToDelete: null})} onConfirm={confirmDeletePurchase} title="Confirm Purchase Deletion">
                     Are you sure you want to delete this purchase? This will remove the items from your stock. This action cannot be undone.
                 </ConfirmationModal>
-                {paymentModalState.isOpen && <PaymentModal />}
+                <PaymentModal
+                    isOpen={paymentModalState.isOpen}
+                    onClose={() => setPaymentModalState({isOpen: false, purchaseId: null})}
+                    onSubmit={handleAddPayment}
+                    purchase={state.purchases.find(p => p.id === paymentModalState.purchaseId)}
+                    paymentDetails={paymentDetails}
+                    setPaymentDetails={setPaymentDetails}
+                />
                 <Button onClick={() => setSelectedSupplier(null)}>&larr; Back to Suppliers</Button>
                 <Card>
                      <div className="flex justify-between items-center mb-4">
@@ -483,49 +546,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         );
     }
     
-    if (view === 'add_supplier') {
-        return (
-            <div className="space-y-4">
-                 <Button onClick={() => setView('list')}>&larr; Back to List</Button>
-                 <Card title="Add New Supplier">
-                     <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium">Supplier ID</label>
-                            <div className="flex items-center mt-1">
-                                <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 bg-gray-50 text-gray-500 text-sm">SUPP-</span>
-                                <input type="text" placeholder="Enter unique ID" value={newSupplier.id} onChange={e => setNewSupplier({ ...newSupplier, id: e.target.value })} className="w-full p-2 border rounded-r-md" autoFocus />
-                            </div>
-                        </div>
-                        <input type="text" placeholder="Name*" value={newSupplier.name} onChange={e => setNewSupplier({ ...newSupplier, name: e.target.value })} className="w-full p-2 border rounded" />
-                        <input type="text" placeholder="Phone*" value={newSupplier.phone} onChange={e => setNewSupplier({ ...newSupplier, phone: e.target.value })} className="w-full p-2 border rounded" />
-                        <input type="text" placeholder="Location*" value={newSupplier.location} onChange={e => setNewSupplier({ ...newSupplier, location: e.target.value })} className="w-full p-2 border rounded" />
-                        <input type="text" placeholder="GST Number (Optional)" value={newSupplier.gstNumber} onChange={e => setNewSupplier({ ...newSupplier, gstNumber: e.target.value })} className="w-full p-2 border rounded" />
-                        <input type="text" placeholder="Reference (Optional)" value={newSupplier.reference} onChange={e => setNewSupplier({ ...newSupplier, reference: e.target.value })} className="w-full p-2 border rounded" />
-                        <input type="text" placeholder="Bank Account 1 (Optional)" value={newSupplier.account1} onChange={e => setNewSupplier({ ...newSupplier, account1: e.target.value })} className="w-full p-2 border rounded" />
-                        <input type="text" placeholder="Bank Account 2 (Optional)" value={newSupplier.account2} onChange={e => setNewSupplier({ ...newSupplier, account2: e.target.value })} className="w-full p-2 border rounded" />
-                        <input type="text" placeholder="UPI ID (Optional)" value={newSupplier.upi} onChange={e => setNewSupplier({ ...newSupplier, upi: e.target.value })} className="w-full p-2 border rounded" />
-                        <Button onClick={handleAddSupplier} className="w-full">Save Supplier</Button>
-                     </div>
-                 </Card>
-            </div>
-        );
-    }
-    
-    if (view === 'add_purchase' || view === 'edit_purchase') {
-       return (
-            <PurchaseForm
-                mode={view === 'add_purchase' ? 'add' : 'edit'}
-                initialData={purchaseToEdit}
-                suppliers={state.suppliers}
-                products={state.products}
-                onSubmit={view === 'add_purchase' ? handleCompletePurchase : handleUpdatePurchase}
-                onBack={() => setView('list')}
-                setIsDirty={setIsDirty}
-            />
-        );
-    }
-
-    // Default 'list' view
+    // Default 'list' view: Show supplier list
     const filteredSuppliers = state.suppliers.filter(supplier =>
         supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         supplier.phone.includes(searchTerm) ||
