@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Search, X, User, Package, Boxes, ShoppingCart } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Search, X, User, Package, Boxes, ShoppingCart, QrCode } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Page } from '../types';
 import { Customer, Supplier, Product, Sale, Purchase } from '../types';
+import { Html5Qrcode } from 'html5-qrcode';
 
 interface SearchResults {
     customers: Customer[];
@@ -18,10 +19,60 @@ interface UniversalSearchProps {
     onNavigate: (page: Page, id: string) => void;
 }
 
+const QRScannerModal: React.FC<{ onClose: () => void; onScanned: (text: string) => void }> = ({ onClose, onScanned }) => {
+    const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
+    const [scanStatus, setScanStatus] = useState<string>("Initializing scanner...");
+
+    useEffect(() => {
+        html5QrCodeRef.current = new Html5Qrcode("qr-reader-universal");
+
+        const qrCodeSuccessCallback = (decodedText: string) => {
+            if (html5QrCodeRef.current?.isScanning) {
+                html5QrCodeRef.current.stop().then(() => {
+                    onScanned(decodedText);
+                }).catch(err => {
+                    console.error("Error stopping scanner", err);
+                    onScanned(decodedText);
+                });
+            }
+        };
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+        html5QrCodeRef.current.start({ facingMode: "environment" }, config, qrCodeSuccessCallback, undefined)
+            .then(() => setScanStatus("Scanning for QR Code..."))
+            .catch(err => {
+                setScanStatus(`Camera Permission Error. Please allow camera access.`);
+                console.error("Camera start failed.", err);
+            });
+
+        return () => {
+            if (html5QrCodeRef.current?.isScanning) {
+                html5QrCodeRef.current.stop().catch(err => console.log("Failed to stop scanner on cleanup.", err));
+            }
+        };
+    }, [onScanned]);
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-75 backdrop-blur-sm flex flex-col items-center justify-center z-[101] p-4 animate-fade-in-fast">
+            <div className="bg-white rounded-lg shadow-xl p-4 w-full max-w-md relative animate-scale-in">
+                <div className="flex justify-between items-center mb-2">
+                     <h3 className="text-lg font-bold text-primary">Scan Invoice QR</h3>
+                     <button onClick={onClose} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
+                        <X size={20}/>
+                     </button>
+                </div>
+                <div id="qr-reader-universal" className="w-full rounded-lg overflow-hidden border"></div>
+                <p className="text-center text-sm my-2 text-gray-600">{scanStatus}</p>
+            </div>
+        </div>
+    );
+};
+
 const UniversalSearch: React.FC<UniversalSearchProps> = ({ isOpen, onClose, onNavigate }) => {
     const { state } = useAppContext();
     const [searchTerm, setSearchTerm] = useState('');
     const [results, setResults] = useState<SearchResults>({ customers: [], suppliers: [], products: [], sales: [], purchases: [] });
+    const [isScanning, setIsScanning] = useState(false);
 
     useEffect(() => {
         const handler = setTimeout(() => {
@@ -72,8 +123,20 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({ isOpen, onClose, onNa
         // Reset search term when modal is closed
         if (!isOpen) {
             setSearchTerm('');
+            setIsScanning(false);
         }
     }, [isOpen]);
+    
+    const handleScannedInvoice = (saleId: string) => {
+        setIsScanning(false);
+        const sale = state.sales.find(s => s.id.toLowerCase() === saleId.toLowerCase());
+        if (sale) {
+            onNavigate('CUSTOMERS', sale.customerId);
+        } else {
+            alert(`Sale with ID "${saleId}" not found.`);
+        }
+    };
+
 
     const hasResults = useMemo(() => Object.values(results).some(arr => Array.isArray(arr) && arr.length > 0), [results]);
 
@@ -81,7 +144,8 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({ isOpen, onClose, onNa
 
     return (
         <div className="fixed inset-0 bg-background z-[100] flex flex-col p-4 animate-fade-in-fast" role="dialog" aria-modal="true">
-            <div className="flex items-center gap-4 mb-4">
+            {isScanning && <QRScannerModal onClose={() => setIsScanning(false)} onScanned={handleScannedInvoice} />}
+            <div className="flex items-center gap-2 mb-4">
                 <div className="relative flex-grow">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                     <input
@@ -94,7 +158,10 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({ isOpen, onClose, onNa
                         autoComplete="off"
                     />
                 </div>
-                <button onClick={onClose} className="p-3 rounded-full text-primary bg-purple-100 hover:bg-purple-200 transition-colors">
+                <button onClick={() => setIsScanning(true)} className="p-3 rounded-full text-primary bg-purple-100 hover:bg-purple-200 transition-colors" aria-label="Scan QR Code">
+                    <QrCode size={24} />
+                </button>
+                <button onClick={onClose} className="p-3 rounded-full text-primary bg-purple-100 hover:bg-purple-200 transition-colors" aria-label="Close search">
                     <X size={24} />
                 </button>
             </div>

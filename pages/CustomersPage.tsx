@@ -16,6 +16,17 @@ const getLocalDateString = (date = new Date()) => {
   return `${year}-${month}-${day}`;
 };
 
+const fetchImageAsBase64 = (url: string): Promise<string> =>
+  fetch(url)
+    .then(response => response.blob())
+    .then(blob => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    }));
+
+
 interface CustomersPageProps {
   setIsDirty: (isDirty: boolean) => void;
   setCurrentPage: (page: Page) => void;
@@ -179,8 +190,16 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         setPaymentDetails({ amount: '', method: 'CASH', date: getLocalDateString(), reference: '' });
     };
 
-    const handleDownloadInvoice = (sale: Sale) => {
+    const handleDownloadInvoice = async (sale: Sale) => {
         if (!selectedCustomer) return;
+
+        let qrCodeBase64: string | null = null;
+        try {
+            const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(sale.id)}&size=50x50&margin=0`;
+            qrCodeBase64 = await fetchImageAsBase64(qrCodeUrl);
+        } catch (error) {
+            console.error("Failed to fetch QR code", error);
+        }
 
         const renderContentOnDoc = (doc: jsPDF) => {
             const customer = selectedCustomer;
@@ -220,6 +239,10 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             doc.setTextColor('#000000');
             
             doc.text(`Invoice: ${sale.id}`, margin, y);
+            if (qrCodeBase64) {
+                const qrSize = 15; // 15mm
+                doc.addImage(qrCodeBase64, 'PNG', pageWidth - margin - qrSize, y - 8, qrSize, qrSize);
+            }
             y += 4;
             doc.text(`Date: ${new Date(sale.date).toLocaleString()}`, margin, y);
             y += 5;
