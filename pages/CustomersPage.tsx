@@ -384,7 +384,6 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
     };
     
     const customersWithDues = useMemo(() => {
-        // Step 1: Create a summary map in a single pass over sales. This is highly performant.
         const salesSummary = new Map<string, { totalPurchase: number, totalPaid: number }>();
         for (const sale of state.sales) {
             const summary = salesSummary.get(sale.customerId) || { totalPurchase: 0, totalPaid: 0 };
@@ -394,7 +393,6 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
             salesSummary.set(sale.customerId, summary);
         }
 
-        // Step 2: Map over customers and use the summary map for instant lookups.
         return state.customers.map(customer => {
             const summary = salesSummary.get(customer.id) || { totalPurchase: 0, totalPaid: 0 };
             const totalDue = summary.totalPurchase - summary.totalPaid;
@@ -466,17 +464,35 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty }) => {
         )
     };
     
+    // ARCHITECTURAL FIX: Create a memoized index of sales by customer ID.
+    // This prevents re-filtering the entire sales array on every interaction,
+    // which was the root cause of the application freezing.
+    const salesByCustomer = useMemo(() => {
+        const map = new Map<string, Sale[]>();
+        for (const sale of state.sales) {
+            if (!map.has(sale.customerId)) {
+                map.set(sale.customerId, []);
+            }
+            // Using non-null assertion as we've just ensured the key exists.
+            map.get(sale.customerId)!.push(sale);
+        }
+        // Pre-sort the sales for each customer to avoid doing it on every render.
+        for (const sales of map.values()) {
+            sales.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        }
+        return map;
+    }, [state.sales]);
+
     if (selectedCustomer && editedCustomer) {
+        // PERF FIX: Use the memoized index for instantaneous lookup.
         const customerSalesWithDues = useMemo(() => {
-            return state.sales
-                .filter(s => s.customerId === selectedCustomer.id)
-                .map(sale => {
-                    const amountPaid = (sale.payments || []).reduce((sum, p) => sum + p.amount, 0);
-                    const dueAmount = sale.totalAmount - amountPaid;
-                    return { ...sale, amountPaid, dueAmount };
-                })
-                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        }, [state.sales, selectedCustomer.id]);
+            const customerSales = salesByCustomer.get(selectedCustomer.id) || [];
+            return customerSales.map(sale => {
+                const amountPaid = (sale.payments || []).reduce((sum, p) => sum + p.amount, 0);
+                const dueAmount = sale.totalAmount - amountPaid;
+                return { ...sale, amountPaid, dueAmount };
+            });
+        }, [salesByCustomer, selectedCustomer.id]);
         
         const customerReturns = useMemo(() => state.returns.filter(r => r.type === 'CUSTOMER' && r.partyId === selectedCustomer.id), [state.returns, selectedCustomer.id]);
         

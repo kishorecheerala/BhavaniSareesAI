@@ -312,17 +312,32 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
         )
     };
     
+    // ARCHITECTURAL FIX: Create a memoized index of purchases by supplier ID.
+    // This prevents re-filtering the entire purchases array, which could cause a freeze.
+    const purchasesBySupplier = useMemo(() => {
+        const map = new Map<string, Purchase[]>();
+        for (const purchase of state.purchases) {
+            if (!map.has(purchase.supplierId)) {
+                map.set(purchase.supplierId, []);
+            }
+            map.get(purchase.supplierId)!.push(purchase);
+        }
+        for (const purchases of map.values()) {
+            purchases.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        }
+        return map;
+    }, [state.purchases]);
+
     if (view === 'list' && selectedSupplier && editedSupplier) {
+        // PERF FIX: Use the memoized index for instantaneous lookup.
         const supplierPurchasesWithDues = useMemo(() => {
-            return state.purchases
-                .filter(p => p.supplierId === selectedSupplier.id)
-                .map(purchase => {
-                    const amountPaid = (purchase.payments || []).reduce((sum, p) => sum + p.amount, 0);
-                    const dueAmount = purchase.totalAmount - amountPaid;
-                    return { ...purchase, amountPaid, dueAmount };
-                })
-                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        }, [state.purchases, selectedSupplier.id]);
+            const supplierPurchases = purchasesBySupplier.get(selectedSupplier.id) || [];
+            return supplierPurchases.map(purchase => {
+                const amountPaid = (purchase.payments || []).reduce((sum, p) => sum + p.amount, 0);
+                const dueAmount = purchase.totalAmount - amountPaid;
+                return { ...purchase, amountPaid, dueAmount };
+            });
+        }, [purchasesBySupplier, selectedSupplier.id]);
         
         const supplierReturns = useMemo(() => state.returns.filter(r => r.type === 'SUPPLIER' && r.partyId === selectedSupplier.id), [state.returns, selectedSupplier.id]);
 
