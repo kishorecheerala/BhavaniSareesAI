@@ -124,12 +124,11 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
     
     const calculatedReturnValue = useMemo(() => {
         if (!selectedInvoice) return 0;
-        // FIX: Changed from Object.entries to Object.keys to ensure correct type inference for quantity.
         return Object.keys(returnedItems).reduce((total, productId) => {
             const quantity = returnedItems[productId];
             const item = selectedInvoice.items.find(i => i.productId === productId);
             if (item) {
-                return total + (item.price * quantity);
+                return total + (Number(item.price) * quantity);
             }
             return total;
         }, 0);
@@ -194,8 +193,8 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                 index + 1,
                 item.productName,
                 item.quantity,
-                `Rs. ${item.price.toLocaleString('en-IN')}`,
-                `Rs. ${(item.quantity * item.price).toLocaleString('en-IN')}`
+                `Rs. ${Number(item.price).toLocaleString('en-IN')}`,
+                `Rs. ${(Number(item.quantity) * Number(item.price)).toLocaleString('en-IN')}`
             ]),
             theme: 'grid',
             headStyles: { fillColor: [13, 148, 136] },
@@ -206,7 +205,7 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
         doc.text('Total Return Value:', 140, currentY, { align: 'right' });
-        doc.text(`Rs. ${newReturn.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 196, currentY, { align: 'right' });
+        doc.text(`Rs. ${Number(newReturn.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 196, currentY, { align: 'right' });
         
         if (newReturn.notes) {
             currentY += 15;
@@ -234,7 +233,6 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
             return;
         }
         
-        // FIX: Changed from Object.entries to Object.keys to ensure correct type inference for quantity.
         const itemsToReturn: ReturnItem[] = Object.keys(returnedItems).map((productId) => {
             const quantity = returnedItems[productId];
             const originalItem = selectedInvoice!.items.find(i => i.productId === productId)!;
@@ -242,7 +240,7 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                 productId,
                 productName: originalItem.productName,
                 quantity,
-                price: originalItem.price,
+                price: Number(originalItem.price),
             };
         });
         
@@ -274,8 +272,8 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
         resetForm();
     };
 
-    const invoiceTotal = selectedInvoice?.totalAmount || 0;
-    const amountPaid = selectedInvoice ? (selectedInvoice.payments || []).reduce((sum, p) => sum + p.amount, 0) : 0;
+    const invoiceTotal = Number(selectedInvoice?.totalAmount) || 0;
+    const amountPaid = selectedInvoice ? (selectedInvoice.payments || []).reduce((sum, p) => sum + Number(p.amount), 0) : 0;
     const currentDue = invoiceTotal - amountPaid;
 
     return (
@@ -389,7 +387,7 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                                             <p className="text-xs text-gray-500">Return ID: {ret.id}</p>
                                         </div>
                                         <div className="text-right">
-                                            <p className="font-semibold text-primary">₹{ret.amount.toLocaleString('en-IN')}</p>
+                                            <p className="font-semibold text-primary">₹{Number(ret.amount).toLocaleString('en-IN')}</p>
                                             <p className="text-xs text-gray-500">{new Date(ret.returnDate).toLocaleDateString()}</p>
                                         </div>
                                     </div>

@@ -33,8 +33,8 @@ const ReportsPage: React.FC = () => {
             const salesWithDue: Sale[] = [];
 
             customerSales.forEach(sale => {
-                const amountPaid = (sale.payments || []).reduce((sum, p) => sum + p.amount, 0);
-                const due = sale.totalAmount - amountPaid;
+                const amountPaid = (sale.payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+                const due = Number(sale.totalAmount) - amountPaid;
                 if (due > 0.01) {
                     totalDue += due;
                     salesWithDue.push(sale);
@@ -102,8 +102,8 @@ const ReportsPage: React.FC = () => {
     const customerAccountSummary = useMemo(() => {
         return state.customers.map(customer => {
             const customerSales = state.sales.filter(s => s.customerId === customer.id);
-            const totalPurchased = customerSales.reduce((sum, s) => sum + s.totalAmount, 0);
-            const totalPaid = customerSales.reduce((sum, s) => sum + (s.payments || []).reduce((pSum, p) => pSum + p.amount, 0), 0);
+            const totalPurchased = customerSales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
+            const totalPaid = customerSales.reduce((sum, s) => sum + (s.payments || []).reduce((pSum, p) => pSum + Number(p.amount), 0), 0);
             const outstandingDue = totalPurchased - totalPaid;
             return { customer, totalPurchased, totalPaid, outstandingDue };
         });
@@ -145,8 +145,8 @@ const ReportsPage: React.FC = () => {
     const supplierDues = useMemo(() => {
         return state.purchases
             .map(purchase => {
-                const paid = (purchase.payments || []).reduce((sum, p) => sum + p.amount, 0);
-                const dueAmount = purchase.totalAmount - paid;
+                const paid = (purchase.payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+                const dueAmount = Number(purchase.totalAmount) - paid;
                 return { ...purchase, dueAmount };
             })
             .filter(p => p.dueAmount > 0.01 && (supplierFilter === 'all' || p.supplierId === supplierFilter))
@@ -178,8 +178,8 @@ const ReportsPage: React.FC = () => {
     const supplierAccountSummary = useMemo(() => {
         return state.suppliers.map(supplier => {
             const supplierPurchases = state.purchases.filter(p => p.supplierId === supplier.id);
-            const totalPurchased = supplierPurchases.reduce((sum, p) => sum + p.totalAmount, 0);
-            const totalPaid = supplierPurchases.reduce((sum, p) => sum + (p.payments || []).reduce((pSum, payment) => pSum + payment.amount, 0), 0);
+            const totalPurchased = supplierPurchases.reduce((sum, p) => sum + Number(p.totalAmount), 0);
+            const totalPaid = supplierPurchases.reduce((sum, p) => sum + (p.payments || []).reduce((pSum, payment) => pSum + Number(payment.amount), 0), 0);
             const outstandingDue = totalPurchased - totalPaid;
             return { supplier, totalPurchased, totalPaid, outstandingDue };
         });

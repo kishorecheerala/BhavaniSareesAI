@@ -423,6 +423,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [state, dispatch] = useReducer(appReducer, initialState);
   const [isDbLoaded, setIsDbLoaded] = useState(false);
 
+  // Set up the PWA install prompt listener.
+  useEffect(() => {
+    // Check if the event was already captured by the global listener in index.tsx
+    const deferredPrompt = (window as any).deferredInstallPrompt;
+    if (deferredPrompt) {
+        dispatch({ type: 'SET_INSTALL_PROMPT_EVENT', payload: deferredPrompt as BeforeInstallPromptEvent });
+    }
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+        // Prevent the mini-infobar from appearing on mobile
+        e.preventDefault();
+        // Stash the event so it can be triggered later.
+        dispatch({ type: 'SET_INSTALL_PROMPT_EVENT', payload: e as BeforeInstallPromptEvent });
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    
+    return () => {
+        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, [dispatch]);
+
   // Load initial data from IndexedDB
   useEffect(() => {
     const loadData = async () => {

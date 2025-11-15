@@ -1,6 +1,19 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import { BeforeInstallPromptEvent } from './types';
+
+// --- PWA Install Prompt Handling ---
+// We capture the event outside of React's lifecycle to ensure it's not missed,
+// especially with React.StrictMode's double-invocation behavior in development.
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Prevent the default mini-infobar from appearing on mobile
+  e.preventDefault();
+  // Stash the event so it can be triggered later by the React app.
+  (window as any).deferredInstallPrompt = e as BeforeInstallPromptEvent;
+});
+// --- End PWA Handling ---
+
 
 // Register Service Worker for PWA
 if ('serviceWorker' in navigator) {

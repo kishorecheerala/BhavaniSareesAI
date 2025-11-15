@@ -37,14 +37,14 @@ const PaymentModal: React.FC<{
 }> = ({ isOpen, onClose, onSubmit, sale, paymentDetails, setPaymentDetails }) => {
     if (!isOpen || !sale) return null;
     
-    const amountPaid = sale.payments.reduce((sum, p) => sum + p.amount, 0);
-    const dueAmount = sale.totalAmount - amountPaid;
+    const amountPaid = sale.payments.reduce((sum, p) => sum + Number(p.amount), 0);
+    const dueAmount = Number(sale.totalAmount) - amountPaid;
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
             <Card title="Add Payment" className="w-full max-w-sm animate-scale-in">
                 <div className="space-y-4">
-                    <p>Invoice Total: <span className="font-bold">₹{sale.totalAmount.toLocaleString('en-IN')}</span></p>
+                    <p>Invoice Total: <span className="font-bold">₹{Number(sale.totalAmount).toLocaleString('en-IN')}</span></p>
                     <p>Amount Due: <span className="font-bold text-red-600">₹{dueAmount.toLocaleString('en-IN')}</span></p>
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Amount</label>
@@ -237,8 +237,8 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             return;
         }
         
-        const amountPaid = sale.payments.reduce((sum, p) => sum + p.amount, 0);
-        const dueAmount = sale.totalAmount - amountPaid;
+        const amountPaid = sale.payments.reduce((sum, p) => sum + Number(p.amount), 0);
+        const dueAmount = Number(sale.totalAmount) - amountPaid;
         const newPaymentAmount = parseFloat(paymentDetails.amount);
 
         if(newPaymentAmount > dueAmount + 0.01) { // Epsilon for float
@@ -274,9 +274,9 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
 
         const renderContentOnDoc = (doc: jsPDF) => {
             const customer = selectedCustomer;
-            const subTotal = sale.totalAmount + sale.discount;
-            const paidAmountOnSale = sale.payments.reduce((sum, p) => sum + p.amount, 0);
-            const dueAmountOnSale = sale.totalAmount - paidAmountOnSale;
+            const subTotal = Number(sale.totalAmount) + Number(sale.discount);
+            const paidAmountOnSale = sale.payments.reduce((sum, p) => sum + Number(p.amount), 0);
+            const dueAmountOnSale = Number(sale.totalAmount) - paidAmountOnSale;
 
             const pageWidth = doc.internal.pageSize.getWidth();
             const centerX = pageWidth / 2;
@@ -352,7 +352,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             
             doc.setFont('Helvetica', 'normal');
             sale.items.forEach(item => {
-                const itemTotal = item.price * item.quantity;
+                const itemTotal = Number(item.price) * Number(item.quantity);
                 doc.setFontSize(9);
                 const splitName = doc.splitTextToSize(item.productName, maxLineWidth - 20);
                 doc.text(splitName, margin, y);
@@ -360,7 +360,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                 y += (splitName.length * 4);
                 doc.setFontSize(7);
                 doc.setTextColor('#666666');
-                doc.text(`(x${item.quantity} @ Rs. ${item.price.toLocaleString('en-IN')})`, margin, y);
+                doc.text(`(x${item.quantity} @ Rs. ${Number(item.price).toLocaleString('en-IN')})`, margin, y);
                 y += 6;
                 doc.setTextColor('#000000');
             });
@@ -372,9 +372,9 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
 
             const totals = [
                 { label: 'Subtotal', value: subTotal },
-                { label: 'GST', value: sale.gstAmount },
-                { label: 'Discount', value: -sale.discount },
-                { label: 'Total', value: sale.totalAmount, bold: true },
+                { label: 'GST', value: Number(sale.gstAmount) },
+                { label: 'Discount', value: -Number(sale.discount) },
+                { label: 'Total', value: Number(sale.totalAmount), bold: true },
                 { label: 'Paid', value: paidAmountOnSale },
                 { label: 'Due', value: dueAmountOnSale, bold: true },
             ];
@@ -404,8 +404,8 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         if (!selectedCustomer) return;
 
         const overdueSales = state.sales.filter(s => {
-            const paid = (s.payments || []).reduce((sum, p) => sum + p.amount, 0);
-            return s.customerId === selectedCustomer.id && (s.totalAmount - paid) > 0.01;
+            const paid = (s.payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+            return s.customerId === selectedCustomer.id && (Number(s.totalAmount) - paid) > 0.01;
         });
 
         if (overdueSales.length === 0) {
@@ -414,8 +414,8 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         }
 
         const totalDue = overdueSales.reduce((total, sale) => {
-            const paid = (sale.payments || []).reduce((sum, p) => sum + p.amount, 0);
-            return total + (sale.totalAmount - paid);
+            const paid = (sale.payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+            return total + (Number(sale.totalAmount) - paid);
         }, 0);
         
         const doc = new jsPDF();
@@ -450,12 +450,12 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             startY: currentY,
             head: [['Invoice ID', 'Date', 'Total', 'Paid', 'Due']],
             body: overdueSales.map(sale => {
-                const paid = (sale.payments || []).reduce((sum, p) => sum + p.amount, 0);
-                const due = sale.totalAmount - paid;
+                const paid = (sale.payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+                const due = Number(sale.totalAmount) - paid;
                 return [
                     sale.id,
                     new Date(sale.date).toLocaleDateString(),
-                    `Rs. ${sale.totalAmount.toLocaleString('en-IN')}`,
+                    `Rs. ${Number(sale.totalAmount).toLocaleString('en-IN')}`,
                     `Rs. ${paid.toLocaleString('en-IN')}`,
                     `Rs. ${due.toLocaleString('en-IN')}`
                 ];
@@ -567,10 +567,10 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                     {customerSales.length > 0 ? (
                         <div className="space-y-4">
                             {customerSales.slice().reverse().map(sale => {
-                                const amountPaid = sale.payments.reduce((sum, p) => sum + p.amount, 0);
-                                const dueAmount = sale.totalAmount - amountPaid;
+                                const amountPaid = sale.payments.reduce((sum, p) => sum + Number(p.amount), 0);
+                                const dueAmount = Number(sale.totalAmount) - amountPaid;
                                 const isPaid = dueAmount <= 0.01; // Epsilon for float comparison
-                                const subTotal = sale.totalAmount + sale.discount;
+                                const subTotal = Number(sale.totalAmount) + Number(sale.discount);
 
                                 return (
                                 <div key={sale.id} className="p-3 bg-gray-50 rounded-lg border">
@@ -584,7 +584,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                                         </div>
                                         <div className="text-right flex-shrink-0">
                                             <div className="flex items-center gap-1">
-                                                <p className="font-bold text-lg text-primary">₹{sale.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                                                <p className="font-bold text-lg text-primary">₹{Number(sale.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                                                 <button onClick={() => handleEditSale(sale.id)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Edit Sale"><Edit size={16} /></button>
                                                 <button onClick={() => handleDownloadInvoice(sale)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Download Invoice"><Download size={16} /></button>
                                                 <DeleteButton 
@@ -601,7 +601,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                                             <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
                                                 {sale.items.map((item, index) => (
                                                     <li key={index}>
-                                                        {item.productName} (x{item.quantity}) @ ₹{item.price.toLocaleString('en-IN')} each
+                                                        {item.productName} (x{item.quantity}) @ ₹{Number(item.price).toLocaleString('en-IN')} each
                                                     </li>
                                                 ))}
                                             </ul>
@@ -611,9 +611,9 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                                             <h4 className="font-semibold text-gray-700 mb-2">Transaction Details:</h4>
                                             <div className="space-y-1">
                                                 <div className="flex justify-between"><span>Subtotal:</span> <span>₹{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
-                                                <div className="flex justify-between"><span>Discount:</span> <span>- ₹{sale.discount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
-                                                <div className="flex justify-between"><span>GST Included:</span> <span>₹{sale.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
-                                                <div className="flex justify-between font-bold border-t pt-1 mt-1"><span>Grand Total:</span> <span>₹{sale.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                                                <div className="flex justify-between"><span>Discount:</span> <span>- ₹{Number(sale.discount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                                                <div className="flex justify-between"><span>GST Included:</span> <span>₹{Number(sale.gstAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                                                <div className="flex justify-between font-bold border-t pt-1 mt-1"><span>Grand Total:</span> <span>₹{Number(sale.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
                                             </div>
                                         </div>
 
@@ -623,7 +623,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                                                 <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
                                                     {sale.payments.map(payment => (
                                                         <li key={payment.id}>
-                                                            ₹{payment.amount.toLocaleString('en-IN')} {payment.method === 'RETURN_CREDIT' ? <span className="text-blue-600 font-semibold">(Return Credit)</span> : `via ${payment.method}`} on {new Date(payment.date).toLocaleDateString()}
+                                                            ₹{Number(payment.amount).toLocaleString('en-IN')} {payment.method === 'RETURN_CREDIT' ? <span className="text-blue-600 font-semibold">(Return Credit)</span> : `via ${payment.method}`} on {new Date(payment.date).toLocaleDateString()}
                                                             {payment.reference && <span className="text-xs text-gray-500 block">Ref: {payment.reference}</span>}
                                                         </li>
                                                     ))}
@@ -657,7 +657,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                                             <p className="text-xs text-gray-500">Original Invoice: {ret.referenceId}</p>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <p className="font-semibold text-primary">Refunded: ₹{ret.amount.toLocaleString('en-IN')}</p>
+                                            <p className="font-semibold text-primary">Refunded: ₹{Number(ret.amount).toLocaleString('en-IN')}</p>
                                             <Button onClick={() => handleEditReturn(ret.id)} variant="secondary" className="p-2 h-auto">
                                                 <Edit size={16} />
                                             </Button>
@@ -734,8 +734,8 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             <div className="space-y-3">
                 {filteredCustomers.map((customer, index) => {
                     const customerSales = state.sales.filter(s => s.customerId === customer.id);
-                    const totalPurchase = customerSales.reduce((sum, s) => sum + s.totalAmount, 0);
-                    const totalPaid = customerSales.reduce((sum, s) => sum + s.payments.reduce((pSum, p) => pSum + p.amount, 0), 0);
+                    const totalPurchase = customerSales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
+                    const totalPaid = customerSales.reduce((sum, s) => sum + s.payments.reduce((pSum, p) => pSum + Number(p.amount), 0), 0);
                     const totalDue = totalPurchase - totalPaid;
 
                     return (

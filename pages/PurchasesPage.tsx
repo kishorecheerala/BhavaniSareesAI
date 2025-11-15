@@ -28,14 +28,14 @@ const PaymentModal: React.FC<{
 }> = ({ isOpen, onClose, onSubmit, purchase, paymentDetails, setPaymentDetails }) => {
     if (!isOpen || !purchase) return null;
 
-    const amountPaid = (purchase.payments || []).reduce((sum, p) => sum + p.amount, 0);
-    const dueAmount = purchase.totalAmount - amountPaid;
+    const amountPaid = (purchase.payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+    const dueAmount = Number(purchase.totalAmount) - amountPaid;
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
             <Card title="Add Payment" className="w-full max-w-sm animate-scale-in">
                 <div className="space-y-4">
-                    <p>Invoice Total: <span className="font-bold">₹{purchase.totalAmount.toLocaleString('en-IN')}</span></p>
+                    <p>Invoice Total: <span className="font-bold">₹{Number(purchase.totalAmount).toLocaleString('en-IN')}</span></p>
                     <p>Amount Due: <span className="font-bold text-red-600">₹{dueAmount.toLocaleString('en-IN')}</span></p>
                     <input type="number" placeholder="Enter amount" value={paymentDetails.amount} onChange={e => setPaymentDetails({ ...paymentDetails, amount: e.target.value })} className="w-full p-2 border rounded" autoFocus/>
                     <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any })} className="w-full p-2 border rounded custom-select">
@@ -171,8 +171,8 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
         const purchase = state.purchases.find(p => p.id === paymentModalState.purchaseId);
         if (!purchase || !paymentDetails.amount) return alert("Please enter a valid amount.");
         
-        const amountPaid = (purchase.payments || []).reduce((sum, p) => sum + p.amount, 0);
-        const dueAmount = purchase.totalAmount - amountPaid;
+        const amountPaid = (purchase.payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+        const dueAmount = Number(purchase.totalAmount) - amountPaid;
         const newPaymentAmount = parseFloat(paymentDetails.amount);
 
         if(newPaymentAmount > dueAmount + 0.01) {
@@ -218,10 +218,10 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
                 payload: {
                     id: item.productId,
                     name: item.productName,
-                    quantity: item.quantity,
-                    purchasePrice: item.price,
-                    salePrice: item.saleValue,
-                    gstPercent: item.gstPercent,
+                    quantity: Number(item.quantity),
+                    purchasePrice: Number(item.price),
+                    salePrice: Number(item.saleValue),
+                    gstPercent: Number(item.gstPercent),
                 }
             });
         });
@@ -305,8 +305,8 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
                 index + 1,
                 item.productName,
                 item.quantity,
-                `Rs. ${item.price.toLocaleString('en-IN')}`,
-                `Rs. ${(item.quantity * item.price).toLocaleString('en-IN')}`
+                `Rs. ${Number(item.price).toLocaleString('en-IN')}`,
+                `Rs. ${(Number(item.quantity) * Number(item.price)).toLocaleString('en-IN')}`
             ]),
             theme: 'grid',
             headStyles: { fillColor: [13, 148, 136] },
@@ -317,7 +317,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
         doc.text('Total Return Value:', 140, currentY, { align: 'right' });
-        doc.text(`Rs. ${newReturn.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 196, currentY, { align: 'right' });
+        doc.text(`Rs. ${Number(newReturn.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 196, currentY, { align: 'right' });
         
         if (newReturn.notes) {
             currentY += 15;
@@ -488,17 +488,17 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
                     {supplierPurchases.length > 0 ? (
                         <div className="space-y-4">
                             {supplierPurchases.slice().reverse().map(purchase => {
-                                const amountPaid = (purchase.payments || []).reduce((sum, p) => sum + p.amount, 0);
-                                const dueAmount = purchase.totalAmount - amountPaid;
+                                const amountPaid = (purchase.payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+                                const dueAmount = Number(purchase.totalAmount) - amountPaid;
                                 const isPaid = dueAmount <= 0.01;
                                 const isEditingThisSchedule = editingScheduleId === purchase.id;
 
                                 const totalGst = purchase.items.reduce((sum, item) => {
-                                    const itemTotal = item.price * item.quantity;
-                                    const itemGst = itemTotal - (itemTotal / (1 + (item.gstPercent / 100)));
+                                    const itemTotal = Number(item.price) * Number(item.quantity);
+                                    const itemGst = itemTotal - (itemTotal / (1 + (Number(item.gstPercent) / 100)));
                                     return sum + itemGst;
                                 }, 0);
-                                const subTotal = purchase.totalAmount - totalGst;
+                                const subTotal = Number(purchase.totalAmount) - totalGst;
 
                                 return (
                                 <div key={purchase.id} className="p-3 bg-gray-50 rounded-lg border">
@@ -513,7 +513,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
                                         </div>
                                         <div className="text-right flex-shrink-0">
                                             <div className="flex items-center gap-1">
-                                                <p className="font-bold text-lg text-primary">₹{purchase.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                                                <p className="font-bold text-lg text-primary">₹{Number(purchase.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                                                 <button onClick={() => { setPurchaseToEdit(purchase); setView('edit_purchase'); }} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Edit Purchase">
                                                     <Edit size={16} />
                                                 </button>
@@ -531,7 +531,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
                                             <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
                                                 {purchase.items.map((item, index) => (
                                                     <li key={index}>
-                                                        {item.productName} (x{item.quantity}) @ ₹{item.price.toLocaleString('en-IN')}
+                                                        {item.productName} (x{item.quantity}) @ ₹{Number(item.price).toLocaleString('en-IN')}
                                                     </li>
                                                 ))}
                                             </ul>
@@ -542,7 +542,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
                                             <div className="space-y-1">
                                                 <div className="flex justify-between"><span>Subtotal (excl. GST):</span> <span>₹{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 3 })}</span></div>
                                                 <div className="flex justify-between"><span>GST Amount:</span> <span>+ ₹{totalGst.toLocaleString('en-IN', { minimumFractionDigits: 3 })}</span></div>
-                                                <div className="flex justify-between font-bold border-t pt-1 mt-1"><span>Grand Total:</span> <span>₹{purchase.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                                                <div className="flex justify-between font-bold border-t pt-1 mt-1"><span>Grand Total:</span> <span>₹{Number(purchase.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
                                             </div>
                                         </div>
 
@@ -594,7 +594,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
                                                 <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
                                                     {(purchase.payments || []).map(p => (
                                                     <li key={p.id}>
-                                                        ₹{p.amount.toLocaleString('en-IN')} {p.method === 'RETURN_CREDIT' ? <span className="text-blue-600 font-semibold">(Return Credit)</span> : `via ${p.method}`} on {new Date(p.date).toLocaleDateString()}
+                                                        ₹{Number(p.amount).toLocaleString('en-IN')} {p.method === 'RETURN_CREDIT' ? <span className="text-blue-600 font-semibold">(Return Credit)</span> : `via ${p.method}`} on {new Date(p.date).toLocaleDateString()}
                                                         {p.reference && <span className="text-xs text-gray-500 block">Ref: {p.reference}</span>}
                                                     </li>
                                                     ))}
@@ -626,7 +626,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
                                             <p className="text-xs text-gray-500">Original Invoice: {ret.referenceId}</p>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <p className="font-semibold text-primary">Credit: ₹{ret.amount.toLocaleString('en-IN')}</p>
+                                            <p className="font-semibold text-primary">Credit: ₹{Number(ret.amount).toLocaleString('en-IN')}</p>
                                             <button 
                                                 onClick={() => handleEditReturn(ret.id)}
                                                 className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" 
@@ -697,8 +697,8 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
                 <div className="space-y-3">
                     {filteredSuppliers.map((supplier, index) => {
                         const supplierPurchases = state.purchases.filter(p => p.supplierId === supplier.id);
-                        const totalSpent = supplierPurchases.reduce((sum, p) => sum + p.totalAmount, 0);
-                        const totalPaid = supplierPurchases.reduce((sum, p) => sum + (p.payments || []).reduce((pSum, payment) => pSum + payment.amount, 0), 0);
+                        const totalSpent = supplierPurchases.reduce((sum, p) => sum + Number(p.totalAmount), 0);
+                        const totalPaid = supplierPurchases.reduce((sum, p) => sum + (p.payments || []).reduce((pSum, payment) => pSum + Number(payment.amount), 0), 0);
                         const totalDue = totalSpent - totalPaid;
 
                         return (

@@ -123,7 +123,7 @@ const ProductSearchModal: React.FC<{
                     <p className="text-sm text-gray-500">Code: {p.id}</p>
                   </div>
                   <div className="text-right">
-                      <p className="font-semibold">₹{p.salePrice.toLocaleString('en-IN')}</p>
+                      <p className="font-semibold">₹{Number(p.salePrice).toLocaleString('en-IN')}</p>
                       <p className="text-sm">Stock: {p.quantity}</p>
                   </div>
                 </div>
@@ -266,14 +266,14 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         const newItem = {
             productId: product.id,
             productName: product.name,
-            price: product.salePrice,
+            price: Number(product.salePrice),
             quantity: 1,
         };
 
         const existingItem = items.find(i => i.productId === newItem.productId);
         
         const originalQtyInSale = mode === 'edit' ? saleToEdit?.items.find(i => i.productId === product.id)?.quantity || 0 : 0;
-        const availableStock = product.quantity + originalQtyInSale;
+        const availableStock = Number(product.quantity) + originalQtyInSale;
 
         if (existingItem) {
             if (existingItem.quantity + 1 > availableStock) {
@@ -311,7 +311,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                 if (field === 'quantity') {
                     const product = state.products.find(p => p.id === productId);
                     const originalQtyInSale = mode === 'edit' ? saleToEdit?.items.find(i => i.productId === productId)?.quantity || 0 : 0;
-                    const availableStock = (product?.quantity || 0) + originalQtyInSale;
+                    const availableStock = (Number(product?.quantity) || 0) + originalQtyInSale;
                     if (numValue > availableStock) {
                         alert(`Not enough stock for ${item.productName}. Only ${availableStock} available for this sale.`);
                         return { ...item, quantity: availableStock };
@@ -329,13 +329,13 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     };
 
     const calculations = useMemo(() => {
-        const subTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        const subTotal = items.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0);
         const discountAmount = parseFloat(discount) || 0;
         
         const gstAmount = items.reduce((sum, item) => {
             const product = state.products.find(p => p.id === item.productId);
-            const itemGstPercent = product ? product.gstPercent : 0;
-            const itemTotalWithGst = item.price * item.quantity;
+            const itemGstPercent = product ? Number(product.gstPercent) : 0;
+            const itemTotalWithGst = Number(item.price) * Number(item.quantity);
             const itemGst = itemTotalWithGst - (itemTotalWithGst / (1 + (itemGstPercent / 100)));
             return sum + itemGst;
         }, 0);
@@ -352,9 +352,9 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         const customerSales = state.sales.filter(s => s.customerId === customerId);
         if (customerSales.length === 0) return 0;
         
-        const totalBilled = customerSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+        const totalBilled = customerSales.reduce((sum, sale) => sum + Number(sale.totalAmount), 0);
         const totalPaid = customerSales.reduce((sum, sale) => {
-            return sum + (sale.payments || []).reduce((paySum, payment) => paySum + payment.amount, 0);
+            return sum + (sale.payments || []).reduce((paySum, payment) => paySum + Number(payment.amount), 0);
         }, 0);
 
         return totalBilled - totalPaid;
@@ -491,7 +491,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
           
           doc.setFont('Helvetica', 'normal');
           sale.items.forEach(item => {
-              const itemTotal = item.price * item.quantity;
+              const itemTotal = Number(item.price) * Number(item.quantity);
               doc.setFontSize(9);
               const splitName = doc.splitTextToSize(item.productName, maxLineWidth - 20);
               doc.text(splitName, margin, y);
@@ -499,7 +499,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
               y += (splitName.length * 4);
               doc.setFontSize(7);
               doc.setTextColor('#666666');
-              doc.text(`(x${item.quantity} @ Rs. ${item.price.toLocaleString('en-IN')})`, margin, y);
+              doc.text(`(x${item.quantity} @ Rs. ${Number(item.price).toLocaleString('en-IN')})`, margin, y);
               y += 6;
               doc.setTextColor('#000000');
           });
@@ -509,7 +509,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
           doc.line(margin, y, pageWidth - margin, y); 
           y += 5;
 
-          const dueAmountOnSale = sale.totalAmount - paidAmountOnSale;
+          const dueAmountOnSale = Number(sale.totalAmount) - paidAmountOnSale;
 
           const totals = [
               { label: 'Subtotal', value: calculations.subTotal },
@@ -545,9 +545,9 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         
         const pdfBlob = doc.output('blob');
         const pdfFile = new File([pdfBlob], `${sale.id}.pdf`, { type: 'application/pdf' });
-        const dueAmountOnSale = sale.totalAmount - paidAmountOnSale;
+        const dueAmountOnSale = Number(sale.totalAmount) - paidAmountOnSale;
         
-        const whatsAppText = `Thank you for your purchase from Bhavani Sarees!\n\n*Invoice Summary:*\nInvoice ID: ${sale.id}\nDate: ${new Date(sale.date).toLocaleString()}\n\n*Items:*\n${sale.items.map(i => `- ${i.productName} (x${i.quantity}) - Rs. ${(i.price * i.quantity).toLocaleString('en-IN')}`).join('\n')}\n\nSubtotal: Rs. ${calculations.subTotal.toLocaleString('en-IN')}\nGST: Rs. ${calculations.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\nDiscount: Rs. ${calculations.discountAmount.toLocaleString('en-IN')}\n*Total: Rs. ${sale.totalAmount.toLocaleString('en-IN')}*\nPaid: Rs. ${paidAmountOnSale.toLocaleString('en-IN')}\nDue: Rs. ${dueAmountOnSale.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\nHave a blessed day!`;
+        const whatsAppText = `Thank you for your purchase from Bhavani Sarees!\n\n*Invoice Summary:*\nInvoice ID: ${sale.id}\nDate: ${new Date(sale.date).toLocaleString()}\n\n*Items:*\n${sale.items.map(i => `- ${i.productName} (x${i.quantity}) - Rs. ${(Number(i.price) * Number(i.quantity)).toLocaleString('en-IN')}`).join('\n')}\n\nSubtotal: Rs. ${calculations.subTotal.toLocaleString('en-IN')}\nGST: Rs. ${calculations.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\nDiscount: Rs. ${calculations.discountAmount.toLocaleString('en-IN')}\n*Total: Rs. ${Number(sale.totalAmount).toLocaleString('en-IN')}*\nPaid: Rs. ${paidAmountOnSale.toLocaleString('en-IN')}\nDue: Rs. ${dueAmountOnSale.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\nHave a blessed day!`;
         
         if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
           try {
@@ -610,14 +610,14 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             };
             dispatch({ type: 'ADD_SALE', payload: newSale });
             items.forEach(item => {
-                dispatch({ type: 'UPDATE_PRODUCT_STOCK', payload: { productId: item.productId, change: -item.quantity } });
+                dispatch({ type: 'UPDATE_PRODUCT_STOCK', payload: { productId: item.productId, change: -Number(item.quantity) } });
             });
             showToast('Sale created successfully!');
             await generateAndSharePDF(newSale, customer, paidAmount);
 
         } else if (mode === 'edit' && saleToEdit) {
             const existingPayments = saleToEdit.payments || [];
-            const totalPaid = existingPayments.reduce((sum, p) => sum + p.amount, 0);
+            const totalPaid = existingPayments.reduce((sum, p) => sum + Number(p.amount), 0);
 
             if (totalAmount < totalPaid - 0.01) {
                 alert(`The new total amount (₹${totalAmount.toLocaleString('en-IN')}) cannot be less than the amount already paid (₹${totalPaid.toLocaleString('en-IN')}).`);
@@ -648,8 +648,8 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
 
         const outstandingSales = state.sales
             .filter(sale => {
-                const paid = (sale.payments || []).reduce((sum, p) => sum + p.amount, 0);
-                return sale.customerId === customerId && (sale.totalAmount - paid) > 0.01;
+                const paid = (sale.payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+                return sale.customerId === customerId && (Number(sale.totalAmount) - paid) > 0.01;
             })
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
@@ -662,8 +662,8 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         for (const sale of outstandingSales) {
             if (remainingPayment <= 0) break;
 
-            const paid = (sale.payments || []).reduce((sum, p) => sum + p.amount, 0);
-            const dueAmount = sale.totalAmount - paid;
+            const paid = (sale.payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+            const dueAmount = Number(sale.totalAmount) - paid;
             
             const amountToApply = Math.min(remainingPayment, dueAmount);
 
@@ -793,7 +793,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                                 <input type="number" value={item.quantity} onChange={e => handleItemChange(item.productId, 'quantity', e.target.value)} className="w-20 p-1 border rounded" placeholder="Qty"/>
                                 <span>x</span>
                                 <input type="number" value={item.price} onChange={e => handleItemChange(item.productId, 'price', e.target.value)} className="w-24 p-1 border rounded" placeholder="Price"/>
-                                <span>= ₹{(item.quantity * item.price).toLocaleString('en-IN')}</span>
+                                <span>= ₹{(Number(item.quantity) * Number(item.price)).toLocaleString('en-IN')}</span>
                             </div>
                         </div>
                     ))}

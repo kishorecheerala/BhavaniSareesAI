@@ -125,8 +125,8 @@ const OverdueDuesCard: React.FC<{ sales: Sale[]; customers: Customer[]; onNaviga
             const saleDate = new Date(sale.date);
 
             if (saleDate < thirtyDaysAgo) {
-                const amountPaid = (sale.payments || []).reduce((sum, p) => sum + p.amount, 0);
-                const dueAmount = sale.totalAmount - amountPaid;
+                const amountPaid = (sale.payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+                const dueAmount = Number(sale.totalAmount) - amountPaid;
 
                 if (dueAmount > 0.01) {
                     const customerId = sale.customerId;
@@ -225,8 +225,8 @@ const UpcomingPurchaseDuesCard: React.FC<{
         thirtyDaysFromNow.setHours(23, 59, 59, 999);
 
         purchases.forEach(purchase => {
-            const amountPaid = (purchase.payments || []).reduce((sum, p) => sum + p.amount, 0);
-            const dueAmount = purchase.totalAmount - amountPaid;
+            const amountPaid = (purchase.payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+            const dueAmount = Number(purchase.totalAmount) - amountPaid;
 
             if (dueAmount > 0.01 && purchase.paymentDueDates && purchase.paymentDueDates.length > 0) {
                 const supplier = suppliers.find(s => s.id === purchase.supplierId);
@@ -330,25 +330,25 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
     const totalCustomerDues = state.sales.reduce((sum, sale) => {
-        const amountPaid = (sale.payments || []).reduce((paidSum, p) => paidSum + p.amount, 0);
-        const due = sale.totalAmount - amountPaid;
+        const amountPaid = (sale.payments || []).reduce((paidSum, p) => paidSum + Number(p.amount), 0);
+        const due = Number(sale.totalAmount) - amountPaid;
         return sum + (due > 0 ? due : 0);
     }, 0);
 
     const totalPurchaseDues = state.purchases.reduce((sum, purchase) => {
-        const amountPaid = (purchase.payments || []).reduce((paidSum, p) => paidSum + p.amount, 0);
-        const due = purchase.totalAmount - amountPaid;
+        const amountPaid = (purchase.payments || []).reduce((paidSum, p) => paidSum + Number(p.amount), 0);
+        const due = Number(purchase.totalAmount) - amountPaid;
         return sum + (due > 0 ? due : 0);
     }, 0);
 
     const totalInventoryValue = state.products.reduce((sum, product) => {
-        return sum + (product.purchasePrice * product.quantity);
+        return sum + (Number(product.purchasePrice) * Number(product.quantity));
     }, 0);
     
-    const totalStockQuantity = state.products.reduce((sum, product) => sum + product.quantity, 0);
+    const totalStockQuantity = state.products.reduce((sum, product) => sum + Number(product.quantity), 0);
     
-    const totalSales = state.sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
-    const totalPurchases = state.purchases.reduce((sum, purchase) => sum + purchase.totalAmount, 0);
+    const totalSales = state.sales.reduce((sum, sale) => sum + Number(sale.totalAmount), 0);
+    const totalPurchases = state.purchases.reduce((sum, purchase) => sum + Number(purchase.totalAmount), 0);
     
     const availableYears = useMemo(() => {
         const years = new Set(state.sales.map(s => new Date(s.date).getFullYear()));
@@ -364,7 +364,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                 const saleDate = new Date(sale.date);
                 return saleDate.getFullYear() === selectedYear && saleDate.getMonth() === selectedMonth;
             })
-            .reduce((sum, sale) => sum + sale.totalAmount, 0);
+            .reduce((sum, sale) => sum + Number(sale.totalAmount), 0);
     }, [state.sales, selectedMonth, selectedYear]);
     
     const handleBackup = async () => {

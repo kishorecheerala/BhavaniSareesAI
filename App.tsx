@@ -1,4 +1,8 @@
 
+
+
+
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle, Bell, Menu, Plus, UserPlus, PackagePlus } from 'lucide-react';
 
@@ -139,7 +143,8 @@ const MainApp: React.FC = () => {
     if (!years.has(currentYear)) {
       years.add(currentYear);
     }
-    return Array.from(years).sort((a, b) => b - a);
+    // FIX: Explicitly type the sort function arguments to resolve potential type inference issues.
+    return Array.from(years).sort((a: number, b: number) => b - a);
   }, [state.sales]);
 
   const filteredProfit = useMemo(() => {
@@ -161,13 +166,13 @@ const MainApp: React.FC = () => {
         sale.items.forEach(item => {
             const product = state.products.find(p => p.id === item.productId);
             if (product) {
-                // Fix: Cast properties to Number to ensure correct arithmetic operations,
-                // as data from IndexedDB might be stored as strings.
-                costOfGoods += Number(product.purchasePrice) * Number(item.quantity);
+                // FIX: Explicitly cast properties to Number and default to 0 to prevent type errors
+                // and handle potential non-numeric data from IndexedDB.
+                costOfGoods += (Number(product.purchasePrice) || 0) * (Number(item.quantity) || 0);
             }
         });
-        // Fix: Cast totalAmount to Number for consistency and safety.
-        totalProfit += Number(sale.totalAmount) - costOfGoods;
+        // FIX: Explicitly cast totalAmount to Number and default to 0 for consistency and safety.
+        totalProfit += (Number(sale.totalAmount) || 0) - costOfGoods;
     });
 
     return totalProfit;
@@ -211,16 +216,6 @@ const MainApp: React.FC = () => {
   const setIsDirty = (dirty: boolean) => {
     isDirtyRef.current = dirty;
   };
-
-  useEffect(() => {
-    const handleBeforeInstallPrompt = (e: Event) => {
-        e.preventDefault();
-        dispatch({ type: 'SET_INSTALL_PROMPT_EVENT', payload: e as BeforeInstallPromptEvent });
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-  }, [dispatch]);
   
   useEffect(() => {
     if (!isDbLoaded) return;
