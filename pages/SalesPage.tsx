@@ -194,6 +194,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     const [customerId, setCustomerId] = useState('');
     const [items, setItems] = useState<SaleItem[]>([]);
     const [discount, setDiscount] = useState('0');
+    const [saleDate, setSaleDate] = useState(getLocalDateString());
     
     const [paymentDetails, setPaymentDetails] = useState({
         amount: '',
@@ -219,6 +220,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                 setCustomerId(sale.customerId);
                 setItems(sale.items.map(item => ({...item}))); // Deep copy
                 setDiscount(sale.discount.toString());
+                setSaleDate(getLocalDateString(new Date(sale.date)));
                 setPaymentDetails({ amount: '', method: 'CASH', date: getLocalDateString(), reference: '' });
                 dispatch({ type: 'CLEAR_SELECTION' });
             }
@@ -226,14 +228,16 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     }, [state.selection, state.sales, dispatch]);
 
     useEffect(() => {
-        const formIsDirty = !!customerId || items.length > 0 || discount !== '0' || !!paymentDetails.amount;
+        const dateIsDirty = mode === 'add' && saleDate !== getLocalDateString();
+        const formIsDirty = !!customerId || items.length > 0 || discount !== '0' || !!paymentDetails.amount || dateIsDirty;
         const newCustomerFormIsDirty = isAddingCustomer && !!(newCustomer.id || newCustomer.name || newCustomer.phone || newCustomer.address || newCustomer.area);
         const currentlyDirty = formIsDirty || newCustomerFormIsDirty;
         if (currentlyDirty !== isDirtyRef.current) {
             isDirtyRef.current = currentlyDirty;
             setIsDirty(currentlyDirty);
         }
-    }, [customerId, items, discount, paymentDetails.amount, isAddingCustomer, newCustomer, setIsDirty]);
+    }, [customerId, items, discount, paymentDetails.amount, isAddingCustomer, newCustomer, setIsDirty, saleDate, mode]);
+
 
     // On unmount, we must always clean up.
     useEffect(() => {
@@ -246,6 +250,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         setCustomerId('');
         setItems([]);
         setDiscount('0');
+        setSaleDate(getLocalDateString());
         setPaymentDetails({
             amount: '',
             method: 'CASH',
@@ -338,6 +343,8 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         const totalAmount = subTotal - discountAmount;
         return { subTotal, discountAmount, gstAmount, totalAmount };
     }, [items, discount, state.products]);
+
+    const selectedCustomer = useMemo(() => customerId ? state.customers.find(c => c.id === customerId) : null, [customerId, state.customers]);
 
     const customerTotalDue = useMemo(() => {
         if (!customerId) return null;
@@ -592,11 +599,14 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                     date: new Date(paymentDetails.date).toISOString(), reference: paymentDetails.reference.trim() || undefined,
                 });
             }
-            const now = new Date();
-            const saleId = `SALE-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}-${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
+            
+            const saleCreationDate = new Date();
+            const saleDateWithTime = new Date(`${saleDate}T${saleCreationDate.toTimeString().split(' ')[0]}`);
+            const saleId = `SALE-${saleCreationDate.getFullYear()}${(saleCreationDate.getMonth() + 1).toString().padStart(2, '0')}${saleCreationDate.getDate().toString().padStart(2, '0')}-${saleCreationDate.getHours().toString().padStart(2, '0')}${saleCreationDate.getMinutes().toString().padStart(2, '0')}${saleCreationDate.getSeconds().toString().padStart(2, '0')}`;
+            
             const newSale: Sale = {
                 id: saleId, customerId, items, discount: discountAmount, gstAmount, totalAmount,
-                date: now.toISOString(), payments
+                date: saleDateWithTime.toISOString(), payments
             };
             dispatch({ type: 'ADD_SALE', payload: newSale });
             items.forEach(item => {
@@ -705,34 +715,63 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             <h1 className="text-2xl font-bold text-primary">{pageTitle}</h1>
             
             <Card>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
-                <div className="flex gap-2 items-center">
-                    <select 
-                        value={customerId} 
-                        onChange={e => setCustomerId(e.target.value)} 
-                        className="w-full p-2 border rounded custom-select"
-                        disabled={items.length > 0 || mode === 'edit'}
-                    >
-                        <option value="">Select a Customer</option>
-                        {state.customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.area}</option>)}
-                    </select>
-                    {!customerId && mode === 'add' && (
-                        <Button onClick={() => setIsAddingCustomer(true)} variant="secondary" className="flex-shrink-0">
-                            <Plus size={16}/> New Customer
-                        </Button>
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
+                        {!selectedCustomer ? (
+                            <div className="flex gap-2 items-center">
+                                <select 
+                                    value={customerId} 
+                                    onChange={e => setCustomerId(e.target.value)} 
+                                    className="w-full p-2 border rounded custom-select"
+                                    disabled={mode === 'edit'}
+                                >
+                                    <option value="">Select a Customer</option>
+                                    {state.customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.area}</option>)}
+                                </select>
+                                {mode === 'add' && (
+                                    <Button onClick={() => setIsAddingCustomer(true)} variant="secondary" className="flex-shrink-0">
+                                        <Plus size={16}/> New Customer
+                                    </Button>
+                                )}
+                            </div>
+                        ) : (
+                             <div className="p-3 border rounded bg-gray-50 flex justify-between items-center">
+                                <div>
+                                    <p className="font-semibold text-gray-800">{selectedCustomer.name}</p>
+                                    <p className="text-sm text-gray-500">{selectedCustomer.area}</p>
+                                </div>
+                                {mode === 'add' && items.length === 0 && (
+                                        <button onClick={() => setCustomerId('')} className="text-sm text-blue-600 hover:underline font-semibold">Change</button>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                    
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Sale Date</label>
+                        <input 
+                            type="date" 
+                            value={saleDate} 
+                            onChange={e => setSaleDate(e.target.value)} 
+                            className="w-full p-2 border rounded mt-1"
+                            disabled={mode === 'edit'}
+                        />
+                    </div>
+
+                    {customerId && customerTotalDue !== null && mode === 'add' && (
+                        <div className="p-2 bg-gray-50 rounded-lg text-center border">
+                            <p className="text-sm font-medium text-gray-600">
+                                Selected Customer's Total Outstanding Due:
+                            </p>
+                            <p className={`text-xl font-bold ${customerTotalDue > 0.01 ? 'text-red-600' : 'text-green-600'}`}>
+                                ₹{customerTotalDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </p>
+                        </div>
                     )}
                 </div>
-                {customerId && customerTotalDue !== null && mode === 'add' && (
-                    <div className="mt-3 p-2 bg-gray-50 rounded-lg text-center">
-                        <p className="text-sm font-medium text-gray-600">
-                            Selected Customer's Total Outstanding Due:
-                        </p>
-                        <p className={`text-xl font-bold ${customerTotalDue > 0.01 ? 'text-red-600' : 'text-green-600'}`}>
-                            ₹{customerTotalDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                        </p>
-                    </div>
-                )}
             </Card>
+
 
             <Card title="Sale Items">
                 <div className="flex flex-col sm:flex-row gap-2">
