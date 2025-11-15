@@ -84,16 +84,16 @@ const ReportsPage: React.FC = () => {
 
         autoTable(doc, {
             startY: 30,
-            head: [['Customer Name', 'Area', 'Due Amount (Rs.)', 'Last Paid Date']],
+            head: [['Customer Name', 'Area', 'Last Paid Date', 'Due Amount (Rs.)']],
             body: customerDues.map(c => [
                 c.name,
                 c.area,
-                c.dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 }),
-                c.lastPaidDate || 'N/A'
+                c.lastPaidDate || 'N/A',
+                c.dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })
             ]),
             theme: 'grid',
             headStyles: { fillColor: [106, 13, 173] },
-            columnStyles: { 2: { halign: 'right' } }
+            columnStyles: { 3: { halign: 'right' } }
         });
 
         const finalY = (doc as any).lastAutoTable.finalY + 10;
@@ -113,9 +113,9 @@ const ReportsPage: React.FC = () => {
             return;
         }
         const escapeCsvCell = (cell: any) => `"${String(cell).replace(/"/g, '""')}"`;
-        const headers = ['Customer Name', 'Area', 'Due Amount', 'Last Paid Date'];
+        const headers = ['Customer Name', 'Area', 'Last Paid Date', 'Due Amount'];
         const rows = customerDues.map(c => 
-            [escapeCsvCell(c.name), escapeCsvCell(c.area), c.dueAmount, escapeCsvCell(c.lastPaidDate || 'N/A')].join(',')
+            [escapeCsvCell(c.name), escapeCsvCell(c.area), escapeCsvCell(c.lastPaidDate || 'N/A'), c.dueAmount].join(',')
         );
         const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join('\n');
         const link = document.createElement("a");
@@ -243,8 +243,8 @@ const ReportsPage: React.FC = () => {
                             <tr>
                                 <th className="p-2">Name</th>
                                 <th className="p-2">Area</th>
-                                <th className="p-2 text-right">Due Amount</th>
                                 <th className="p-2">Last Paid Date</th>
+                                <th className="p-2 text-right">Due Amount</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -252,8 +252,8 @@ const ReportsPage: React.FC = () => {
                                 <tr key={c.id} className="border-b">
                                     <td className="p-2 font-semibold">{c.name}</td>
                                     <td className="p-2">{c.area}</td>
-                                    <td className="p-2 text-right font-bold text-red-600">₹{c.dueAmount.toLocaleString('en-IN')}</td>
                                     <td className="p-2">{c.lastPaidDate || 'N/A'}</td>
+                                    <td className="p-2 text-right font-bold text-red-600">₹{c.dueAmount.toLocaleString('en-IN')}</td>
                                 </tr>
                             )) : (
                                 <tr><td colSpan={4} className="text-center p-4 text-gray-500">No dues found for the selected filters.</td></tr>
@@ -261,9 +261,8 @@ const ReportsPage: React.FC = () => {
                         </tbody>
                          <tfoot className="bg-gray-200 font-bold sticky bottom-0">
                             <tr>
-                                <td colSpan={2} className="p-2">Total Due</td>
+                                <td colSpan={3} className="p-2">Total Due</td>
                                 <td className="p-2 text-right">₹{totalDuesFiltered.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                                <td></td>
                             </tr>
                         </tfoot>
                     </table>
