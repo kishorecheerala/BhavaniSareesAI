@@ -3,8 +3,9 @@
 
 
 
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle, Bell, Menu, Plus, UserPlus, PackagePlus } from 'lucide-react';
+import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle, Bell, Menu, Plus, UserPlus, PackagePlus, Download, X } from 'lucide-react';
 
 import { AppProvider, useAppContext } from './context/AppContext';
 import Dashboard from './pages/Dashboard';
@@ -122,6 +123,9 @@ const MainApp: React.FC = () => {
   const [profitFilterYear, setProfitFilterYear] = useState(new Date().getFullYear());
 
   const { state, dispatch, isDbLoaded } = useAppContext();
+  const { installPromptEvent } = state;
+  const [isInstallBannerVisible, setIsInstallBannerVisible] = useState(true);
+
   const canExitApp = useRef(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const quickAddRef = useRef<HTMLDivElement>(null);
@@ -199,6 +203,20 @@ const MainApp: React.FC = () => {
     profitTimerRef.current = window.setTimeout(() => {
         setShowProfit(false);
     }, 120000); // 2 minutes
+  };
+
+  const handleInstallClick = async () => {
+    if (!installPromptEvent) {
+      return;
+    }
+    installPromptEvent.prompt();
+    const { outcome } = await installPromptEvent.userChoice;
+    console.log(`User response to the install prompt: ${outcome}`);
+    dispatch({ type: 'SET_INSTALL_PROMPT_EVENT', payload: null });
+  };
+
+  const handleDismissInstallBanner = () => {
+    setIsInstallBannerVisible(false);
   };
 
   useEffect(() => {
@@ -524,6 +542,26 @@ const MainApp: React.FC = () => {
             </button>
           </div>
       </header>
+
+      {installPromptEvent && isInstallBannerVisible && (
+        <div className="bg-secondary text-white p-3 flex items-center justify-between gap-4 animate-slide-down-fade shadow-md">
+            <div className="flex items-center gap-3">
+                <Download className="w-6 h-6 flex-shrink-0" />
+                <p className="font-semibold text-sm">Install the app for easy offline access!</p>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+                <button 
+                    onClick={handleInstallClick} 
+                    className="bg-white text-primary font-bold py-1 px-3 rounded-md text-sm hover:bg-gray-100 transition-colors"
+                >
+                    Install
+                </button>
+                <button onClick={handleDismissInstallBanner} className="p-1 rounded-full hover:bg-white/20 transition-colors" aria-label="Dismiss install prompt">
+                    <X className="w-5 h-5" />
+                </button>
+            </div>
+        </div>
+      )}
 
       <main className="flex-grow overflow-y-auto p-4 pb-20">
         <div key={currentPage} className="animate-fade-in-fast">
