@@ -801,48 +801,57 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             </Card>
 
             <Card title="Transaction Details">
-                <div className="mb-4 space-y-2">
-                    <div className="flex justify-between text-gray-600">
-                        <span>Subtotal:</span>
-                        <span>₹{calculations.subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-gray-600">
-                        <span>Discount:</span>
-                        <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} className="w-28 p-1 border rounded text-right" />
-                    </div>
-                    <div className="flex justify-between text-gray-600">
-                        <span>GST Included:</span>
-                        <span>₹{calculations.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    <div className="mt-4 pt-4 border-t">
-                        <div className="p-4 bg-purple-50 rounded-lg text-center">
-                            <p className="text-sm font-semibold text-gray-600">Grand Total</p>
-                            <p className="text-4xl font-bold text-primary">
-                                ₹{calculations.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                            </p>
+                <div className="space-y-6">
+                    {/* Section 1: Calculation Details */}
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-center text-gray-700">
+                            <span>Subtotal:</span>
+                            <span>₹{calculations.subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-gray-700">
+                            <span>Discount:</span>
+                            <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} className="w-28 p-1 border rounded text-right" />
+                        </div>
+                        <div className="flex justify-between items-center text-gray-700">
+                            <span>GST Included:</span>
+                            <span>₹{calculations.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                         </div>
                     </div>
+
+                    {/* Section 2: Grand Total */}
+                    <div className="text-center">
+                        <p className="text-sm text-gray-500">Grand Total</p>
+                        <p className="text-4xl font-bold text-primary">
+                            ₹{calculations.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </p>
+                    </div>
+
+                    {/* Section 3: Payment Details */}
+                    {mode === 'add' ? (
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Amount Paid Now</label>
+                                <input type="number" value={paymentDetails.amount} onChange={e => setPaymentDetails({...paymentDetails, amount: e.target.value })} placeholder={`Total is ₹${calculations.totalAmount.toLocaleString('en-IN')}`} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500 mt-1" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Payment Method</label>
+                                <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any})} className="w-full p-2 border rounded custom-select mt-1">
+                                    <option value="CASH">Cash</option>
+                                    <option value="UPI">UPI</option>
+                                    <option value="CHEQUE">Cheque</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Payment Reference (Optional)</label>
+                                <input type="text" placeholder="e.g. UPI ID, Cheque No." value={paymentDetails.reference} onChange={e => setPaymentDetails({...paymentDetails, reference: e.target.value })} className="w-full p-2 border rounded mt-1" />
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="pt-4 border-t text-center">
+                            <p className="text-sm text-gray-600">Payments for this invoice must be managed from the customer's details page.</p>
+                        </div>
+                    )}
                 </div>
-                {mode === 'add' ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Amount Paid Now</label>
-                            <input type="number" value={paymentDetails.amount} onChange={e => setPaymentDetails({...paymentDetails, amount: e.target.value })} placeholder={`Total is ₹${calculations.totalAmount.toLocaleString('en-IN')}`} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Payment Method</label>
-                            <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any})} className="w-full p-2 border rounded custom-select">
-                                <option value="CASH">Cash</option>
-                                <option value="UPI">UPI</option>
-                                <option value="CHEQUE">Cheque</option>
-                            </select>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="pt-4 border-t text-center">
-                        <p className="text-sm text-gray-600">Payments for this invoice must be managed from the customer's details page.</p>
-                    </div>
-                )}
             </Card>
             
             {mode === 'add' && items.length === 0 && customerId && customerTotalDue != null && customerTotalDue > 0.01 && (
@@ -866,7 +875,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
 
             <div className="space-y-2">
                 {canCreateSale ? (
-                    <Button onClick={handleSubmitSale} className="w-full">
+                    <Button onClick={handleSubmitSale} variant="secondary" className="w-full">
                         <Share2 className="w-4 h-4 mr-2"/>
                         Create Sale & Share Invoice
                     </Button>
@@ -885,7 +894,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                         {customerId ? (items.length === 0 ? 'Enter payment or add items' : 'Complete billing details') : 'Select a customer'}
                     </Button>
                 )}
-                <Button onClick={resetForm} variant="secondary" className="w-full">
+                <Button onClick={resetForm} variant="secondary" className="w-full bg-purple-300 hover:bg-purple-400 focus:ring-purple-300">
                     {mode === 'edit' ? 'Cancel Edit' : 'Clear Form'}
                 </Button>
             </div>
