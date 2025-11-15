@@ -197,6 +197,7 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
     const [items, setItems] = useState<PurchaseItem[]>([]);
     const [supplierInvoiceId, setSupplierInvoiceId] = useState('');
     const [purchaseDate, setPurchaseDate] = useState(getLocalDateString());
+    const [paymentDueDates, setPaymentDueDates] = useState<string[]>([]);
 
     const [isAddingSupplier, setIsAddingSupplier] = useState(false);
     const [newSupplier, setNewSupplier] = useState({ id: '', name: '', phone: '', location: '', gstNumber: '', reference: '', account1: '', account2: '', upi: '' });
@@ -209,6 +210,7 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
             setItems(initialData.items.map(item => ({ ...item }))); // Deep copy
             setSupplierInvoiceId(initialData.supplierInvoiceId || '');
             setPurchaseDate(getLocalDateString(new Date(initialData.date)));
+            setPaymentDueDates(initialData.paymentDueDates || []);
         }
     }, [mode, initialData]);
 
@@ -225,6 +227,7 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
         setItems([]);
         setSupplierInvoiceId('');
         setPurchaseDate(getLocalDateString());
+        setPaymentDueDates([]);
     };
 
     const [isSelectingProduct, setIsSelectingProduct] = useState(false);
@@ -411,6 +414,7 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
             date: new Date(purchaseDate).toISOString(),
             supplierInvoiceId: supplierInvoiceId.trim() || undefined,
             payments: (mode === 'edit' && initialData) ? initialData.payments : [],
+            paymentDueDates: paymentDueDates.filter(date => date), // Filter out empty strings
         };
         
         onSubmit(finalPurchaseData);
@@ -430,6 +434,20 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
                 <button onClick={() => setImportStatus(null)} className="font-bold text-lg leading-none ml-4">&times;</button>
             </div>
         );
+    };
+    
+    const handleDueDateChange = (index: number, value: string) => {
+        const newDates = [...paymentDueDates];
+        newDates[index] = value;
+        setPaymentDueDates(newDates);
+    };
+
+    const addDueDate = () => {
+        setPaymentDueDates([...paymentDueDates, '']);
+    };
+
+    const removeDueDate = (index: number) => {
+        setPaymentDueDates(paymentDueDates.filter((_, i) => i !== index));
     };
 
     const totalPurchaseAmount = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -566,6 +584,24 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
                         </div>
                     ))}
                 </div>
+            </Card>
+            <Card title="Payment Schedule">
+                <div className="space-y-2">
+                    {paymentDueDates.map((date, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                            <input 
+                                type="date" 
+                                value={date} 
+                                onChange={e => handleDueDateChange(index, e.target.value)} 
+                                className="w-full p-2 border rounded" 
+                            />
+                            <DeleteButton variant="remove" onClick={() => removeDueDate(index)} />
+                        </div>
+                    ))}
+                </div>
+                <Button onClick={addDueDate} variant="secondary" className="w-full mt-3">
+                    <Plus size={16} className="mr-2"/> Add Due Date
+                </Button>
             </Card>
             <Card title="Transaction Details">
                  <div className="space-y-2 mb-4">

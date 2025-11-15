@@ -9,6 +9,12 @@ const daysAgo = (days: number): string => {
   return date.toISOString();
 };
 
+const daysFromNow = (days: number): string => {
+    const date = new Date();
+    date.setDate(date.getDate() + days);
+    return date.toISOString().split('T')[0];
+};
+
 export const testProfile: ProfileData = {
   id: 'userProfile',
   name: 'Bhavani Sarees',
@@ -72,6 +78,7 @@ export const testData: Omit<AppState, 'toast' | 'selection' | 'installPromptEven
       ],
       totalAmount: 61000, date: daysAgo(50), supplierInvoiceId: 'KWC-INV-101',
       payments: [{ id: 'PAY-P-1', amount: 61000, date: daysAgo(50), method: 'UPI' }],
+      paymentDueDates: [],
     },
     {
       id: 'PUR-20240705-140000', supplierId: 'SUPP-SURAT',
@@ -81,6 +88,16 @@ export const testData: Omit<AppState, 'toast' | 'selection' | 'installPromptEven
       ],
       totalAmount: 28500, date: daysAgo(45), supplierInvoiceId: 'STI-55B',
       payments: [{ id: 'PAY-P-2', amount: 18500, date: daysAgo(45), method: 'CASH' }], // Creates a purchase due
+      paymentDueDates: [daysFromNow(15)], // Due in 15 days
+    },
+    {
+      id: 'PUR-20240801-120000', supplierId: 'SUPP-SURAT',
+      items: [
+        { productId: 'BS-SILK-001', productName: 'Mysore Silk - Royal Green', quantity: 10, price: 2500, gstPercent: 5, saleValue: 4500 }
+      ],
+      totalAmount: 25000, date: daysAgo(18), supplierInvoiceId: 'STI-92C',
+      payments: [{ id: 'PAY-P-3', amount: 10000, date: daysAgo(18), method: 'CASH' }],
+      paymentDueDates: [daysAgo(10), daysFromNow(25)], // One overdue, one upcoming
     },
   ],
   returns: [

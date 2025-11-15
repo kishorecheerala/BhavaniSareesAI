@@ -76,6 +76,7 @@ export interface Purchase {
   invoiceUrl?: string; // For uploaded invoice
   supplierInvoiceId?: string; // Manual invoice ID from supplier
   payments: Payment[];
+  paymentDueDates?: string[]; // ISO date strings
 }
 
 export interface ReturnItem {
