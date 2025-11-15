@@ -12,16 +12,16 @@ interface DashboardProps {
     setCurrentPage: (page: Page) => void;
 }
 
-const MetricCard: React.FC<{ icon: React.ElementType, title: string, value: string | number, color: string, unit?: string }> = ({ icon: Icon, title, value, color, unit = '₹' }) => (
-    <Card className={`flex items-center p-4 ${color}`}>
-        <div className="p-3 bg-white/20 rounded-full">
-            <Icon className="w-8 h-8 text-white" />
+const MetricCard: React.FC<{ icon: React.ElementType, title: string, value: string | number, color: string, iconBgColor: string, textColor: string, unit?: string }> = ({ icon: Icon, title, value, color, iconBgColor, textColor, unit = '₹' }) => (
+    <div className={`rounded-lg shadow-md p-4 flex items-center transition-all duration-300 hover:shadow-xl hover:scale-[1.01] ${color}`}>
+        <div className={`p-3 ${iconBgColor} rounded-full flex-shrink-0`}>
+            <Icon className={`w-8 h-8 ${textColor}`} />
         </div>
-        <div className="ml-4">
-            <p className="text-white font-semibold text-lg">{title}</p>
-            <p className="text-2xl font-bold text-white">{unit}{typeof value === 'number' ? value.toLocaleString('en-IN') : value}</p>
+        <div className="ml-4 flex-grow">
+            <p className={`font-semibold text-lg ${textColor}`}>{title}</p>
+            <p className={`text-2xl font-bold ${textColor} break-all`}>{unit}{typeof value === 'number' ? value.toLocaleString('en-IN') : value}</p>
         </div>
-    </Card>
+    </div>
 );
 
 const BackupStatusCard: React.FC<{ lastBackupDate: string | null }> = ({ lastBackupDate }) => {
@@ -489,37 +489,49 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     icon={ShoppingCart} 
                     title="Total Sales (All Time)" 
                     value={totalSales} 
-                    color="bg-primary shadow-lg" 
+                    color="bg-teal-100"
+                    iconBgColor="bg-teal-200"
+                    textColor="text-teal-900"
                 />
                  <MetricCard 
                     icon={Package} 
                     title="Total Purchases (All Time)" 
                     value={totalPurchases} 
-                    color="bg-emerald-500 shadow-lg" 
+                    color="bg-emerald-100"
+                    iconBgColor="bg-emerald-200"
+                    textColor="text-emerald-900"
                 />
                 <MetricCard 
                     icon={IndianRupee} 
                     title="Customer Dues" 
                     value={totalCustomerDues} 
-                    color="bg-rose-500 shadow-lg" 
+                    color="bg-rose-100"
+                    iconBgColor="bg-rose-200"
+                    textColor="text-rose-900"
                 />
                 <MetricCard 
                     icon={IndianRupee} 
                     title="Purchase Dues" 
                     value={totalPurchaseDues} 
-                    color="bg-amber-500 shadow-lg"
+                    color="bg-amber-100"
+                    iconBgColor="bg-amber-200"
+                    textColor="text-amber-900"
                 />
                 <MetricCard 
                     icon={Archive} 
                     title="Inventory Value" 
                     value={totalInventoryValue} 
-                    color="bg-sky-500 shadow-lg" 
+                    color="bg-sky-100"
+                    iconBgColor="bg-sky-200"
+                    textColor="text-sky-900"
                 />
                 <MetricCard 
                     icon={PackageCheck} 
                     title="Items in Stock" 
                     value={totalStockQuantity} 
-                    color="bg-cyan-500 shadow-lg"
+                    color="bg-cyan-100"
+                    iconBgColor="bg-cyan-200"
+                    textColor="text-cyan-900"
                     unit="" 
                 />
             </div>
@@ -527,39 +539,6 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
             <OverdueDuesCard sales={state.sales} customers={state.customers} onNavigate={handleNavigateToCustomer} />
             
             <UpcomingPurchaseDuesCard purchases={state.purchases} suppliers={state.suppliers} onNavigate={handleNavigateToSupplier} />
-
-            <Card title="Monthly Sales Report">
-                <div className="flex flex-col sm:flex-row gap-4 mb-4">
-                    <select
-                        value={selectedMonth}
-                        onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                        className="w-full p-2 border rounded-lg custom-select"
-                    >
-                        {monthNames.map((month, index) => (
-                            <option key={month} value={index}>{month}</option>
-                        ))}
-                    </select>
-                    <select
-                        value={selectedYear}
-                        onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                        className="w-full p-2 border rounded-lg custom-select"
-                    >
-                        {availableYears.map(year => (
-                            <option key={year} value={year}>{year}</option>
-                        ))}
-                    </select>
-                </div>
-                <div className="text-center p-4 bg-teal-50 rounded-lg flex flex-col items-center justify-center">
-                    <div className="flex items-center gap-2">
-                        <TrendingUp className="w-6 h-6 text-primary"/>
-                        <p className="text-lg font-semibold text-primary">Total Sales</p>
-                    </div>
-                    <p className="text-xs text-gray-500 mb-1">{monthNames[selectedMonth]} {selectedYear}</p>
-                    <p className="text-3xl font-bold text-primary">
-                        ₹{monthlySalesTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </p>
-                </div>
-            </Card>
             
             <Card title="Backup & Restore">
                 <div className="space-y-4">
