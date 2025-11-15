@@ -82,6 +82,8 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
     const [paymentModalState, setPaymentModalState] = useState<{ isOpen: boolean, purchaseId: string | null }>({ isOpen: false, purchaseId: null });
     const [paymentDetails, setPaymentDetails] = useState({ amount: '', method: 'CASH' as 'CASH' | 'UPI' | 'CHEQUE', date: getLocalDateString(), reference: '' });
     const [confirmModalState, setConfirmModalState] = useState<{ isOpen: boolean, purchaseIdToDelete: string | null }>({ isOpen: false, purchaseIdToDelete: null });
+    const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
+    const [tempDueDates, setTempDueDates] = useState<string[]>([]);
     
     const isDirtyRef = useRef(false);
 
@@ -99,13 +101,13 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
     
     useEffect(() => {
         const addSupplierDirty = view === 'add_supplier' && !!(newSupplier.id || newSupplier.name || newSupplier.phone || newSupplier.location);
-        const detailViewDirty = !!(selectedSupplier && isEditing);
+        const detailViewDirty = !!(selectedSupplier && (isEditing || editingScheduleId));
         const currentlyDirty = addSupplierDirty || detailViewDirty;
         if (currentlyDirty !== isDirtyRef.current) {
             isDirtyRef.current = currentlyDirty;
             setIsDirty(currentlyDirty);
         }
-    }, [view, newSupplier, selectedSupplier, isEditing, setIsDirty]);
+    }, [view, newSupplier, selectedSupplier, isEditing, editingScheduleId, setIsDirty]);
 
     // On unmount, we must always clean up.
     useEffect(() => {
@@ -390,6 +392,43 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
                 setEditedSupplier({ ...editedSupplier, [e.target.name]: e.target.value });
             }
         };
+        
+        const handleEditScheduleClick = (purchase: Purchase) => {
+            setEditingScheduleId(purchase.id);
+            setTempDueDates(purchase.paymentDueDates || []);
+        };
+        
+        const handleTempDateChange = (index: number, value: string) => {
+            const newDates = [...tempDueDates];
+            newDates[index] = value;
+            setTempDueDates(newDates);
+        };
+
+        const addTempDate = () => {
+            setTempDueDates([...tempDueDates, getLocalDateString()]);
+        };
+
+        const removeTempDate = (index: number) => {
+            setTempDueDates(tempDueDates.filter((_, i) => i !== index));
+        };
+        
+        const handleSaveSchedule = (purchaseToUpdate: Purchase) => {
+            const updatedPurchase: Purchase = {
+                ...purchaseToUpdate,
+                paymentDueDates: tempDueDates.filter(date => date).sort(),
+            };
+
+            const oldPurchase = state.purchases.find(p => p.id === purchaseToUpdate.id);
+            if (!oldPurchase) {
+                showToast("Could not find original purchase to update.", "info");
+                return;
+            }
+
+            dispatch({ type: 'UPDATE_PURCHASE', payload: { oldPurchase, updatedPurchase } });
+            showToast("Payment schedule updated successfully.");
+            setEditingScheduleId(null);
+            setTempDueDates([]);
+        };
 
         return (
             <div className="space-y-4">
@@ -448,6 +487,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
                                 const amountPaid = (purchase.payments || []).reduce((sum, p) => sum + p.amount, 0);
                                 const dueAmount = purchase.totalAmount - amountPaid;
                                 const isPaid = dueAmount <= 0.01;
+                                const isEditingThisSchedule = editingScheduleId === purchase.id;
 
                                 const totalGst = purchase.items.reduce((sum, item) => {
                                     const itemTotal = item.price * item.quantity;
@@ -455,7 +495,6 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
                                     return sum + itemGst;
                                 }, 0);
                                 const subTotal = purchase.totalAmount - totalGst;
-
 
                                 return (
                                 <div key={purchase.id} className="p-3 bg-gray-50 rounded-lg border">
@@ -503,25 +542,47 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
                                             </div>
                                         </div>
 
-                                        {(purchase.paymentDueDates && purchase.paymentDueDates.length > 0) && (
-                                            <div>
-                                                <h4 className="font-semibold text-sm text-gray-700 mb-1">Payment Due Dates:</h4>
-                                                <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                                                    {purchase.paymentDueDates.map((dateStr, index) => {
-                                                        const today = new Date();
-                                                        today.setHours(0, 0, 0, 0);
-                                                        // Assume dateStr is 'YYYY-MM-DD', treat as local date
-                                                        const dueDate = new Date(dateStr + 'T00:00:00');
-                                                        const isOverdue = dueDate < today;
-                                                        return (
-                                                            <li key={index} className={`${isOverdue ? 'text-red-600 font-bold' : ''}`}>
-                                                                {dueDate.toLocaleDateString('en-IN')} {isOverdue && '(Overdue)'}
-                                                            </li>
-                                                        );
-                                                    })}
-                                                </ul>
-                                            </div>
-                                        )}
+                                        <div className="p-2 bg-white rounded-md text-sm border">
+                                            <h4 className="font-semibold text-gray-700 mb-2">Payment Schedule</h4>
+                                            {isEditingThisSchedule ? (
+                                                <div className="space-y-2">
+                                                    {tempDueDates.map((date, index) => (
+                                                        <div key={index} className="flex items-center gap-2">
+                                                            <input type="date" value={date} onChange={(e) => handleTempDateChange(index, e.target.value)} className="w-full p-2 border rounded" />
+                                                            <DeleteButton variant="remove" onClick={() => removeTempDate(index)} />
+                                                        </div>
+                                                    ))}
+                                                    <Button onClick={addTempDate} variant="secondary" className="w-full py-1 text-xs">
+                                                        <Plus size={14} className="mr-1"/> Add Date
+                                                    </Button>
+                                                    <div className="flex gap-2 pt-2 border-t mt-2">
+                                                        <Button onClick={() => handleSaveSchedule(purchase)} className="flex-grow py-1">Save</Button>
+                                                        <Button onClick={() => setTempDueDates([])} variant="secondary" className="bg-red-100 text-red-700 hover:bg-red-200 py-1">Clear All</Button>
+                                                        <Button onClick={() => { setEditingScheduleId(null); setTempDueDates([]); }} variant="secondary" className="bg-gray-200 text-gray-700 hover:bg-gray-300 py-1">Cancel</Button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex justify-between items-start">
+                                                    {(purchase.paymentDueDates && purchase.paymentDueDates.length > 0) ? (
+                                                        <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                                                            {purchase.paymentDueDates.map((dateStr, index) => {
+                                                                const today = new Date(); today.setHours(0, 0, 0, 0);
+                                                                const dueDate = new Date(dateStr + 'T00:00:00');
+                                                                const isOverdue = dueDate < today;
+                                                                return (
+                                                                    <li key={index} className={`${isOverdue ? 'text-red-600 font-bold' : ''}`}>
+                                                                        {dueDate.toLocaleDateString('en-IN')} {isOverdue && '(Overdue)'}
+                                                                    </li>
+                                                                );
+                                                            })}
+                                                        </ul>
+                                                    ) : <p className="text-xs text-gray-500">No due dates scheduled.</p>}
+                                                    <Button onClick={() => handleEditScheduleClick(purchase)} variant="secondary" className="py-1 px-2 text-xs">
+                                                        <Edit size={14}/> Edit
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </div>
 
                                         {(purchase.payments || []).length > 0 && (
                                             <div>
