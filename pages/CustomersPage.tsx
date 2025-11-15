@@ -116,9 +116,14 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
 
     useEffect(() => {
         if (state.selection && state.selection.page === 'CUSTOMERS') {
-            const customerToSelect = state.customers.find(c => c.id === state.selection.id);
-            if (customerToSelect) {
-                setSelectedCustomer(customerToSelect);
+            if (state.selection.id === 'new') {
+                setIsAdding(true);
+                setSelectedCustomer(null); // Ensure we are not in detail view
+            } else {
+                const customerToSelect = state.customers.find(c => c.id === state.selection.id);
+                if (customerToSelect) {
+                    setSelectedCustomer(customerToSelect);
+                }
             }
             dispatch({ type: 'CLEAR_SELECTION' });
         }

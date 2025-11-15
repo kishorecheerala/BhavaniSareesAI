@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle, Bell, Menu, Plus } from 'lucide-react';
+import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle, Bell, Menu, Plus, UserPlus, PackagePlus } from 'lucide-react';
 
 import { AppProvider, useAppContext } from './context/AppContext';
 import Dashboard from './pages/Dashboard';
@@ -61,6 +61,41 @@ const NavItem: React.FC<{
     </button>
 );
 
+const QuickAddMenu: React.FC<{
+  isOpen: boolean;
+  onNavigate: (page: Page, action?: 'new') => void;
+}> = ({ isOpen, onNavigate }) => {
+    if (!isOpen) return null;
+
+    const actions = [
+        { icon: UserPlus, label: 'Add Customer', page: 'CUSTOMERS' as Page, action: 'new' as const },
+        { icon: ShoppingCart, label: 'New Sale', page: 'SALES' as Page },
+        { icon: PackagePlus, label: 'New Purchase', page: 'PURCHASES' as Page, action: 'new' as const },
+        { icon: Undo2, label: 'New Return', page: 'RETURNS' as Page },
+    ];
+
+    return (
+        <div 
+          className="absolute top-full right-0 mt-2 w-56 bg-white rounded-lg shadow-2xl border border-gray-200 text-text animate-scale-in origin-top-right z-[150]"
+          role="dialog"
+          aria-label="Quick Add Menu"
+        >
+            <div className="p-2">
+                {actions.map(action => (
+                    <button
+                        key={action.page}
+                        onClick={() => onNavigate(action.page, action.action)}
+                        className="w-full flex items-center gap-3 text-left p-3 rounded-md hover:bg-teal-50 transition-colors"
+                    >
+                        <action.icon className="w-5 h-5 text-primary" />
+                        <span className="font-semibold text-sm">{action.label}</span>
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 
 const MainApp: React.FC = () => {
   const [currentPage, _setCurrentPage] = useState<Page>(
@@ -73,6 +108,7 @@ const MainApp: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [navConfirm, setNavConfirm] = useState<{ show: boolean, page: Page | null }>({ show: false, page: null });
   const [showProfit, setShowProfit] = useState(false);
   const profitTimerRef = useRef<number | null>(null);
@@ -83,10 +119,12 @@ const MainApp: React.FC = () => {
   const { state, dispatch, isDbLoaded } = useAppContext();
   const canExitApp = useRef(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const quickAddRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const moreMenuRef = useRef<HTMLDivElement>(null);
 
   useOnClickOutside(menuRef, () => setIsMenuOpen(false));
+  useOnClickOutside(quickAddRef, () => setIsQuickAddOpen(false));
   useOnClickOutside(notificationsRef, () => setIsNotificationsOpen(false));
   useOnClickOutside(moreMenuRef, () => setIsMoreMenuOpen(false));
 
@@ -300,6 +338,14 @@ const MainApp: React.FC = () => {
     setIsNotificationsOpen(false);
   }
 
+  const handleQuickActionNavigate = (page: Page, action?: 'new') => {
+    if (action === 'new') {
+        // Use the selection mechanism to tell the destination page to open its "add new" form.
+        dispatch({ type: 'SET_SELECTION', payload: { page, id: 'new' } });
+    }
+    _setCurrentPage(page);
+  };
+
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       if (isDirtyRef.current) {
@@ -449,6 +495,18 @@ const MainApp: React.FC = () => {
           </div>
           <h1 className="text-xl font-bold text-center">Bhavani Sarees</h1>
           <div className="flex items-center gap-2">
+             <div className="relative" ref={quickAddRef}>
+                <button onClick={() => setIsQuickAddOpen(prev => !prev)} className="p-1 rounded-full hover:bg-white/20 transition-colors" aria-label="Open quick add menu">
+                    <Plus className="w-6 h-6" />
+                </button>
+                <QuickAddMenu
+                    isOpen={isQuickAddOpen}
+                    onNavigate={(page, action) => {
+                        handleQuickActionNavigate(page, action);
+                        setIsQuickAddOpen(false);
+                    }}
+                />
+            </div>
             <div className="relative" ref={notificationsRef}>
                  <button onClick={() => setIsNotificationsOpen(prev => !prev)} className="p-1 rounded-full hover:bg-white/20 transition-colors" aria-label="Open notifications">
                     <Bell className="w-6 h-6" />

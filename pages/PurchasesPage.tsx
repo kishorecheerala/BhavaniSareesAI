@@ -89,11 +89,15 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
 
     useEffect(() => {
         if (state.selection && state.selection.page === 'PURCHASES') {
-            const supplierToSelect = state.suppliers.find(s => s.id === state.selection.id);
-            if (supplierToSelect) {
-                setSelectedSupplier(supplierToSelect);
+            if (state.selection.id === 'new') {
+                setView('add_purchase');
+                setSelectedSupplier(null);
             } else {
-                 setView('add_purchase');
+                const supplierToSelect = state.suppliers.find(s => s.id === state.selection.id);
+                if (supplierToSelect) {
+                    setSelectedSupplier(supplierToSelect);
+                    setView('list'); // Ensure we are in list/detail view
+                }
             }
             dispatch({ type: 'CLEAR_SELECTION' });
         }
