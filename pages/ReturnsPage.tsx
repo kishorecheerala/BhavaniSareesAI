@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Undo2, Users, Package, Plus, Trash2, Share2, Edit } from 'lucide-react';
+import { Undo2, Users, Package, Plus, Trash2, Share2, Edit, Download } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
-import { Return, ReturnItem, Sale, Purchase } from '../types';
+import { Return, ReturnItem, Sale, Purchase, Customer, Supplier } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import jsPDF from 'jspdf';
@@ -22,98 +22,120 @@ interface ReturnsPageProps {
 
 const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
     const { state, dispatch, showToast } = useAppContext();
-    const [activeTab, setActiveTab] = useState<ReturnType>('CUSTOMER');
-    const [partyId, setPartyId] = useState<string>('');
-    const [referenceId, setReferenceId] = useState<string>('');
-    const [itemsToReturn, setItemsToReturn] = useState<ReturnItem[]>([]);
+    const [returnType, setReturnType] = useState<ReturnType>('CUSTOMER');
+    const [partyId, setPartyId] = useState('');
+    const [referenceId, setReferenceId] = useState('');
+    const [returnedItems, setReturnedItems] = useState<{ [productId: string]: number }>({});
+    const [returnAmount, setReturnAmount] = useState('');
     const [returnDate, setReturnDate] = useState(getLocalDateString());
-    const [amount, setAmount] = useState('');
     const [reason, setReason] = useState('');
-    const [returnNotes, setReturnNotes] = useState('');
-    const [returnToEdit, setReturnToEdit] = useState<Return | null>(null);
-    const isDirtyRef = useRef(false);
+    const [notes, setNotes] = useState('');
 
-    const handleStartEdit = (ret: Return) => {
-        setReturnToEdit(ret);
-        setActiveTab(ret.type);
-        setPartyId(ret.partyId);
-        setReferenceId(ret.referenceId);
-        setItemsToReturn(ret.items.map(i => ({...i})));
-        setReturnDate(getLocalDateString(new Date(ret.returnDate)));
-        setAmount(ret.amount.toString());
-        setReason(ret.reason || '');
-        setReturnNotes(ret.notes || '');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
+    const [mode, setMode] = useState<'add' | 'edit'>('add');
+    const [returnToEditId, setReturnToEditId] = useState<string | null>(null);
+
+    const isDirtyRef = useRef(false);
 
     useEffect(() => {
         if (state.selection?.page === 'RETURNS' && state.selection.action === 'edit') {
-            const selectedReturn = state.returns.find(r => r.id === state.selection.id);
-            if (selectedReturn) {
-                handleStartEdit(selectedReturn);
+            const returnToEdit = state.returns.find(r => r.id === state.selection.id);
+            if (returnToEdit) {
+                setMode('edit');
+                setReturnToEditId(returnToEdit.id);
+                setReturnType(returnToEdit.type);
+                setPartyId(returnToEdit.partyId);
+                setReferenceId(returnToEdit.referenceId);
+                setReturnAmount(returnToEdit.amount.toString());
+                setReturnDate(getLocalDateString(new Date(returnToEdit.returnDate)));
+                setReason(returnToEdit.reason || '');
+                setNotes(returnToEdit.notes || '');
+                const itemsToEdit = returnToEdit.items.reduce((acc, item) => {
+                    acc[item.productId] = item.quantity;
+                    return acc;
+                }, {} as { [productId: string]: number });
+                setReturnedItems(itemsToEdit);
             }
             dispatch({ type: 'CLEAR_SELECTION' });
         }
     }, [state.selection, state.returns, dispatch]);
 
-
     useEffect(() => {
-        const currentlyDirty = !!partyId || !!referenceId || itemsToReturn.length > 0 || !!returnToEdit;
+        const currentlyDirty = mode === 'add' && (!!partyId || !!referenceId || Object.keys(returnedItems).length > 0 || !!returnAmount);
         if (currentlyDirty !== isDirtyRef.current) {
             isDirtyRef.current = currentlyDirty;
             setIsDirty(currentlyDirty);
         }
-    }, [partyId, referenceId, itemsToReturn, returnToEdit, setIsDirty]);
+    }, [partyId, referenceId, returnedItems, returnAmount, mode, setIsDirty]);
 
-    // On unmount, we must always clean up.
     useEffect(() => {
-        return () => {
-            setIsDirty(false);
-        };
+        return () => setIsDirty(false);
     }, [setIsDirty]);
-
+    
     const resetForm = () => {
         setPartyId('');
         setReferenceId('');
-        setItemsToReturn([]);
+        setReturnedItems({});
+        setReturnAmount('');
         setReturnDate(getLocalDateString());
-        setAmount('');
         setReason('');
-        setReturnNotes('');
-        setReturnToEdit(null);
+        setNotes('');
+        setMode('add');
+        setReturnToEditId(null);
     };
 
-    const handleItemQuantityChange = (productId: string, productName: string, price: number, newQuantity: number) => {
-        let originalItemQuantity = 0;
+    const partyList = useMemo(() => {
+        return returnType === 'CUSTOMER' ? state.customers : state.suppliers;
+    }, [returnType, state.customers, state.suppliers]);
 
-        if (referenceId) {
-             const originalItem = activeTab === 'CUSTOMER' 
-                ? (state.sales.find(s => s.id === referenceId)?.items.find(i => i.productId === productId))
-                : (state.purchases.find(p => p.id === referenceId)?.items.find(i => i.productId === productId));
-            if(originalItem) originalItemQuantity = originalItem.quantity;
-        }
+    const invoiceList = useMemo(() => {
+        if (!partyId) return [];
+        return returnType === 'CUSTOMER'
+            ? state.sales.filter(s => s.customerId === partyId)
+            : state.purchases.filter(p => p.supplierId === partyId);
+    }, [partyId, returnType, state.sales, state.purchases]);
 
-        if (newQuantity > originalItemQuantity) {
-            alert(`Cannot return more than the purchased quantity of ${originalItemQuantity}.`);
-            return;
-        }
+    const selectedInvoice = useMemo(() => {
+        if (!referenceId) return null;
+        const list = returnType === 'CUSTOMER' ? state.sales : state.purchases;
+        return list.find(inv => inv.id === referenceId);
+    }, [referenceId, returnType, state.sales, state.purchases]);
 
-        const existingItemIndex = itemsToReturn.findIndex(item => item.productId === productId);
-        if (newQuantity > 0) {
-            const updatedItem: ReturnItem = { productId, productName, price, quantity: newQuantity };
-            if (existingItemIndex > -1) {
-                setItemsToReturn(itemsToReturn.map((item, index) => index === existingItemIndex ? updatedItem : item));
+    const handleItemQuantityChange = (productId: string, quantityStr: string) => {
+        const originalItem = selectedInvoice?.items.find(i => i.productId === productId);
+        if (!originalItem) return;
+
+        const maxQuantity = originalItem.quantity;
+        let quantity = parseInt(quantityStr, 10);
+
+        if (isNaN(quantity)) quantity = 0;
+        if (quantity > maxQuantity) quantity = maxQuantity;
+        if (quantity < 0) quantity = 0;
+        
+        setReturnedItems(prev => {
+            const newItems = { ...prev };
+            if (quantity > 0) {
+                newItems[productId] = quantity;
             } else {
-                setItemsToReturn([...itemsToReturn, updatedItem]);
+                delete newItems[productId];
             }
-        } else {
-            if (existingItemIndex > -1) {
-                setItemsToReturn(itemsToReturn.filter(item => item.productId !== productId));
-            }
-        }
+            return newItems;
+        });
     };
     
-    const generateSupplierReturnPDF = async (newReturn: Return) => {
+    const calculatedReturnValue = useMemo(() => {
+        if (!selectedInvoice) return 0;
+        // FIX: Changed from Object.entries to Object.keys to ensure correct type inference for quantity.
+        return Object.keys(returnedItems).reduce((total, productId) => {
+            const quantity = returnedItems[productId];
+            const item = selectedInvoice.items.find(i => i.productId === productId);
+            if (item) {
+                return total + (item.price * quantity);
+            }
+            return total;
+        }, 0);
+    }, [returnedItems, selectedInvoice]);
+
+    const generateDebitNotePDF = async (newReturn: Return) => {
         const profile = state.profile;
         const supplier = state.suppliers.find(s => s.id === newReturn.partyId);
 
@@ -204,245 +226,209 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
 
         doc.save(`DebitNote-${newReturn.id}.pdf`);
     };
-    
-    const handleSubmitReturn = async () => {
-        if (!partyId || !referenceId || itemsToReturn.length === 0 || !amount) {
-            alert('Please fill all required fields: select a party, an invoice, at least one item, and the return amount.');
+
+    const handleProcessReturn = async () => {
+        const amount = parseFloat(returnAmount);
+        if (!partyId || !referenceId || Object.keys(returnedItems).length === 0 || isNaN(amount) || amount <= 0) {
+            alert('Please fill all required fields: select party, invoice, items, and enter a valid return amount.');
             return;
         }
         
+        // FIX: Changed from Object.entries to Object.keys to ensure correct type inference for quantity.
+        const itemsToReturn: ReturnItem[] = Object.keys(returnedItems).map((productId) => {
+            const quantity = returnedItems[productId];
+            const originalItem = selectedInvoice!.items.find(i => i.productId === productId)!;
+            return {
+                productId,
+                productName: originalItem.productName,
+                quantity,
+                price: originalItem.price,
+            };
+        });
+        
         const now = new Date();
-        const returnId = `RET-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}-${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
+        const returnId = mode === 'add'
+            ? `RET-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}-${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`
+            : returnToEditId!;
 
-        const newReturn: Return = {
-            id: returnId,
-            type: activeTab,
-            partyId,
-            referenceId,
-            items: itemsToReturn,
-            returnDate: new Date(returnDate).toISOString(),
-            amount: parseFloat(amount),
-            reason,
-            notes: returnNotes,
+        const returnData: Return = {
+            id: returnId, type: returnType, referenceId, partyId, items: itemsToReturn,
+            returnDate: new Date(returnDate).toISOString(), amount, reason, notes,
         };
 
-        if (activeTab === 'SUPPLIER') {
-            await generateSupplierReturnPDF(newReturn);
+        if (mode === 'add') {
+            dispatch({ type: 'ADD_RETURN', payload: returnData });
+            showToast('Return processed successfully!');
+        } else {
+            const oldReturn = state.returns.find(r => r.id === returnToEditId);
+            if (oldReturn) {
+                 dispatch({ type: 'UPDATE_RETURN', payload: { oldReturn, updatedReturn: returnData } });
+                 showToast('Return updated successfully!');
+            }
         }
 
-        dispatch({ type: 'ADD_RETURN', payload: newReturn });
-        showToast(`${activeTab === 'CUSTOMER' ? 'Customer' : 'Supplier'} return processed successfully!`);
+        if (returnType === 'SUPPLIER') {
+            await generateDebitNotePDF(returnData);
+        }
+
         resetForm();
     };
 
-    const handleUpdateReturn = () => {
-        if (!returnToEdit || !amount || itemsToReturn.length === 0) {
-            alert('Please ensure all fields are filled correctly.');
-            return;
-        }
-        const updatedReturn: Return = {
-            ...returnToEdit,
-            items: itemsToReturn,
-            returnDate: new Date(returnDate).toISOString(),
-            amount: parseFloat(amount),
-            reason,
-            notes: returnNotes,
-        };
-        dispatch({ type: 'UPDATE_RETURN', payload: { oldReturn: returnToEdit, updatedReturn } });
-        showToast('Return updated successfully!');
-        resetForm();
-    };
-
-    const partyList = activeTab === 'CUSTOMER' ? state.customers : state.suppliers;
-    const invoiceList = useMemo(() => {
-        if (!partyId) return [];
-        return activeTab === 'CUSTOMER'
-            ? state.sales.filter(s => s.customerId === partyId)
-            : state.purchases.filter(p => p.supplierId === partyId);
-    }, [partyId, activeTab, state.sales, state.purchases]);
-
-    const selectedInvoiceItems = useMemo(() => {
-        if (!referenceId) return [];
-        const invoice: Sale | Purchase | undefined = activeTab === 'CUSTOMER'
-            ? state.sales.find(s => s.id === referenceId)
-            : state.purchases.find(p => p.id === referenceId);
-        return invoice?.items || [];
-    }, [referenceId, activeTab, state.sales, state.purchases]);
-
-    const invoiceFinancials = useMemo(() => {
-        if (!referenceId) return null;
-
-        const invoice: Sale | Purchase | undefined = activeTab === 'CUSTOMER'
-            ? state.sales.find(s => s.id === referenceId)
-            : state.purchases.find(p => p.id === referenceId);
-
-        if (!invoice) return null;
-
-        const totalAmount = invoice.totalAmount;
-        const paidAmount = (invoice.payments || []).reduce((sum, p) => sum + p.amount, 0);
-        const dueAmount = totalAmount - paidAmount;
-
-        return { totalAmount, paidAmount, dueAmount };
-    }, [referenceId, activeTab, state.sales, state.purchases]);
-    
-    const allReturns = state.returns.slice().reverse();
-    const formTitle = returnToEdit ? `Editing Return: ${returnToEdit.id}` : 'Process a New Return';
+    const invoiceTotal = selectedInvoice?.totalAmount || 0;
+    const amountPaid = selectedInvoice ? (selectedInvoice.payments || []).reduce((sum, p) => sum + p.amount, 0) : 0;
+    const currentDue = invoiceTotal - amountPaid;
 
     return (
-        <div className="space-y-4">
-            <h1 className="text-2xl font-bold text-primary flex items-center gap-2"><Undo2 /> Returns Management</h1>
+        <div className="space-y-6">
+            <h1 className="text-2xl font-bold text-primary flex items-center gap-3">
+                <Undo2 /> Returns Management
+            </h1>
 
-            <Card title={formTitle}>
-                <div className="mb-4 border-b">
-                    <div className="flex">
-                        <button onClick={() => { setActiveTab('CUSTOMER'); resetForm(); }} disabled={!!returnToEdit} className={`px-4 py-2 text-sm font-semibold ${activeTab === 'CUSTOMER' ? 'border-b-2 border-primary text-primary' : 'text-gray-500'} disabled:opacity-50`}>Customer Return</button>
-                        <button onClick={() => { setActiveTab('SUPPLIER'); resetForm(); }} disabled={!!returnToEdit} className={`px-4 py-2 text-sm font-semibold ${activeTab === 'SUPPLIER' ? 'border-b-2 border-primary text-primary' : 'text-gray-500'} disabled:opacity-50`}>Return to Supplier</button>
-                    </div>
+            <Card title="Process a New Return">
+                <div className="border-b mb-4">
+                    <nav className="-mb-px flex space-x-6">
+                        <button onClick={() => { resetForm(); setReturnType('CUSTOMER'); }} className={`py-2 px-1 border-b-2 font-semibold ${returnType === 'CUSTOMER' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                            Customer Return
+                        </button>
+                        <button onClick={() => { resetForm(); setReturnType('SUPPLIER'); }} className={`py-2 px-1 border-b-2 font-semibold ${returnType === 'SUPPLIER' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                            Return to Supplier
+                        </button>
+                    </nav>
                 </div>
                 
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">{activeTab === 'CUSTOMER' ? 'Customer' : 'Supplier'}</label>
-                        <select value={partyId} disabled={!!returnToEdit} onChange={e => { setPartyId(e.target.value); setReferenceId(''); setItemsToReturn([]); }} className="w-full p-2 border rounded custom-select disabled:bg-gray-100">
-                            <option value="">Select {activeTab === 'CUSTOMER' ? 'Customer' : 'Supplier'}</option>
-                            {partyList.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        <label className="block text-sm font-medium">{returnType === 'CUSTOMER' ? 'Customer' : 'Supplier'}</label>
+                        <select value={partyId} onChange={e => {setPartyId(e.target.value); setReferenceId(''); setReturnedItems({});}} className="w-full p-2 border rounded custom-select mt-1">
+                            <option value="">Select {returnType.toLowerCase()}</option>
+                            {partyList.map(party => <option key={party.id} value={party.id}>{party.name}</option>)}
                         </select>
                     </div>
 
                     {partyId && (
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Original Invoice</label>
-                            <select value={referenceId} disabled={!!returnToEdit} onChange={e => { setReferenceId(e.target.value); setItemsToReturn([]); }} className="w-full p-2 border rounded custom-select disabled:bg-gray-100">
-                                <option value="">Select Invoice</option>
+                             <label className="block text-sm font-medium">Original Invoice</label>
+                             <select value={referenceId} onChange={e => {setReferenceId(e.target.value); setReturnedItems({});}} className="w-full p-2 border rounded custom-select mt-1">
+                                <option value="">Select invoice</option>
                                 {invoiceList.map(inv => <option key={inv.id} value={inv.id}>{inv.id} - {new Date(inv.date).toLocaleDateString()}</option>)}
                             </select>
                         </div>
                     )}
                     
-                    {referenceId && invoiceFinancials && (
-                        <div className="p-3 bg-purple-50 rounded-lg text-sm text-purple-800 space-y-1 my-4">
-                            <div className="flex justify-between">
-                                <span className="font-semibold">Invoice Total:</span>
-                                <span>₹{invoiceFinancials.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="font-semibold">Amount Paid:</span>
-                                <span className="text-green-600">₹{invoiceFinancials.paidAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                            </div>
-                            <div className="flex justify-between font-bold">
-                                <span className="font-semibold">Current Due:</span>
-                                <span className="text-red-600">₹{invoiceFinancials.dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                            </div>
-                        </div>
-                    )}
-
-                    {referenceId && (
-                        <div>
-                            <h3 className="text-md font-semibold text-gray-800 mb-2">Select Items to Return</h3>
-                            <div className="space-y-3 max-h-60 overflow-y-auto p-2 bg-gray-50 rounded">
-                                {selectedInvoiceItems.map(item => (
-                                    <div key={item.productId} className="flex items-center justify-between">
-                                        <div>
-                                            <p className="font-medium">{item.productName}</p>
-                                            <p className="text-xs text-gray-500">Purchased: {item.quantity} @ ₹{item.price.toLocaleString('en-IN')}</p>
+                    {selectedInvoice && (
+                        <>
+                           <div className="p-3 bg-purple-50 rounded-lg border text-sm space-y-1">
+                                <div className="flex justify-between"><span>Invoice Total:</span> <span className="font-semibold">₹{invoiceTotal.toLocaleString('en-IN')}</span></div>
+                                <div className="flex justify-between"><span>Amount Paid:</span> <span className="font-semibold text-green-600">₹{amountPaid.toLocaleString('en-IN')}</span></div>
+                                <div className="flex justify-between"><span>Current Due:</span> <span className="font-semibold text-red-600">₹{currentDue.toLocaleString('en-IN')}</span></div>
+                           </div>
+                           
+                           <div>
+                                <h3 className="text-md font-semibold text-gray-800 mb-2">Select Items to Return</h3>
+                                <div className="space-y-2">
+                                {selectedInvoice.items.map(item => (
+                                    <div key={item.productId} className="grid grid-cols-3 gap-2 items-center">
+                                        <div className="col-span-2">
+                                            <p className="font-semibold text-sm">{item.productName}</p>
+                                            <p className="text-xs text-gray-500">Purchased: {item.quantity} @ ₹{item.price}</p>
                                         </div>
-                                        <input 
-                                            type="number" 
-                                            min="0"
+                                        <input
+                                            type="number"
+                                            placeholder="Qty"
+                                            value={returnedItems[item.productId] || ''}
+                                            onChange={e => handleItemQuantityChange(item.productId, e.target.value)}
+                                            className="w-full p-2 border rounded text-center"
                                             max={item.quantity}
-                                            placeholder="Qty" 
-                                            className="w-20 p-1 border rounded text-center"
-                                            value={itemsToReturn.find(i => i.productId === item.productId)?.quantity || ''}
-                                            onChange={e => handleItemQuantityChange(item.productId, item.productName, item.price, parseInt(e.target.value) || 0)}
                                         />
                                     </div>
                                 ))}
-                            </div>
-                        </div>
-                    )}
-                    
-                    {itemsToReturn.length > 0 && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
-                             <div>
-                                <label className="block text-sm font-medium text-gray-700">{activeTab === 'CUSTOMER' ? 'Amount Refunded' : 'Credit Note Value'}</label>
-                                <input type="number" placeholder="e.g., 500.00" value={amount} onChange={e => setAmount(e.target.value)} className="w-full p-2 border rounded" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Return Date</label>
-                                <input type="date" value={returnDate} onChange={e => setReturnDate(e.target.value)} className="w-full p-2 border rounded" />
-                            </div>
-                            <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700">Reason (Optional)</label>
-                                <input type="text" placeholder="e.g., Damaged item" value={reason} onChange={e => setReason(e.target.value)} className="w-full p-2 border rounded" />
-                            </div>
-                             {activeTab === 'SUPPLIER' && (
-                                <div className="md:col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700">Return Notes for PDF</label>
-                                    <textarea
-                                        placeholder="Enter any specific details to be included in the return invoice (Debit Note)..."
-                                        value={returnNotes}
-                                        onChange={e => setReturnNotes(e.target.value)}
-                                        className="w-full p-2 border rounded"
-                                        rows={3}
-                                    />
                                 </div>
-                            )}
-                        </div>
+                           </div>
+                           
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium">{returnType === 'CUSTOMER' ? 'Amount Refunded' : 'Credit Note Value'}</label>
+                                    <input type="number" value={returnAmount} onChange={e => setReturnAmount(e.target.value)} className="w-full p-2 border rounded mt-1" placeholder={`e.g., ${calculatedReturnValue.toFixed(2)}`} />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium">Return Date</label>
+                                    <input type="date" value={returnDate} onChange={e => setReturnDate(e.target.value)} className="w-full p-2 border rounded mt-1"/>
+                                </div>
+                           </div>
+                           <input type="text" placeholder="Reason (Optional)" value={reason} onChange={e => setReason(e.target.value)} className="w-full p-2 border rounded" />
+                           {returnType === 'SUPPLIER' &&
+                             <input type="text" placeholder="Return Notes for PDF (Debit Note)..." value={notes} onChange={e => setNotes(e.target.value)} className="w-full p-2 border rounded" />
+                           }
+                        </>
                     )}
 
-                    {returnToEdit ? (
-                        <div className="flex gap-2">
-                            <Button onClick={handleUpdateReturn} className="w-full">Update Return</Button>
-                            <Button onClick={resetForm} variant="secondary" className="w-full">Cancel Edit</Button>
-                        </div>
-                    ) : (
-                        <Button onClick={handleSubmitReturn} className="w-full" disabled={itemsToReturn.length === 0}>
-                            {activeTab === 'SUPPLIER' ? <Share2 size={16} className="mr-2" /> : null}
-                            {activeTab === 'CUSTOMER' ? 'Process Return' : 'Process & Generate Debit Note'}
+                    <div className="flex gap-2">
+                        <Button onClick={handleProcessReturn} className="w-full">
+                            {mode === 'add' ? 'Process Return' : 'Update Return'}
                         </Button>
-                    )}
+                         <Button onClick={resetForm} variant="secondary" className="w-full">
+                            Cancel
+                        </Button>
+                    </div>
                 </div>
             </Card>
-            
+
              <Card title="Recent Returns">
-                {allReturns.length > 0 ? (
-                    <div className="space-y-3">
-                        {allReturns.map(ret => {
+                <div className="space-y-3">
+                    {state.returns.length > 0 ? (
+                        state.returns.slice().reverse().map(ret => {
                             const party = ret.type === 'CUSTOMER'
                                 ? state.customers.find(c => c.id === ret.partyId)
                                 : state.suppliers.find(s => s.id === ret.partyId);
+                            
                             return (
                                 <div key={ret.id} className="p-3 bg-gray-50 rounded-lg border">
                                     <div className="flex justify-between items-start">
                                         <div>
-                                            <p className={`font-bold text-sm ${ret.type === 'CUSTOMER' ? 'text-blue-600' : 'text-teal-600'}`}>{ret.type === 'CUSTOMER' ? 'Customer Return' : 'Return to Supplier'}</p>
-                                            <p className="font-semibold">{party?.name || 'Unknown'}</p>
-                                            <p className="text-xs text-gray-500">ID: {ret.id}</p>
-                                            <p className="text-xs text-gray-500">Date: {new Date(ret.returnDate).toLocaleDateString()}</p>
-                                            <p className="text-xs text-gray-500">Ref Invoice: {ret.referenceId}</p>
+                                            <p className="font-semibold">{party?.name || 'Unknown'} <span className="text-xs font-normal text-gray-500">({ret.type})</span></p>
+                                            <p className="text-xs text-gray-500">Return ID: {ret.id}</p>
                                         </div>
-                                        <div className="text-right flex items-center gap-2">
-                                            <p className="font-bold text-lg text-primary">₹{ret.amount.toLocaleString('en-IN')}</p>
-                                            <Button onClick={() => handleStartEdit(ret)} variant="secondary" className="p-2 h-auto">
-                                                <Edit size={16} />
-                                            </Button>
+                                        <div className="text-right">
+                                            <p className="font-semibold text-primary">₹{ret.amount.toLocaleString('en-IN')}</p>
+                                            <p className="text-xs text-gray-500">{new Date(ret.returnDate).toLocaleDateString()}</p>
                                         </div>
                                     </div>
-                                    <div className="mt-2 pt-2 border-t">
-                                        <p className="text-xs font-semibold text-gray-700">Items:</p>
-                                        <ul className="text-xs list-disc list-inside text-gray-600">
+                                    <div className="mt-2 pt-2 border-t flex justify-between items-center">
+                                        <ul className="text-sm list-disc list-inside text-gray-600">
                                             {ret.items.map((item, idx) => (
                                                 <li key={idx}>{item.productName} (x{item.quantity})</li>
                                             ))}
                                         </ul>
+                                        <Button onClick={() => {
+                                            if (isDirtyRef.current && !window.confirm("You have unsaved changes. Are you sure you want to discard them and edit this return?")) return;
+                                            resetForm();
+                                            // Trigger edit mode by setting state
+                                            setMode('edit');
+                                            setReturnToEditId(ret.id);
+                                            setReturnType(ret.type);
+                                            setPartyId(ret.partyId);
+                                            setReferenceId(ret.referenceId);
+                                            setReturnAmount(ret.amount.toString());
+                                            setReturnDate(getLocalDateString(new Date(ret.returnDate)));
+                                            setReason(ret.reason || '');
+                                            setNotes(ret.notes || '');
+                                            const itemsToEdit = ret.items.reduce((acc, item) => {
+                                                acc[item.productId] = item.quantity;
+                                                return acc;
+                                            }, {} as { [productId: string]: number });
+                                            setReturnedItems(itemsToEdit);
+                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                        }} variant="secondary" className="p-2 h-auto">
+                                            <Edit size={16} />
+                                        </Button>
                                     </div>
                                 </div>
                             );
-                        })}
-                    </div>
-                ) : (
-                    <p className="text-center text-gray-500">No returns have been processed yet.</p>
-                )}
+                        })
+                    ) : (
+                        <p className="text-gray-500 text-center">No returns have been processed yet.</p>
+                    )}
+                </div>
             </Card>
         </div>
     );
