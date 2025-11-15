@@ -503,6 +503,26 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
                                             </div>
                                         </div>
 
+                                        {(purchase.paymentDueDates && purchase.paymentDueDates.length > 0) && (
+                                            <div>
+                                                <h4 className="font-semibold text-sm text-gray-700 mb-1">Payment Due Dates:</h4>
+                                                <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                                                    {purchase.paymentDueDates.map((dateStr, index) => {
+                                                        const today = new Date();
+                                                        today.setHours(0, 0, 0, 0);
+                                                        // Assume dateStr is 'YYYY-MM-DD', treat as local date
+                                                        const dueDate = new Date(dateStr + 'T00:00:00');
+                                                        const isOverdue = dueDate < today;
+                                                        return (
+                                                            <li key={index} className={`${isOverdue ? 'text-red-600 font-bold' : ''}`}>
+                                                                {dueDate.toLocaleDateString('en-IN')} {isOverdue && '(Overdue)'}
+                                                            </li>
+                                                        );
+                                                    })}
+                                                </ul>
+                                            </div>
+                                        )}
+
                                         {(purchase.payments || []).length > 0 && (
                                             <div>
                                                 <h4 className="font-semibold text-sm text-gray-700 mb-1">Payments Made:</h4>

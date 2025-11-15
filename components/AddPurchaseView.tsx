@@ -585,6 +585,7 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
                     ))}
                 </div>
             </Card>
+
             <Card title="Payment Schedule">
                 <div className="space-y-2">
                     {paymentDueDates.map((date, index) => (
@@ -603,6 +604,7 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
                     <Plus size={16} className="mr-2"/> Add Due Date
                 </Button>
             </Card>
+
             <Card title="Transaction Details">
                  <div className="space-y-2 mb-4">
                     <div className="flex justify-between text-gray-600">
