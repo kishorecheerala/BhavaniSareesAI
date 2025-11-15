@@ -33,6 +33,30 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
     const [returnToEdit, setReturnToEdit] = useState<Return | null>(null);
     const isDirtyRef = useRef(false);
 
+    const handleStartEdit = (ret: Return) => {
+        setReturnToEdit(ret);
+        setActiveTab(ret.type);
+        setPartyId(ret.partyId);
+        setReferenceId(ret.referenceId);
+        setItemsToReturn(ret.items.map(i => ({...i})));
+        setReturnDate(getLocalDateString(new Date(ret.returnDate)));
+        setAmount(ret.amount.toString());
+        setReason(ret.reason || '');
+        setReturnNotes(ret.notes || '');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    useEffect(() => {
+        if (state.selection?.page === 'RETURNS' && state.selection.action === 'edit') {
+            const selectedReturn = state.returns.find(r => r.id === state.selection.id);
+            if (selectedReturn) {
+                handleStartEdit(selectedReturn);
+            }
+            dispatch({ type: 'CLEAR_SELECTION' });
+        }
+    }, [state.selection, state.returns, dispatch]);
+
+
     useEffect(() => {
         const currentlyDirty = !!partyId || !!referenceId || itemsToReturn.length > 0 || !!returnToEdit;
         if (currentlyDirty !== isDirtyRef.current) {
@@ -209,19 +233,6 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
         dispatch({ type: 'ADD_RETURN', payload: newReturn });
         showToast(`${activeTab === 'CUSTOMER' ? 'Customer' : 'Supplier'} return processed successfully!`);
         resetForm();
-    };
-
-    const handleStartEdit = (ret: Return) => {
-        setReturnToEdit(ret);
-        setActiveTab(ret.type);
-        setPartyId(ret.partyId);
-        setReferenceId(ret.referenceId);
-        setItemsToReturn(ret.items.map(i => ({...i})));
-        setReturnDate(getLocalDateString(new Date(ret.returnDate)));
-        setAmount(ret.amount.toString());
-        setReason(ret.reason || '');
-        setReturnNotes(ret.notes || '');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleUpdateReturn = () => {

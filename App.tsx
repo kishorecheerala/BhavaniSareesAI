@@ -249,7 +249,7 @@ const MainApp: React.FC = () => {
       case 'SALES':
         return <SalesPage {...commonProps} />;
       case 'PURCHASES':
-        return <PurchasesPage {...commonProps} />;
+        return <PurchasesPage {...commonProps} setCurrentPage={_setCurrentPage} />;
       case 'REPORTS':
         return <ReportsPage />;
       case 'RETURNS':

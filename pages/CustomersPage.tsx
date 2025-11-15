@@ -220,6 +220,11 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         setCurrentPage('SALES');
     };
 
+    const handleEditReturn = (returnId: string) => {
+        dispatch({ type: 'SET_SELECTION', payload: { page: 'RETURNS', id: returnId, action: 'edit' } });
+        setCurrentPage('RETURNS');
+    };
+
     const handleAddPayment = () => {
         const sale = state.sales.find(s => s.id === paymentModalState.saleId);
         if (!sale || !paymentDetails.amount) {
@@ -564,31 +569,28 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
 
                                 return (
                                 <div key={sale.id} className="p-3 bg-gray-50 rounded-lg border">
-                                    <div className="flex justify-between items-start">
-                                      <div className="flex-grow">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div>
-                                                <p className="font-semibold">{new Date(sale.date).toLocaleString()}</p>
-                                                <p className="text-xs text-gray-500">Invoice ID: {sale.id}</p>
-                                                <p className={`text-sm font-bold ${isPaid ? 'text-green-600' : 'text-red-600'}`}>
-                                                    {isPaid ? 'Paid' : `Due: ₹${dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
-                                                </p>
-                                            </div>
-                                            <p className="font-bold text-lg text-primary">
-                                                ₹{sale.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                            <p className="text-xs text-gray-600">{new Date(sale.date).toLocaleString()}</p>
+                                            <p className="text-xs text-gray-500 mt-1">Invoice ID: {sale.id}</p>
+                                            <p className={`font-bold mt-1 ${isPaid ? 'text-green-600' : 'text-red-600'}`}>
+                                                 {isPaid ? 'Paid' : `Due: ₹${dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
                                             </p>
                                         </div>
-                                      </div>
-                                      <div className="flex items-center ml-2">
-                                        <button onClick={() => handleEditSale(sale.id)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Edit Sale"><Edit size={16} /></button>
-                                        <button onClick={() => handleDownloadInvoice(sale)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Download Invoice"><Download size={16} /></button>
-                                        <DeleteButton 
-                                            variant="delete" 
-                                            onClick={(e) => { e.stopPropagation(); handleDeleteSale(sale.id); }} 
-                                        />
-                                      </div>
+                                        <div className="text-right flex-shrink-0">
+                                            <div className="flex items-center gap-1">
+                                                <p className="font-bold text-lg text-primary">₹{sale.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                                                <button onClick={() => handleEditSale(sale.id)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Edit Sale"><Edit size={16} /></button>
+                                                <button onClick={() => handleDownloadInvoice(sale)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Download Invoice"><Download size={16} /></button>
+                                                <DeleteButton 
+                                                    variant="delete" 
+                                                    onClick={(e) => { e.stopPropagation(); handleDeleteSale(sale.id); }} 
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="pl-4 mt-2 border-l-2 border-purple-200 space-y-3">
+
+                                    <div className="space-y-3">
                                         <div>
                                             <h4 className="font-semibold text-sm text-gray-700 mb-1">Items Purchased:</h4>
                                             <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
@@ -600,7 +602,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                                             </ul>
                                         </div>
 
-                                        <div className="p-2 bg-purple-50 rounded-md text-sm">
+                                        <div className="p-2 bg-white rounded-md text-sm border">
                                             <h4 className="font-semibold text-gray-700 mb-2">Transaction Details:</h4>
                                             <div className="space-y-1">
                                                 <div className="flex justify-between"><span>Subtotal:</span> <span>₹{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
@@ -610,9 +612,9 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                                             </div>
                                         </div>
 
-                                        {sale.payments.length > 0 && (
-                                            <div>
-                                                <h4 className="font-semibold text-sm text-gray-700 mb-1">Payments Made:</h4>
+                                        <div>
+                                            <h4 className="font-semibold text-sm text-gray-700 mb-1">Payments Made:</h4>
+                                            {sale.payments.length > 0 ? (
                                                 <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
                                                     {sale.payments.map(payment => (
                                                         <li key={payment.id}>
@@ -621,11 +623,12 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                                                         </li>
                                                     ))}
                                                 </ul>
-                                            </div>
-                                        )}
+                                            ) : <p className="text-sm text-gray-500">No payments made yet.</p>}
+                                        </div>
+
                                         {!isPaid && (
                                             <div className="pt-2">
-                                                <Button onClick={() => setPaymentModalState({ isOpen: true, saleId: sale.id })} className="w-full sm:w-auto">
+                                                <Button onClick={() => setPaymentModalState({ isOpen: true, saleId: sale.id })} className="w-full">
                                                     <Plus size={16} className="mr-2"/> Add Payment
                                                 </Button>
                                             </div>
@@ -648,7 +651,12 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                                             <p className="font-semibold">Return on {new Date(ret.returnDate).toLocaleDateString()}</p>
                                             <p className="text-xs text-gray-500">Original Invoice: {ret.referenceId}</p>
                                         </div>
-                                        <p className="font-semibold text-primary">Refunded: ₹{ret.amount.toLocaleString('en-IN')}</p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="font-semibold text-primary">Refunded: ₹{ret.amount.toLocaleString('en-IN')}</p>
+                                            <Button onClick={() => handleEditReturn(ret.id)} variant="secondary" className="p-2 h-auto">
+                                                <Edit size={16} />
+                                            </Button>
+                                        </div>
                                     </div>
                                     <div className="mt-2 pt-2 border-t">
                                         <ul className="text-sm list-disc list-inside text-gray-600">

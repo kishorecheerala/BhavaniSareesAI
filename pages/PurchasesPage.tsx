@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, IndianRupee, Edit, Save, X, Search, Package, Download } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
-import { Supplier, Purchase, Payment, Return } from '../types';
+import { Supplier, Purchase, Payment, Return, Page } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -63,9 +63,10 @@ const PaymentModal: React.FC<{
 
 interface PurchasesPageProps {
   setIsDirty: (isDirty: boolean) => void;
+  setCurrentPage: (page: Page) => void;
 }
 
-const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
+const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPage }) => {
     const { state, dispatch, showToast } = useAppContext();
     const [view, setView] = useState<'list' | 'add_supplier' | 'add_purchase' | 'edit_purchase'>('list');
     const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
@@ -196,6 +197,11 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
             showToast('Purchase deleted successfully. Stock has been adjusted.');
             setConfirmModalState({ isOpen: false, purchaseIdToDelete: null });
         }
+    };
+
+    const handleEditReturn = (returnId: string) => {
+        dispatch({ type: 'SET_SELECTION', payload: { page: 'RETURNS', id: returnId, action: 'edit' } });
+        setCurrentPage('RETURNS');
     };
     
     const handleCompletePurchase = (purchaseData: Purchase) => {
@@ -453,34 +459,42 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
 
                                 return (
                                 <div key={purchase.id} className="p-3 bg-gray-50 rounded-lg border">
-                                    <div className="flex justify-between items-start">
-                                        <div className="flex-grow">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <div>
-                                                    <p className="font-semibold">{new Date(purchase.date).toLocaleString()}</p>
-                                                    <p className="text-xs text-gray-500">Internal ID: {purchase.id}</p>
-                                                    {purchase.supplierInvoiceId && <p className="text-xs text-gray-500">Supplier Invoice: {purchase.supplierInvoiceId}</p>}
-                                                    <p className={`text-sm font-bold ${isPaid ? 'text-green-600' : 'text-red-600'}`}>Due: ₹{dueAmount.toLocaleString('en-IN')}</p>
-                                                </div>
-                                                <p className="font-bold text-lg text-primary">₹{purchase.totalAmount.toLocaleString('en-IN')}</p>
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                            <p className="font-semibold">{new Date(purchase.date).toLocaleString([], { year: '2-digit', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
+                                            <p className="text-xs text-gray-500 mt-1">Internal ID: {purchase.id}</p>
+                                            {purchase.supplierInvoiceId && <p className="text-xs text-gray-500">Supplier Invoice: {purchase.supplierInvoiceId}</p>}
+                                            <p className={`font-bold mt-1 text-red-600`}>
+                                                Due: ₹{dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                            </p>
+                                        </div>
+                                        <div className="text-right flex-shrink-0">
+                                            <div className="flex items-center gap-1">
+                                                <p className="font-bold text-lg text-primary">₹{purchase.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                                                <button onClick={() => { setPurchaseToEdit(purchase); setView('edit_purchase'); }} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Edit Purchase">
+                                                    <Edit size={16} />
+                                                </button>
+                                                <DeleteButton 
+                                                    variant="delete" 
+                                                    onClick={(e) => { e.stopPropagation(); handleDeletePurchase(purchase.id); }} 
+                                                />
                                             </div>
                                         </div>
-                                        <div className="flex items-center ml-2 flex-shrink-0">
-                                             <button onClick={() => { setPurchaseToEdit(purchase); setView('edit_purchase'); }} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Edit Purchase">
-                                                <Edit size={16} />
-                                            </button>
-                                            <DeleteButton variant="delete" onClick={() => handleDeletePurchase(purchase.id)} />
-                                        </div>
                                     </div>
-                                    <div className="pl-4 mt-2 border-l-2 border-purple-200 space-y-3 animate-fade-in-fast">
+
+                                    <div className="space-y-3">
                                         <div>
-                                            <h4 className="font-semibold text-sm">Items:</h4>
-                                            <ul className="list-disc list-inside text-sm">
-                                                {purchase.items.map((item, index) => <li key={index}>{item.productName} (x{item.quantity}) @ ₹{item.price.toLocaleString('en-IN')}</li>)}
+                                            <h4 className="font-semibold text-sm text-gray-700 mb-1">Items:</h4>
+                                            <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                                                {purchase.items.map((item, index) => (
+                                                    <li key={index}>
+                                                        {item.productName} (x{item.quantity}) @ ₹{item.price.toLocaleString('en-IN')}
+                                                    </li>
+                                                ))}
                                             </ul>
                                         </div>
-                                        
-                                        <div className="p-2 bg-purple-50 rounded-md text-sm">
+
+                                        <div className="p-2 bg-white rounded-md text-sm border">
                                             <h4 className="font-semibold text-gray-700 mb-2">Transaction Details:</h4>
                                             <div className="space-y-1">
                                                 <div className="flex justify-between"><span>Subtotal (excl. GST):</span> <span>₹{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 3 })}</span></div>
@@ -491,8 +505,8 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
 
                                         {(purchase.payments || []).length > 0 && (
                                             <div>
-                                                <h4 className="font-semibold text-sm">Payments:</h4>
-                                                <ul className="list-disc list-inside text-sm">
+                                                <h4 className="font-semibold text-sm text-gray-700 mb-1">Payments Made:</h4>
+                                                <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
                                                     {(purchase.payments || []).map(p => (
                                                     <li key={p.id}>
                                                         ₹{p.amount.toLocaleString('en-IN')} {p.method === 'RETURN_CREDIT' ? <span className="text-blue-600 font-semibold">(Return Credit)</span> : `via ${p.method}`} on {new Date(p.date).toLocaleDateString()}
@@ -502,7 +516,14 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                                 </ul>
                                             </div>
                                         )}
-                                        {!isPaid && <Button onClick={() => setPaymentModalState({ isOpen: true, purchaseId: purchase.id })}><Plus size={16}/> Add Payment</Button>}
+                                        
+                                        {!isPaid && (
+                                            <div className="pt-2">
+                                                <Button onClick={() => setPaymentModalState({ isOpen: true, purchaseId: purchase.id })} className="w-full">
+                                                    <Plus size={16} className="mr-2"/> Add Payment
+                                                </Button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )})}
@@ -521,6 +542,13 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <p className="font-semibold text-primary">Credit: ₹{ret.amount.toLocaleString('en-IN')}</p>
+                                            <button 
+                                                onClick={() => handleEditReturn(ret.id)}
+                                                className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" 
+                                                aria-label="Edit Return"
+                                            >
+                                                <Edit size={16} />
+                                            </button>
                                             <button 
                                                 onClick={() => generateDebitNotePDF(ret)} 
                                                 className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" 
