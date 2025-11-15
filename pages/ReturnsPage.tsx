@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Undo2, Users, Package, Plus, Trash2, Share2 } from 'lucide-react';
+import { Undo2, Users, Package, Plus, Trash2, Share2, Edit } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Return, ReturnItem, Sale, Purchase } from '../types';
 import Card from '../components/Card';
@@ -30,15 +30,16 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
     const [amount, setAmount] = useState('');
     const [reason, setReason] = useState('');
     const [returnNotes, setReturnNotes] = useState('');
+    const [returnToEdit, setReturnToEdit] = useState<Return | null>(null);
     const isDirtyRef = useRef(false);
 
     useEffect(() => {
-        const currentlyDirty = !!partyId || !!referenceId || itemsToReturn.length > 0;
+        const currentlyDirty = !!partyId || !!referenceId || itemsToReturn.length > 0 || !!returnToEdit;
         if (currentlyDirty !== isDirtyRef.current) {
             isDirtyRef.current = currentlyDirty;
             setIsDirty(currentlyDirty);
         }
-    }, [partyId, referenceId, itemsToReturn, setIsDirty]);
+    }, [partyId, referenceId, itemsToReturn, returnToEdit, setIsDirty]);
 
     // On unmount, we must always clean up.
     useEffect(() => {
@@ -55,15 +56,21 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
         setAmount('');
         setReason('');
         setReturnNotes('');
+        setReturnToEdit(null);
     };
 
     const handleItemQuantityChange = (productId: string, productName: string, price: number, newQuantity: number) => {
-        const originalItem = activeTab === 'CUSTOMER' 
-            ? (state.sales.find(s => s.id === referenceId)?.items.find(i => i.productId === productId))
-            : (state.purchases.find(p => p.id === referenceId)?.items.find(i => i.productId === productId));
+        let originalItemQuantity = 0;
 
-        if (!originalItem || newQuantity > originalItem.quantity) {
-            alert(`Cannot return more than the purchased quantity of ${originalItem?.quantity}.`);
+        if (referenceId) {
+             const originalItem = activeTab === 'CUSTOMER' 
+                ? (state.sales.find(s => s.id === referenceId)?.items.find(i => i.productId === productId))
+                : (state.purchases.find(p => p.id === referenceId)?.items.find(i => i.productId === productId));
+            if(originalItem) originalItemQuantity = originalItem.quantity;
+        }
+
+        if (newQuantity > originalItemQuantity) {
+            alert(`Cannot return more than the purchased quantity of ${originalItemQuantity}.`);
             return;
         }
 
@@ -201,6 +208,37 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
         resetForm();
     };
 
+    const handleStartEdit = (ret: Return) => {
+        setReturnToEdit(ret);
+        setActiveTab(ret.type);
+        setPartyId(ret.partyId);
+        setReferenceId(ret.referenceId);
+        setItemsToReturn(ret.items.map(i => ({...i})));
+        setReturnDate(getLocalDateString(new Date(ret.returnDate)));
+        setAmount(ret.amount.toString());
+        setReason(ret.reason || '');
+        setReturnNotes(ret.notes || '');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleUpdateReturn = () => {
+        if (!returnToEdit || !amount || itemsToReturn.length === 0) {
+            alert('Please ensure all fields are filled correctly.');
+            return;
+        }
+        const updatedReturn: Return = {
+            ...returnToEdit,
+            items: itemsToReturn,
+            returnDate: new Date(returnDate).toISOString(),
+            amount: parseFloat(amount),
+            reason,
+            notes: returnNotes,
+        };
+        dispatch({ type: 'UPDATE_RETURN', payload: { oldReturn: returnToEdit, updatedReturn } });
+        showToast('Return updated successfully!');
+        resetForm();
+    };
+
     const partyList = activeTab === 'CUSTOMER' ? state.customers : state.suppliers;
     const invoiceList = useMemo(() => {
         if (!partyId) return [];
@@ -234,23 +272,24 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
     }, [referenceId, activeTab, state.sales, state.purchases]);
     
     const allReturns = state.returns.slice().reverse();
+    const formTitle = returnToEdit ? `Editing Return: ${returnToEdit.id}` : 'Process a New Return';
 
     return (
         <div className="space-y-4">
             <h1 className="text-2xl font-bold text-primary flex items-center gap-2"><Undo2 /> Returns Management</h1>
 
-            <Card title="Process a New Return">
+            <Card title={formTitle}>
                 <div className="mb-4 border-b">
                     <div className="flex">
-                        <button onClick={() => { setActiveTab('CUSTOMER'); resetForm(); }} className={`px-4 py-2 text-sm font-semibold ${activeTab === 'CUSTOMER' ? 'border-b-2 border-primary text-primary' : 'text-gray-500'}`}>Customer Return</button>
-                        <button onClick={() => { setActiveTab('SUPPLIER'); resetForm(); }} className={`px-4 py-2 text-sm font-semibold ${activeTab === 'SUPPLIER' ? 'border-b-2 border-primary text-primary' : 'text-gray-500'}`}>Return to Supplier</button>
+                        <button onClick={() => { setActiveTab('CUSTOMER'); resetForm(); }} disabled={!!returnToEdit} className={`px-4 py-2 text-sm font-semibold ${activeTab === 'CUSTOMER' ? 'border-b-2 border-primary text-primary' : 'text-gray-500'} disabled:opacity-50`}>Customer Return</button>
+                        <button onClick={() => { setActiveTab('SUPPLIER'); resetForm(); }} disabled={!!returnToEdit} className={`px-4 py-2 text-sm font-semibold ${activeTab === 'SUPPLIER' ? 'border-b-2 border-primary text-primary' : 'text-gray-500'} disabled:opacity-50`}>Return to Supplier</button>
                     </div>
                 </div>
                 
                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700">{activeTab === 'CUSTOMER' ? 'Customer' : 'Supplier'}</label>
-                        <select value={partyId} onChange={e => { setPartyId(e.target.value); setReferenceId(''); setItemsToReturn([]); }} className="w-full p-2 border rounded custom-select">
+                        <select value={partyId} disabled={!!returnToEdit} onChange={e => { setPartyId(e.target.value); setReferenceId(''); setItemsToReturn([]); }} className="w-full p-2 border rounded custom-select disabled:bg-gray-100">
                             <option value="">Select {activeTab === 'CUSTOMER' ? 'Customer' : 'Supplier'}</option>
                             {partyList.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                         </select>
@@ -259,7 +298,7 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                     {partyId && (
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Original Invoice</label>
-                            <select value={referenceId} onChange={e => { setReferenceId(e.target.value); setItemsToReturn([]); }} className="w-full p-2 border rounded custom-select">
+                            <select value={referenceId} disabled={!!returnToEdit} onChange={e => { setReferenceId(e.target.value); setItemsToReturn([]); }} className="w-full p-2 border rounded custom-select disabled:bg-gray-100">
                                 <option value="">Select Invoice</option>
                                 {invoiceList.map(inv => <option key={inv.id} value={inv.id}>{inv.id} - {new Date(inv.date).toLocaleDateString()}</option>)}
                             </select>
@@ -299,6 +338,7 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                                             max={item.quantity}
                                             placeholder="Qty" 
                                             className="w-20 p-1 border rounded text-center"
+                                            value={itemsToReturn.find(i => i.productId === item.productId)?.quantity || ''}
                                             onChange={e => handleItemQuantityChange(item.productId, item.productName, item.price, parseInt(e.target.value) || 0)}
                                         />
                                     </div>
@@ -336,10 +376,17 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                         </div>
                     )}
 
-                    <Button onClick={handleSubmitReturn} className="w-full" disabled={itemsToReturn.length === 0}>
-                        {activeTab === 'SUPPLIER' ? <Share2 size={16} className="mr-2" /> : null}
-                        {activeTab === 'CUSTOMER' ? 'Process Return' : 'Process & Generate Debit Note'}
-                    </Button>
+                    {returnToEdit ? (
+                        <div className="flex gap-2">
+                            <Button onClick={handleUpdateReturn} className="w-full">Update Return</Button>
+                            <Button onClick={resetForm} variant="secondary" className="w-full">Cancel Edit</Button>
+                        </div>
+                    ) : (
+                        <Button onClick={handleSubmitReturn} className="w-full" disabled={itemsToReturn.length === 0}>
+                            {activeTab === 'SUPPLIER' ? <Share2 size={16} className="mr-2" /> : null}
+                            {activeTab === 'CUSTOMER' ? 'Process Return' : 'Process & Generate Debit Note'}
+                        </Button>
+                    )}
                 </div>
             </Card>
             
@@ -359,8 +406,11 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                                             <p className="text-xs text-gray-500">Date: {new Date(ret.returnDate).toLocaleDateString()}</p>
                                             <p className="text-xs text-gray-500">Ref Invoice: {ret.referenceId}</p>
                                         </div>
-                                        <div className="text-right">
+                                        <div className="text-right flex items-center gap-2">
                                             <p className="font-bold text-lg text-primary">₹{ret.amount.toLocaleString('en-IN')}</p>
+                                            <Button onClick={() => handleStartEdit(ret)} variant="secondary" className="p-2 h-auto">
+                                                <Edit size={16} />
+                                            </Button>
                                         </div>
                                     </div>
                                     <div className="mt-2 pt-2 border-t">

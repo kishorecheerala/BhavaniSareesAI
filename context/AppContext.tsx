@@ -46,6 +46,7 @@ type Action =
   | { type: 'UPDATE_PURCHASE'; payload: { oldPurchase: Purchase, updatedPurchase: Purchase } }
   | { type: 'DELETE_PURCHASE'; payload: string } // purchaseId
   | { type: 'ADD_RETURN'; payload: Return }
+  | { type: 'UPDATE_RETURN'; payload: { oldReturn: Return, updatedReturn: Return } }
   | { type: 'ADD_PAYMENT_TO_SALE'; payload: { saleId: string; payment: Payment } }
   | { type: 'ADD_PAYMENT_TO_PURCHASE'; payload: { purchaseId: string; payment: Payment } }
   | { type: 'SHOW_TOAST'; payload: { message: string; type?: 'success' | 'info' } }
@@ -279,6 +280,72 @@ const appReducer = (state: AppState, action: Action): AppState => {
         purchases: updatedPurchases,
         returns: [...state.returns, returnPayload],
       };
+    }
+    case 'UPDATE_RETURN': {
+        const { oldReturn, updatedReturn } = action.payload;
+
+        const stockChanges = new Map<string, number>();
+
+        // Reverse old stock changes
+        oldReturn.items.forEach(item => {
+            const change = oldReturn.type === 'CUSTOMER' ? -item.quantity : +item.quantity;
+            stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) + change);
+        });
+
+        // Apply new stock changes
+        updatedReturn.items.forEach(item => {
+            const change = updatedReturn.type === 'CUSTOMER' ? +item.quantity : -item.quantity;
+            stockChanges.set(item.productId, (stockChanges.get(item.productId) || 0) + change);
+        });
+
+        const updatedProducts = state.products.map(p => {
+            if (stockChanges.has(p.id)) {
+                return { ...p, quantity: p.quantity + (stockChanges.get(p.id) || 0) };
+            }
+            return p;
+        });
+
+        let updatedSales = state.sales;
+        let updatedPurchases = state.purchases;
+        const creditPaymentId = `PAY-RET-${updatedReturn.id}`;
+
+        if (updatedReturn.type === 'CUSTOMER') {
+            updatedSales = updatedSales.map(sale => {
+                if (sale.id === updatedReturn.referenceId) {
+                    const updatedPayments = sale.payments.map(p => {
+                        if (p.id === creditPaymentId) {
+                            return { ...p, amount: updatedReturn.amount, date: updatedReturn.returnDate };
+                        }
+                        return p;
+                    });
+                    return { ...sale, payments: updatedPayments };
+                }
+                return sale;
+            });
+        } else { // SUPPLIER
+            updatedPurchases = updatedPurchases.map(purchase => {
+                if (purchase.id === updatedReturn.referenceId) {
+                    const updatedPayments = purchase.payments.map(p => {
+                        if (p.id === creditPaymentId) {
+                            return { ...p, amount: updatedReturn.amount, date: updatedReturn.returnDate };
+                        }
+                        return p;
+                    });
+                    return { ...purchase, payments: updatedPayments };
+                }
+                return purchase;
+            });
+        }
+        
+        const updatedReturns = state.returns.map(r => r.id === updatedReturn.id ? updatedReturn : r);
+
+        return {
+            ...state,
+            products: updatedProducts,
+            sales: updatedSales,
+            purchases: updatedPurchases,
+            returns: updatedReturns,
+        };
     }
     case 'ADD_PAYMENT_TO_SALE':
       return {
