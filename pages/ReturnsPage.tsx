@@ -348,7 +348,7 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium">{returnType === 'CUSTOMER' ? 'Amount Refunded' : 'Credit Note Value'}</label>
-                                    <input type="number" value={returnAmount} onChange={e => setReturnAmount(e.target.value)} className="w-full p-2 border rounded mt-1" placeholder={`e.g., ${calculatedReturnValue.toFixed(2)}`} />
+                                    <input type="number" value={returnAmount} onChange={e => setReturnAmount(e.target.value)} className="w-full p-2 border rounded mt-1" placeholder={`${calculatedReturnValue.toFixed(2)}`} />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium">Return Date</label>
