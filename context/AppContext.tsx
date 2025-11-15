@@ -1,6 +1,7 @@
 import React, { createContext, useReducer, useContext, useEffect, ReactNode, useState } from 'react';
 import { Customer, Supplier, Product, Sale, Purchase, Return, Payment, BeforeInstallPromptEvent, Notification, ProfileData, Page } from '../types';
 import * as db from '../utils/db';
+import { StoreName } from '../utils/db';
 
 interface ToastState {
   message: string;
@@ -57,7 +58,8 @@ type Action =
   | { type: 'SET_INSTALL_PROMPT_EVENT'; payload: BeforeInstallPromptEvent | null }
   | { type: 'ADD_NOTIFICATION'; payload: Notification }
   | { type: 'MARK_NOTIFICATION_AS_READ'; payload: string } // id
-  | { type: 'MARK_ALL_NOTIFICATIONS_AS_READ' };
+  | { type: 'MARK_ALL_NOTIFICATIONS_AS_READ' }
+  | { type: 'REPLACE_COLLECTION'; payload: { storeName: StoreName, data: any[] } };
 
 
 const initialState: AppState = {
@@ -79,6 +81,8 @@ const appReducer = (state: AppState, action: Action): AppState => {
   switch (action.type) {
     case 'SET_STATE':
         return { ...state, ...action.payload };
+    case 'REPLACE_COLLECTION':
+        return { ...state, [action.payload.storeName]: action.payload.data };
     case 'SET_NOTIFICATIONS':
         return { ...state, notifications: action.payload };
     case 'SET_PROFILE':

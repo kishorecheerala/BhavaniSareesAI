@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { IndianRupee, User, AlertTriangle, Download, Upload, ShoppingCart, Package, XCircle, CheckCircle, Info, Calendar, ShieldCheck, ShieldAlert, ShieldX, Archive, PackageCheck, TestTube2 } from 'lucide-react';
+import { IndianRupee, User, AlertTriangle, Download, Upload, ShoppingCart, Package, XCircle, CheckCircle, Info, Calendar, ShieldCheck, ShieldAlert, ShieldX, Archive, PackageCheck, TestTube2, TrendingUp, Wallet } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import * as db from '../utils/db';
 import Card from '../components/Card';
 import Button from '../components/Button';
+import DataImportModal from '../components/DataImportModal';
 import { Page, Customer, Sale } from '../types';
 import { testData, testProfile } from '../utils/testData';
 
@@ -193,6 +194,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [restoreStatus, setRestoreStatus] = useState<{ type: 'info' | 'success' | 'error', message: string } | null>(null);
     const [lastBackupDate, setLastBackupDate] = useState<string | null>(null);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const { installPromptEvent } = state;
 
     useEffect(() => {
@@ -243,6 +245,30 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
             })
             .reduce((sum, sale) => sum + sale.totalAmount, 0);
     }, [state.sales, selectedMonth, selectedYear]);
+    
+    const monthlyProfit = useMemo(() => {
+        const relevantSales = state.sales.filter(sale => {
+            const saleDate = new Date(sale.date);
+            return saleDate.getFullYear() === selectedYear && saleDate.getMonth() === selectedMonth;
+        });
+    
+        let totalProfit = 0;
+    
+        for (const sale of relevantSales) {
+            let costOfGoods = 0;
+            for (const item of sale.items) {
+                const product = state.products.find(p => p.id === item.productId);
+                if (product) {
+                    costOfGoods += product.purchasePrice * item.quantity;
+                }
+            }
+            const saleRevenue = sale.totalAmount;
+            const saleProfit = saleRevenue - costOfGoods;
+            totalProfit += saleProfit;
+        }
+    
+        return totalProfit;
+    }, [state.sales, state.products, selectedMonth, selectedYear]);
 
     const handleBackup = async () => {
         try {
@@ -368,6 +394,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
 
     return (
         <div className="space-y-6">
+            <DataImportModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} />
             <h1 className="text-2xl font-bold text-primary">Dashboard</h1>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -433,11 +460,27 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                         ))}
                     </select>
                 </div>
-                <div className="text-center p-4 bg-purple-50 rounded-lg">
-                    <p className="text-lg font-semibold text-primary">Sales for {monthNames[selectedMonth]} {selectedYear}</p>
-                    <p className="text-3xl font-bold text-primary mt-2">
-                        ₹{monthlySalesTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="text-center p-4 bg-purple-50 rounded-lg flex flex-col items-center justify-center">
+                        <div className="flex items-center gap-2">
+                            <TrendingUp className="w-6 h-6 text-primary"/>
+                            <p className="text-lg font-semibold text-primary">Total Sales</p>
+                        </div>
+                        <p className="text-xs text-gray-500 mb-1">{monthNames[selectedMonth]} {selectedYear}</p>
+                        <p className="text-3xl font-bold text-primary">
+                            ₹{monthlySalesTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </p>
+                    </div>
+                    <div className="text-center p-4 bg-green-50 rounded-lg flex flex-col items-center justify-center">
+                        <div className="flex items-center gap-2">
+                            <Wallet className="w-6 h-6 text-green-800"/>
+                            <p className="text-lg font-semibold text-green-800">Estimated Profit</p>
+                        </div>
+                        <p className="text-xs text-gray-500 mb-1">{monthNames[selectedMonth]} {selectedYear}</p>
+                        <p className="text-3xl font-bold text-green-800">
+                            ₹{monthlyProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </p>
+                    </div>
                 </div>
             </Card>
             
@@ -455,16 +498,20 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                         ref={fileInputRef}
                         onChange={handleFileSelect}
                     />
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <Button onClick={handleBackup} className="w-full">
                             <Download className="w-4 h-4 mr-2" />
-                            Backup Data Now
+                            Backup (JSON)
+                        </Button>
+                        <Button onClick={() => setIsImportModalOpen(true)} variant="secondary" className="w-full">
+                            <Upload className="w-4 h-4 mr-2" />
+                            Import (CSV)
                         </Button>
                         <Button onClick={() => fileInputRef.current?.click()} variant="secondary" className="w-full">
                             <Upload className="w-4 h-4 mr-2" />
-                            Restore from Backup
+                            Restore (JSON)
                         </Button>
-                         <Button onClick={handleLoadDemoData} variant="info" className="w-full sm:col-span-2">
+                         <Button onClick={handleLoadDemoData} variant="info" className="w-full sm:col-span-3">
                             <TestTube2 className="w-4 h-4 mr-2" />
                             Load Demo Data
                         </Button>
