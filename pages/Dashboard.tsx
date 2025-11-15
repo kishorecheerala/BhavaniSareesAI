@@ -12,8 +12,23 @@ interface DashboardProps {
     setCurrentPage: (page: Page) => void;
 }
 
-const MetricCard: React.FC<{ icon: React.ElementType, title: string, value: string | number, color: string, iconBgColor: string, textColor: string, unit?: string }> = ({ icon: Icon, title, value, color, iconBgColor, textColor, unit = '₹' }) => (
-    <div className={`rounded-lg shadow-md p-4 flex items-center transition-all duration-300 hover:shadow-xl hover:scale-[1.01] ${color}`}>
+const MetricCard: React.FC<{
+    icon: React.ElementType;
+    title: string;
+    value: string | number;
+    color: string;
+    iconBgColor: string;
+    textColor: string;
+    unit?: string;
+    onClick?: () => void;
+}> = ({ icon: Icon, title, value, color, iconBgColor, textColor, unit = '₹', onClick }) => (
+    <div
+        onClick={onClick}
+        className={`rounded-lg shadow-md p-4 flex items-center transition-all duration-300 hover:shadow-xl hover:scale-[1.01] ${color} ${onClick ? 'cursor-pointer' : ''}`}
+        role={onClick ? 'button' : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        onKeyDown={onClick ? (e) => (e.key === 'Enter' || e.key === ' ') && onClick() : undefined}
+    >
         <div className={`p-3 ${iconBgColor} rounded-full flex-shrink-0`}>
             <Icon className={`w-8 h-8 ${textColor}`} />
         </div>
@@ -492,6 +507,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     color="bg-teal-100"
                     iconBgColor="bg-teal-200"
                     textColor="text-teal-900"
+                    onClick={() => setCurrentPage('SALES')}
                 />
                  <MetricCard 
                     icon={Package} 
@@ -500,6 +516,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     color="bg-emerald-100"
                     iconBgColor="bg-emerald-200"
                     textColor="text-emerald-900"
+                    onClick={() => setCurrentPage('PURCHASES')}
                 />
                 <MetricCard 
                     icon={IndianRupee} 
@@ -508,6 +525,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     color="bg-rose-100"
                     iconBgColor="bg-rose-200"
                     textColor="text-rose-900"
+                    onClick={() => setCurrentPage('CUSTOMERS')}
                 />
                 <MetricCard 
                     icon={IndianRupee} 
@@ -516,6 +534,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     color="bg-amber-100"
                     iconBgColor="bg-amber-200"
                     textColor="text-amber-900"
+                    onClick={() => setCurrentPage('PURCHASES')}
                 />
                 <MetricCard 
                     icon={Archive} 
@@ -524,6 +543,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     color="bg-sky-100"
                     iconBgColor="bg-sky-200"
                     textColor="text-sky-900"
+                    onClick={() => setCurrentPage('PRODUCTS')}
                 />
                 <MetricCard 
                     icon={PackageCheck} 
@@ -532,7 +552,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     color="bg-cyan-100"
                     iconBgColor="bg-cyan-200"
                     textColor="text-cyan-900"
-                    unit="" 
+                    unit=""
+                    onClick={() => setCurrentPage('PRODUCTS')}
                 />
             </div>
 

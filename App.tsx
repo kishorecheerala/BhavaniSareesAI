@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle, Bell, Menu, Plus, UserPlus, PackagePlus } from 'lucide-react';
 
@@ -160,9 +161,12 @@ const MainApp: React.FC = () => {
         sale.items.forEach(item => {
             const product = state.products.find(p => p.id === item.productId);
             if (product) {
+                // Fix: Cast properties to Number to ensure correct arithmetic operations,
+                // as data from IndexedDB might be stored as strings.
                 costOfGoods += Number(product.purchasePrice) * Number(item.quantity);
             }
         });
+        // Fix: Cast totalAmount to Number for consistency and safety.
         totalProfit += Number(sale.totalAmount) - costOfGoods;
     });
 
