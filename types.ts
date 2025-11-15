@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 
-export type Page = 'DASHBOARD' | 'CUSTOMERS' | 'SALES' | 'PURCHASES' | 'REPORTS' | 'RETURNS' | 'PRODUCTS';
+export type Page = 'DASHBOARD' | 'CUSTOMERS' | 'SALES' | 'PURCHASES' | 'REPORTS' | 'RETURNS' | 'PRODUCTS' | 'INSIGHTS';
 
 export interface Payment {
   id: string;
@@ -124,3 +124,16 @@ export interface ProfileData {
   address: string;
   gstNumber: string;
 }
+
+// --- App Metadata Types ---
+export interface AppMetadataPin {
+  id: 'securityPin';
+  pin: string;
+}
+
+export interface AppMetadataBackup {
+  id: 'lastBackup';
+  date: string;
+}
+
+export type AppMetadata = AppMetadataPin | AppMetadataBackup;

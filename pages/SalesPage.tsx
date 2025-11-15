@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Plus, Trash2, Share2, Search, X, IndianRupee, QrCode, Save, Edit } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
@@ -341,7 +342,9 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         }, 0);
 
         const totalAmount = subTotal - discountAmount;
-        return { subTotal, discountAmount, gstAmount, totalAmount };
+        const roundedGstAmount = Math.round(gstAmount * 100) / 100;
+
+        return { subTotal, discountAmount, gstAmount: roundedGstAmount, totalAmount };
     }, [items, discount, state.products]);
 
     const selectedCustomer = useMemo(() => customerId ? state.customers.find(c => c.id === customerId) : null, [customerId, state.customers]);

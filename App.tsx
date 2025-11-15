@@ -1,9 +1,3 @@
-
-
-
-
-
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle, Bell, Menu, Plus, UserPlus, PackagePlus, Download, X } from 'lucide-react';
 
@@ -15,6 +9,7 @@ import PurchasesPage from './pages/PurchasesPage';
 import ReportsPage from './pages/ReportsPage';
 import ReturnsPage from './pages/ReturnsPage';
 import ProductsPage from './pages/ProductsPage';
+import InsightsPage from './pages/InsightsPage';
 import UniversalSearch from './components/UniversalSearch';
 import HelpModal from './components/HelpModal';
 import AppSkeletonLoader from './components/AppSkeletonLoader';
@@ -116,11 +111,6 @@ const MainApp: React.FC = () => {
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [navConfirm, setNavConfirm] = useState<{ show: boolean, page: Page | null }>({ show: false, page: null });
-  const [showProfit, setShowProfit] = useState(false);
-  const profitTimerRef = useRef<number | null>(null);
-
-  const [profitFilterMonth, setProfitFilterMonth] = useState(new Date().getMonth());
-  const [profitFilterYear, setProfitFilterYear] = useState(new Date().getFullYear());
 
   const { state, dispatch, isDbLoaded } = useAppContext();
   const { installPromptEvent } = state;
@@ -138,72 +128,6 @@ const MainApp: React.FC = () => {
   useOnClickOutside(moreMenuRef, () => setIsMoreMenuOpen(false));
 
   const lastBackupDate = state.app_metadata.find(m => m.id === 'lastBackup')?.date;
-  
-  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-
-  const availableYearsForProfit = useMemo(() => {
-    const years = new Set(state.sales.map(s => new Date(s.date).getFullYear()));
-    const currentYear = new Date().getFullYear();
-    if (!years.has(currentYear)) {
-      years.add(currentYear);
-    }
-    // FIX: Explicitly type the sort function arguments to resolve potential type inference issues.
-    return Array.from(years).sort((a: number, b: number) => b - a);
-  }, [state.sales]);
-
-  const filteredProfit = useMemo(() => {
-    if (!isDbLoaded) return 0;
-
-    let relevantSales = state.sales;
-
-    if (profitFilterYear !== -1) {
-        relevantSales = relevantSales.filter(sale => new Date(sale.date).getFullYear() === profitFilterYear);
-        if (profitFilterMonth !== -1) {
-            relevantSales = relevantSales.filter(sale => new Date(sale.date).getMonth() === profitFilterMonth);
-        }
-    }
-    // if profitFilterYear is -1 (All Time), we use all sales and ignore any month filter.
-
-    let totalProfit = 0;
-    relevantSales.forEach(sale => {
-        let costOfGoods = 0;
-        sale.items.forEach(item => {
-            const product = state.products.find(p => p.id === item.productId);
-            if (product) {
-                // FIX: Explicitly cast properties to Number and default to 0 to prevent type errors
-                // and handle potential non-numeric data from IndexedDB.
-                costOfGoods += (Number(product.purchasePrice) || 0) * (Number(item.quantity) || 0);
-            }
-        });
-        // FIX: Explicitly cast totalAmount to Number and default to 0 for consistency and safety.
-        totalProfit += (Number(sale.totalAmount) || 0) - costOfGoods;
-    });
-
-    return totalProfit;
-  }, [state.sales, state.products, isDbLoaded, profitFilterMonth, profitFilterYear]);
-
-  const profitCardTitle = useMemo(() => {
-    if (profitFilterYear === -1) {
-        return "Estimated All-Time Profit";
-    }
-    if (profitFilterMonth === -1) {
-        return `Estimated Profit for ${profitFilterYear}`;
-    }
-    return `Profit for ${monthNames[profitFilterMonth]} ${profitFilterYear}`;
-  }, [profitFilterMonth, profitFilterYear, monthNames]);
-
-  const handleShowProfit = () => {
-    setProfitFilterYear(new Date().getFullYear());
-    setProfitFilterMonth(new Date().getMonth());
-    setShowProfit(true);
-
-    if (profitTimerRef.current) {
-        window.clearTimeout(profitTimerRef.current);
-    }
-    profitTimerRef.current = window.setTimeout(() => {
-        setShowProfit(false);
-    }, 120000); // 2 minutes
-  };
 
   const handleInstallClick = async () => {
     if (!installPromptEvent) {
@@ -218,14 +142,6 @@ const MainApp: React.FC = () => {
   const handleDismissInstallBanner = () => {
     setIsInstallBannerVisible(false);
   };
-
-  useEffect(() => {
-    return () => {
-        if (profitTimerRef.current) {
-            window.clearTimeout(profitTimerRef.current);
-        }
-    };
-  }, []);
 
   useEffect(() => {
     sessionStorage.setItem('currentPage', currentPage);
@@ -394,6 +310,8 @@ const MainApp: React.FC = () => {
         return <ReturnsPage {...commonProps} />;
       case 'PRODUCTS':
         return <ProductsPage {...commonProps} />;
+      case 'INSIGHTS':
+        return <InsightsPage />;
       default:
         return <Dashboard setCurrentPage={_setCurrentPage} />;
     }
@@ -428,48 +346,6 @@ const MainApp: React.FC = () => {
         onClose={closeSearch} 
         onNavigate={handleSearchResultClick} 
       />
-      {showProfit && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-[200] animate-fade-in-fast" onClick={() => setShowProfit(false)}>
-            <div className="bg-gradient-to-br from-amber-500 to-amber-400 text-white rounded-2xl shadow-2xl p-6 md:p-8 text-center animate-scale-in mx-4 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-                <h2 className="text-2xl font-bold mb-4">{profitCardTitle}</h2>
-                
-                <div className="flex flex-col sm:flex-row gap-2 mb-4">
-                    <select
-                        value={profitFilterMonth}
-                        onChange={(e) => setProfitFilterMonth(parseInt(e.target.value))}
-                        className="w-full p-2 rounded-lg custom-select bg-white/80 text-black disabled:opacity-50"
-                        disabled={profitFilterYear === -1}
-                    >
-                        <option value={-1}>All Months</option>
-                        {monthNames.map((month, index) => (
-                            <option key={month} value={index}>{month}</option>
-                        ))}
-                    </select>
-                    <select
-                        value={profitFilterYear}
-                        onChange={(e) => {
-                            const newYear = parseInt(e.target.value);
-                            setProfitFilterYear(newYear);
-                            if (newYear === -1) {
-                                setProfitFilterMonth(-1);
-                            }
-                        }}
-                        className="w-full p-2 rounded-lg custom-select bg-white/80 text-black"
-                    >
-                        <option value={-1}>All Time</option>
-                        {availableYearsForProfit.map(year => (
-                            <option key={year} value={year}>{year}</option>
-                        ))}
-                    </select>
-                </div>
-                
-                <p className="text-5xl md:text-6xl font-extrabold tracking-tight">
-                    ₹{filteredProfit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-                <p className="text-sm opacity-80 mt-4">This panel will close automatically.</p>
-            </div>
-        </div>
-      )}
       <ConfirmationModal
           isOpen={navConfirm.show}
           onClose={() => setNavConfirm({ show: false, page: null })}
@@ -500,9 +376,9 @@ const MainApp: React.FC = () => {
                       setIsMenuOpen(false);
                       setIsProfileOpen(true);
                   }}
-                  onShowProfit={() => {
+                  onNavigate={(page) => {
                       setIsMenuOpen(false);
-                      handleShowProfit();
+                      setCurrentPage(page);
                   }}
               />
             </div>

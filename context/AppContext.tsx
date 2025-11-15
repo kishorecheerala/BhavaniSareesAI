@@ -1,5 +1,6 @@
+
 import React, { createContext, useReducer, useContext, useEffect, ReactNode, useState } from 'react';
-import { Customer, Supplier, Product, Sale, Purchase, Return, Payment, BeforeInstallPromptEvent, Notification, ProfileData, Page } from '../types';
+import { Customer, Supplier, Product, Sale, Purchase, Return, Payment, BeforeInstallPromptEvent, Notification, ProfileData, Page, AppMetadata, AppMetadataPin } from '../types';
 import * as db from '../utils/db';
 import { StoreName } from '../utils/db';
 
@@ -7,11 +8,6 @@ interface ToastState {
   message: string;
   show: boolean;
   type: 'success' | 'info';
-}
-
-interface AppMetadata {
-    id: 'lastBackup';
-    date: string;
 }
 
 export interface AppState {
@@ -27,12 +23,14 @@ export interface AppState {
   toast: ToastState;
   selection: { page: Page; id: string; action?: 'edit' } | null;
   installPromptEvent: BeforeInstallPromptEvent | null;
+  pin: string | null;
 }
 
 type Action =
-  | { type: 'SET_STATE'; payload: Omit<AppState, 'toast' | 'selection' | 'installPromptEvent' | 'notifications' | 'profile'> }
+  | { type: 'SET_STATE'; payload: Omit<AppState, 'toast' | 'selection' | 'installPromptEvent' | 'notifications' | 'profile' | 'pin'> }
   | { type: 'SET_NOTIFICATIONS'; payload: Notification[] }
   | { type: 'SET_PROFILE'; payload: ProfileData | null }
+  | { type: 'SET_PIN'; payload: string }
   | { type: 'ADD_CUSTOMER'; payload: Customer }
   | { type: 'UPDATE_CUSTOMER'; payload: Customer }
   | { type: 'ADD_SUPPLIER'; payload: Supplier }
@@ -75,6 +73,7 @@ const initialState: AppState = {
   toast: { message: '', show: false, type: 'info' },
   selection: null,
   installPromptEvent: null,
+  pin: null,
 };
 
 const appReducer = (state: AppState, action: Action): AppState => {
@@ -87,6 +86,10 @@ const appReducer = (state: AppState, action: Action): AppState => {
         return { ...state, notifications: action.payload };
     case 'SET_PROFILE':
         return { ...state, profile: action.payload };
+    case 'SET_PIN':
+        const otherMetadata = state.app_metadata.filter(m => m.id !== 'securityPin');
+        const newPinMetadata: AppMetadataPin = { id: 'securityPin', pin: action.payload };
+        return { ...state, pin: action.payload, app_metadata: [...otherMetadata, newPinMetadata] };
     case 'ADD_CUSTOMER':
       return { ...state, customers: [...state.customers, action.payload] };
     case 'UPDATE_CUSTOMER':
@@ -374,9 +377,10 @@ const appReducer = (state: AppState, action: Action): AppState => {
     case 'HIDE_TOAST':
         return { ...state, toast: { ...state.toast, show: false } };
     case 'SET_LAST_BACKUP_DATE':
+      const otherMeta = state.app_metadata.filter(m => m.id !== 'lastBackup');
       return {
         ...state,
-        app_metadata: [{ id: 'lastBackup', date: action.payload }]
+        app_metadata: [...otherMeta, { id: 'lastBackup', date: action.payload }]
       };
     case 'SET_SELECTION':
       return { ...state, selection: action.payload };
@@ -461,16 +465,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           db.getAll('profile'),
         ]);
 
-        const validatedState: Omit<AppState, 'toast' | 'selection' | 'installPromptEvent' | 'notifications' | 'profile'> = {
+        const validatedMetadata = Array.isArray(app_metadata) ? app_metadata : [];
+        const pinData = validatedMetadata.find(m => m.id === 'securityPin') as AppMetadataPin | undefined;
+
+        // FIX: Update validatedState type to omit 'pin' as it's handled separately.
+        const validatedState: Omit<AppState, 'toast' | 'selection' | 'installPromptEvent' | 'notifications' | 'profile' | 'pin'> = {
             customers: Array.isArray(customers) ? customers : [],
             suppliers: Array.isArray(suppliers) ? suppliers : [],
             products: Array.isArray(products) ? products : [],
             sales: (Array.isArray(sales) ? sales : []).map((s: any) => ({ ...s, payments: s.payments || [] })),
             purchases: (Array.isArray(purchases) ? purchases : []).map((p: any) => ({ ...p, payments: p.payments || [] })),
             returns: Array.isArray(returns) ? returns : [],
-            app_metadata: Array.isArray(app_metadata) ? app_metadata : [],
+            app_metadata: validatedMetadata,
         };
         dispatch({ type: 'SET_STATE', payload: validatedState });
+        dispatch({ type: 'SET_PIN', payload: pinData?.pin || '' });
         dispatch({ type: 'SET_NOTIFICATIONS', payload: Array.isArray(notifications) ? notifications : [] });
         dispatch({ type: 'SET_PROFILE', payload: (Array.isArray(profile) && profile.length > 0) ? profile[0] : null });
       } catch (error) {

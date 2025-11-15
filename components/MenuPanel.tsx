@@ -1,14 +1,15 @@
 import React from 'react';
-import { User, DollarSign } from 'lucide-react';
+import { User, BarChart2 } from 'lucide-react';
+import { Page } from '../types';
 
 interface MenuPanelProps {
   isOpen: boolean;
   onClose: () => void;
   onProfileClick: () => void;
-  onShowProfit: () => void;
+  onNavigate: (page: Page) => void;
 }
 
-const MenuPanel: React.FC<MenuPanelProps> = ({ isOpen, onClose, onProfileClick, onShowProfit }) => {
+const MenuPanel: React.FC<MenuPanelProps> = ({ isOpen, onClose, onProfileClick, onNavigate }) => {
     if (!isOpen) return null;
 
     return (
@@ -26,11 +27,11 @@ const MenuPanel: React.FC<MenuPanelProps> = ({ isOpen, onClose, onProfileClick, 
                     <span className="font-semibold text-sm">My Business Profile</span>
                 </button>
                 <button
-                    onClick={onShowProfit}
+                    onClick={() => onNavigate('INSIGHTS')}
                     className="w-full flex items-center gap-3 text-left p-3 rounded-md hover:bg-purple-50 transition-colors"
                 >
-                    <DollarSign className="w-5 h-5 text-primary" />
-                    <span className="font-semibold text-sm">Show Estimated Profit</span>
+                    <BarChart2 className="w-5 h-5 text-primary" />
+                    <span className="font-semibold text-sm">Business Insights</span>
                 </button>
             </div>
         </div>

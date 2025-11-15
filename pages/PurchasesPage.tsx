@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, IndianRupee, Edit, Save, X, Search, Package, Download } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
@@ -540,8 +541,8 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
                                         <div className="p-2 bg-white rounded-md text-sm border">
                                             <h4 className="font-semibold text-gray-700 mb-2">Transaction Details:</h4>
                                             <div className="space-y-1">
-                                                <div className="flex justify-between"><span>Subtotal (excl. GST):</span> <span>₹{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 3 })}</span></div>
-                                                <div className="flex justify-between"><span>GST Amount:</span> <span>+ ₹{totalGst.toLocaleString('en-IN', { minimumFractionDigits: 3 })}</span></div>
+                                                <div className="flex justify-between"><span>Subtotal (excl. GST):</span> <span>₹{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                                                <div className="flex justify-between"><span>GST Amount:</span> <span>+ ₹{totalGst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                                                 <div className="flex justify-between font-bold border-t pt-1 mt-1"><span>Grand Total:</span> <span>₹{Number(purchase.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
                                             </div>
                                         </div>

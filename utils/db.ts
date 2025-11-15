@@ -1,5 +1,7 @@
+
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import { Customer, Supplier, Product, Sale, Purchase, Return, Notification, ProfileData } from '../types';
+// FIX: Import AppMetadata from types to use the correct union type
+import { Customer, Supplier, Product, Sale, Purchase, Return, Notification, ProfileData, AppMetadata } from '../types';
 import { AppState } from '../context/AppContext';
 
 const DB_NAME = 'bhavani-sarees-db';
@@ -8,10 +10,7 @@ const DB_VERSION = 4; // Bump version for schema change
 export type StoreName = 'customers' | 'suppliers' | 'products' | 'sales' | 'purchases' | 'returns' | 'app_metadata' | 'notifications' | 'profile';
 const STORE_NAMES: StoreName[] = ['customers', 'suppliers', 'products', 'sales', 'purchases', 'returns', 'app_metadata', 'notifications', 'profile'];
 
-interface AppMetadata {
-    id: 'lastBackup';
-    date: string; // ISO string
-}
+// FIX: Remove incorrect local definition of AppMetadata. The imported one is the correct union type.
 
 interface BhavaniSareesDB extends DBSchema {
   customers: { key: string; value: Customer; };
@@ -62,7 +61,11 @@ export async function saveCollection<T extends StoreName>(storeName: T, data: Bh
 export async function getLastBackupDate(): Promise<string | null> {
     const db = await getDb();
     const result = await db.get('app_metadata', 'lastBackup');
-    return result?.date || null;
+    // Type guard to ensure we are accessing a property on the correct object type
+    if (result && result.id === 'lastBackup') {
+        return result.date;
+    }
+    return null;
 }
 
 export async function setLastBackupDate(): Promise<void> {

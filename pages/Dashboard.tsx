@@ -163,7 +163,7 @@ const OverdueDuesCard: React.FC<{ sales: Sale[]; customers: Customer[]; onNaviga
         return (
             <Card className="border-l-4 border-green-500 bg-green-50">
                 <div className="flex items-center">
-                    <CheckCircle className="w-8 h-8 text-green-600 mr-4" />
+                    <ShieldCheck className="w-8 h-8 text-green-600 mr-4" />
                     <div>
                         <p className="font-bold text-green-800">No Overdue Dues</p>
                         <p className="text-sm text-green-700">All customer payments older than 30 days are settled.</p>
@@ -570,7 +570,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <Button onClick={handleBackup} className="w-full">
                             <Download className="w-4 h-4 mr-2" />
-                            Backup (JSON)
+                            Backup
                         </Button>
                         <Button onClick={() => setIsImportModalOpen(true)} variant="secondary" className="w-full">
                             <Upload className="w-4 h-4 mr-2" />
@@ -578,7 +578,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                         </Button>
                         <Button onClick={() => fileInputRef.current?.click()} variant="secondary" className="w-full">
                             <Upload className="w-4 h-4 mr-2" />
-                            Restore (JSON)
+                            Restore
                         </Button>
                          <Button onClick={handleLoadDemoData} variant="info" className="w-full sm:col-span-3">
                             <TestTube2 className="w-4 h-4 mr-2" />
