@@ -3,12 +3,14 @@ import { IndianRupee, TrendingUp, TrendingDown, Award, Lock } from 'lucide-react
 import { useAppContext } from '../context/AppContext';
 import Card from '../components/Card';
 import PinModal from '../components/PinModal';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 const InsightsPage: React.FC = () => {
     const { state, isDbLoaded, dispatch, showToast } = useAppContext();
     
     type PinState = 'checking' | 'locked' | 'unlocked' | 'no_pin_setup';
     const [pinState, setPinState] = useState<PinState>('checking');
+    const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
     const [profitFilterMonth, setProfitFilterMonth] = useState(new Date().getMonth());
     const [profitFilterYear, setProfitFilterYear] = useState(new Date().getFullYear());
@@ -35,6 +37,12 @@ const InsightsPage: React.FC = () => {
 
     const handlePinCorrect = () => {
         setPinState('unlocked');
+    };
+    
+    const handleConfirmReset = () => {
+        dispatch({ type: 'REMOVE_PIN' });
+        setIsResetConfirmOpen(false);
+        showToast('PIN has been reset. Please set a new one.', 'info');
     };
 
     // --- Profit Calculation ---
@@ -144,6 +152,16 @@ const InsightsPage: React.FC = () => {
     if (pinState !== 'unlocked') {
         return (
             <div>
+                <ConfirmationModal
+                    isOpen={isResetConfirmOpen}
+                    onClose={() => setIsResetConfirmOpen(false)}
+                    onConfirm={handleConfirmReset}
+                    title="Confirm PIN Reset"
+                    confirmText="Yes, Reset PIN"
+                    confirmVariant="danger"
+                >
+                    Are you sure? This will permanently remove your current PIN. You will be asked to set a new one. This action cannot be undone.
+                </ConfirmationModal>
                 <h1 className="text-2xl font-bold text-primary mb-4">Business Insights</h1>
                 <Card>
                     <div className="text-center py-8">
@@ -157,6 +175,7 @@ const InsightsPage: React.FC = () => {
                         mode="enter"
                         correctPin={state.pin}
                         onCorrectPin={handlePinCorrect}
+                        onResetRequest={() => setIsResetConfirmOpen(true)}
                     />
                 )}
                 {pinState === 'no_pin_setup' && (

@@ -8,9 +8,10 @@ interface PinModalProps {
     onSetPin?: (pin: string) => void;
     onCorrectPin?: () => void;
     correctPin?: string | null;
+    onResetRequest?: () => void;
 }
 
-const PinModal: React.FC<PinModalProps> = ({ mode, onSetPin, onCorrectPin, correctPin }) => {
+const PinModal: React.FC<PinModalProps> = ({ mode, onSetPin, onCorrectPin, correctPin, onResetRequest }) => {
     const [pin, setPin] = useState('');
     const [confirmPin, setConfirmPin] = useState('');
     const [error, setError] = useState('');
@@ -102,6 +103,14 @@ const PinModal: React.FC<PinModalProps> = ({ mode, onSetPin, onCorrectPin, corre
                     <Button onClick={handleSubmit} className="w-full">
                         {mode === 'setup' ? 'Set PIN' : 'Unlock'}
                     </Button>
+                    {mode === 'enter' && onResetRequest && (
+                        <button
+                            onClick={onResetRequest}
+                            className="text-sm text-center text-blue-600 hover:underline mt-2 w-full"
+                        >
+                            Forgot PIN? Reset
+                        </button>
+                    )}
                 </div>
             </Card>
         </div>

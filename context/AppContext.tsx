@@ -1,4 +1,5 @@
 
+
 import React, { createContext, useReducer, useContext, useEffect, ReactNode, useState } from 'react';
 import { Customer, Supplier, Product, Sale, Purchase, Return, Payment, BeforeInstallPromptEvent, Notification, ProfileData, Page, AppMetadata, AppMetadataPin } from '../types';
 import * as db from '../utils/db';
@@ -31,6 +32,7 @@ type Action =
   | { type: 'SET_NOTIFICATIONS'; payload: Notification[] }
   | { type: 'SET_PROFILE'; payload: ProfileData | null }
   | { type: 'SET_PIN'; payload: string }
+  | { type: 'REMOVE_PIN' }
   | { type: 'ADD_CUSTOMER'; payload: Customer }
   | { type: 'UPDATE_CUSTOMER'; payload: Customer }
   | { type: 'ADD_SUPPLIER'; payload: Supplier }
@@ -90,6 +92,10 @@ const appReducer = (state: AppState, action: Action): AppState => {
         const otherMetadata = state.app_metadata.filter(m => m.id !== 'securityPin');
         const newPinMetadata: AppMetadataPin = { id: 'securityPin', pin: action.payload };
         return { ...state, pin: action.payload, app_metadata: [...otherMetadata, newPinMetadata] };
+    case 'REMOVE_PIN': {
+      const metadataWithoutPin = state.app_metadata.filter(m => m.id !== 'securityPin');
+      return { ...state, pin: null, app_metadata: metadataWithoutPin };
+    }
     case 'ADD_CUSTOMER':
       return { ...state, customers: [...state.customers, action.payload] };
     case 'UPDATE_CUSTOMER':
