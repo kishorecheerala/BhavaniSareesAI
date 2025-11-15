@@ -5,7 +5,7 @@ import * as db from '../utils/db';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import DataImportModal from '../components/DataImportModal';
-import { Page, Customer, Sale } from '../types';
+import { Page, Customer, Sale, Purchase, Supplier } from '../types';
 import { testData, testProfile } from '../utils/testData';
 
 interface DashboardProps {
@@ -188,6 +188,112 @@ const OverdueDuesCard: React.FC<{ sales: Sale[]; customers: Customer[]; onNaviga
     );
 };
 
+const UpcomingPurchaseDuesCard: React.FC<{ 
+    purchases: Purchase[]; 
+    suppliers: Supplier[]; 
+    onNavigate: (supplierId: string) => void; 
+}> = ({ purchases, suppliers, onNavigate }) => {
+    const upcomingDues = useMemo(() => {
+        const dues: {
+            purchaseId: string;
+            supplier: Supplier;
+            totalPurchaseDue: number;
+            dueDate: Date;
+            daysRemaining: number;
+        }[] = [];
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const thirtyDaysFromNow = new Date();
+        thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+        thirtyDaysFromNow.setHours(23, 59, 59, 999);
+
+        purchases.forEach(purchase => {
+            const amountPaid = (purchase.payments || []).reduce((sum, p) => sum + p.amount, 0);
+            const dueAmount = purchase.totalAmount - amountPaid;
+
+            if (dueAmount > 0.01 && purchase.paymentDueDates && purchase.paymentDueDates.length > 0) {
+                const supplier = suppliers.find(s => s.id === purchase.supplierId);
+                if (!supplier) return;
+
+                purchase.paymentDueDates.forEach(dateStr => {
+                    const dueDate = new Date(dateStr + 'T00:00:00'); // Treat date string as local time
+                    
+                    if (dueDate >= today && dueDate <= thirtyDaysFromNow) {
+                        const timeDiff = dueDate.getTime() - today.getTime();
+                        const daysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                        
+                        dues.push({
+                            purchaseId: purchase.id,
+                            supplier: supplier,
+                            totalPurchaseDue: dueAmount,
+                            dueDate: dueDate,
+                            daysRemaining: daysRemaining,
+                        });
+                    }
+                });
+            }
+        });
+
+        return dues.sort((a, b) => a.daysRemaining - b.daysRemaining);
+    }, [purchases, suppliers]);
+
+    if (upcomingDues.length === 0) {
+        return (
+            <Card className="border-l-4 border-green-500 bg-green-50">
+                <div className="flex items-center">
+                    <ShieldCheck className="w-8 h-8 text-green-600 mr-4" />
+                    <div>
+                        <p className="font-bold text-green-800">No Upcoming Purchase Dues</p>
+                        <p className="text-sm text-green-700">There are no payment dues to suppliers in the next 30 days.</p>
+                    </div>
+                </div>
+            </Card>
+        );
+    }
+
+    return (
+        <Card className="border-l-4 border-amber-500 bg-amber-50">
+            <div className="flex items-center mb-4">
+                <AlertTriangle className="w-6 h-6 text-amber-600 mr-3" />
+                <h2 className="text-lg font-bold text-amber-800">Upcoming Purchase Dues</h2>
+            </div>
+            <p className="text-sm text-amber-700 mb-4">The following payments to suppliers are due within the next 30 days.</p>
+            <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                {upcomingDues.map((due) => {
+                    const countdownText = due.daysRemaining === 0
+                        ? "Due today"
+                        : `Due in ${due.daysRemaining} day${due.daysRemaining !== 1 ? 's' : ''}`;
+                    return (
+                        <div
+                            key={`${due.purchaseId}-${due.dueDate.toISOString()}`}
+                            className="p-3 bg-white rounded-lg shadow-sm cursor-pointer hover:bg-amber-100 transition-colors flex justify-between items-center"
+                            onClick={() => onNavigate(due.supplier.id)}
+                            role="button"
+                            tabIndex={0}
+                            aria-label={`View details for ${due.supplier.name}`}
+                        >
+                            <div className="flex items-center gap-3">
+                                <Package className="w-6 h-6 text-amber-700 flex-shrink-0" />
+                                <div>
+                                    <p className="font-bold text-amber-900">{due.supplier.name}</p>
+                                    <p className="text-xs text-gray-500">Invoice: {due.purchaseId}</p>
+                                </div>
+                            </div>
+                            <div className="text-right flex-shrink-0 ml-2">
+                                <p className="font-bold text-lg text-red-600">₹{due.totalPurchaseDue.toLocaleString('en-IN')}</p>
+                                <p className="text-xs font-bold text-amber-800">{countdownText}</p>
+                                <p className="text-xs text-gray-500">on {due.dueDate.toLocaleDateString()}</p>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </Card>
+    );
+};
+
 
 const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
     const { state, dispatch, showToast } = useAppContext();
@@ -358,6 +464,11 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
         setCurrentPage('CUSTOMERS');
     };
 
+    const handleNavigateToSupplier = (supplierId: string) => {
+        dispatch({ type: 'SET_SELECTION', payload: { page: 'PURCHASES', id: supplierId } });
+        setCurrentPage('PURCHASES');
+    };
+
     const handleLoadDemoData = () => {
         if (window.confirm('Are you sure you want to load demo data? This will overwrite ALL existing data in the app.')) {
             dispatch({ type: 'SET_STATE', payload: testData });
@@ -415,6 +526,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
 
             <OverdueDuesCard sales={state.sales} customers={state.customers} onNavigate={handleNavigateToCustomer} />
             
+            <UpcomingPurchaseDuesCard purchases={state.purchases} suppliers={state.suppliers} onNavigate={handleNavigateToSupplier} />
+
             <Card title="Monthly Sales Report">
                 <div className="flex flex-col sm:flex-row gap-4 mb-4">
                     <select
