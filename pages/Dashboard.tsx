@@ -4,12 +4,188 @@ import { useAppContext } from '../context/AppContext';
 import * as db from '../utils/db';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import { Page } from '../types';
-import { Customer } from '../types';
+import { Page, Customer, Sale } from '../types';
 
 interface DashboardProps {
     setCurrentPage: (page: Page) => void;
 }
+
+const MetricCard: React.FC<{ icon: React.ElementType, title: string, value: string | number, color: string, unit?: string }> = ({ icon: Icon, title, value, color, unit = '₹' }) => (
+    <Card className={`flex items-center p-4 ${color}`}>
+        <div className="p-3 bg-white/20 rounded-full">
+            <Icon className="w-8 h-8 text-white" />
+        </div>
+        <div className="ml-4">
+            <p className="text-white font-semibold text-lg">{title}</p>
+            <p className="text-2xl font-bold text-white">{unit}{typeof value === 'number' ? value.toLocaleString('en-IN') : value}</p>
+        </div>
+    </Card>
+);
+
+const BackupStatusCard: React.FC<{ lastBackupDate: string | null }> = ({ lastBackupDate }) => {
+    if (!lastBackupDate) {
+        return (
+            <Card className="border-l-4 border-red-500 bg-red-50">
+                <div className="flex items-center">
+                    <ShieldX className="w-8 h-8 text-red-600 mr-4" />
+                    <div>
+                        <p className="font-bold text-red-800">No Backup Found</p>
+                        <p className="text-sm text-red-700">Please create a backup immediately to protect your data.</p>
+                    </div>
+                </div>
+            </Card>
+        );
+    }
+
+    const now = new Date();
+    const backupDate = new Date(lastBackupDate);
+    
+    const todayStr = now.toISOString().slice(0, 10);
+    const backupDateStr = backupDate.toISOString().slice(0, 10);
+
+    const status = backupDateStr === todayStr ? 'safe' : 'overdue';
+    const diffDays = Math.floor((now.getTime() - backupDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    let overdueMessage = "Your last backup was not today. Please back up now.";
+    if (diffDays > 0) {
+        overdueMessage = `Your last backup was ${diffDays} day${diffDays > 1 ? 's' : ''} ago. Please back up now.`;
+    }
+
+    const messages = {
+        safe: { icon: ShieldCheck, color: 'green', title: 'Data Backup is Up-to-Date', text: `Last backup was today at ${backupDate.toLocaleTimeString()}.` },
+        overdue: { icon: ShieldX, color: 'red', title: 'Backup Overdue', text: overdueMessage },
+    };
+
+    const current = messages[status];
+    const Icon = current.icon;
+
+    return (
+        <Card className={`border-l-4 border-${current.color}-500 bg-${current.color}-50`}>
+            <div className="flex items-center">
+                <Icon className={`w-8 h-8 text-${current.color}-600 mr-4`} />
+                <div>
+                    <p className={`font-bold text-${current.color}-800`}>{current.title}</p>
+                    <p className={`text-sm text-${current.color}-700`}>{current.text}</p>
+                </div>
+            </div>
+        </Card>
+    );
+};
+
+const StatusNotification: React.FC<{ status: { type: 'info' | 'success' | 'error', message: string } | null; onClose: () => void; }> = ({ status, onClose }) => {
+    if (!status) return null;
+
+    const baseClasses = "p-3 rounded-md mb-4 text-sm flex items-start justify-between";
+    const variants = {
+        info: 'bg-blue-100 text-blue-800',
+        success: 'bg-green-100 text-green-800',
+        error: 'bg-red-100 text-red-800',
+    };
+    const icons = {
+        info: <Info className="w-5 h-5 mr-3 flex-shrink-0" />,
+        success: <CheckCircle className="w-5 h-5 mr-3 flex-shrink-0" />,
+        error: <XCircle className="w-5 h-5 mr-3 flex-shrink-0" />,
+    };
+
+    return (
+        <div className={`${baseClasses} ${variants[status.type]}`}>
+            <div className="flex items-start">
+                {icons[status.type]}
+                <span>{status.message}</span>
+            </div>
+            <button onClick={onClose} className="font-bold text-lg leading-none ml-4">&times;</button>
+        </div>
+    );
+};
+
+const OverdueDuesCard: React.FC<{ sales: Sale[]; customers: Customer[]; onNavigate: (customerId: string) => void; }> = ({ sales, customers, onNavigate }) => {
+    const overdueCustomersArray = useMemo(() => {
+        const overdueCustomers: { [key: string]: { customer: Customer; totalOverdue: number; oldestOverdueDate: string } } = {};
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        sales.forEach(sale => {
+            const saleDate = new Date(sale.date);
+
+            if (saleDate < thirtyDaysAgo) {
+                const amountPaid = (sale.payments || []).reduce((sum, p) => sum + p.amount, 0);
+                const dueAmount = sale.totalAmount - amountPaid;
+
+                if (dueAmount > 0.01) {
+                    const customerId = sale.customerId;
+                    if (!overdueCustomers[customerId]) {
+                        const customer = customers.find(c => c.id === customerId);
+                        if (customer) {
+                            overdueCustomers[customerId] = {
+                                customer: customer,
+                                totalOverdue: 0,
+                                oldestOverdueDate: sale.date
+                            };
+                        }
+                    }
+
+                    if (overdueCustomers[customerId]) {
+                        overdueCustomers[customerId].totalOverdue += dueAmount;
+                        if (new Date(sale.date) < new Date(overdueCustomers[customerId].oldestOverdueDate)) {
+                            overdueCustomers[customerId].oldestOverdueDate = sale.date;
+                        }
+                    }
+                }
+            }
+        });
+
+        return Object.values(overdueCustomers);
+    }, [sales, customers]);
+
+    if (overdueCustomersArray.length === 0) {
+        return (
+            <Card className="border-l-4 border-green-500 bg-green-50">
+                <div className="flex items-center">
+                    <ShieldCheck className="w-8 h-8 text-green-600 mr-4" />
+                    <div>
+                        <p className="font-bold text-green-800">No Overdue Dues</p>
+                        <p className="text-sm text-green-700">All customer payments older than 30 days are settled.</p>
+                    </div>
+                </div>
+            </Card>
+        );
+    }
+
+    return (
+        <Card className="border-l-4 border-amber-500 bg-amber-50">
+            <div className="flex items-center mb-4">
+                <AlertTriangle className="w-6 h-6 text-amber-600 mr-3" />
+                <h2 className="text-lg font-bold text-amber-800">Overdue Dues Alert</h2>
+            </div>
+            <p className="text-sm text-amber-700 mb-4">The following customers have dues from sales older than 30 days. Please follow up.</p>
+            <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                {overdueCustomersArray.sort((a, b) => b.totalOverdue - a.totalOverdue).map(({ customer, totalOverdue, oldestOverdueDate }) => (
+                    <div
+                        key={customer.id}
+                        className="p-3 bg-white rounded-lg shadow-sm cursor-pointer hover:bg-amber-100 transition-colors flex justify-between items-center"
+                        onClick={() => onNavigate(customer.id)}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`View details for ${customer.name}`}
+                    >
+                        <div className="flex items-center gap-3">
+                            <User className="w-6 h-6 text-amber-700 flex-shrink-0" />
+                            <div>
+                                <p className="font-bold text-amber-900">{customer.name}</p>
+                                <p className="text-xs text-gray-500">{customer.area}</p>
+                            </div>
+                        </div>
+                        <div className="text-right flex-shrink-0 ml-2">
+                            <p className="font-bold text-lg text-red-600">₹{totalOverdue.toLocaleString('en-IN')}</p>
+                            <p className="text-xs text-gray-500">Oldest: {new Date(oldestOverdueDate).toLocaleDateString()}</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </Card>
+    );
+};
+
 
 const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
     const { state, dispatch, showToast } = useAppContext();
@@ -179,183 +355,6 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
         setCurrentPage('CUSTOMERS');
     };
 
-    const OverdueDuesCard = () => {
-        const overdueCustomersArray = useMemo(() => {
-            const overdueCustomers: { [key: string]: { customer: Customer; totalOverdue: number; oldestOverdueDate: string } } = {};
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-            state.sales.forEach(sale => {
-                const saleDate = new Date(sale.date);
-
-                if (saleDate < thirtyDaysAgo) {
-                    const amountPaid = (sale.payments || []).reduce((sum, p) => sum + p.amount, 0);
-                    const dueAmount = sale.totalAmount - amountPaid;
-
-                    if (dueAmount > 0.01) {
-                        const customerId = sale.customerId;
-                        if (!overdueCustomers[customerId]) {
-                            const customer = state.customers.find(c => c.id === customerId);
-                            if (customer) {
-                                overdueCustomers[customerId] = {
-                                    customer: customer,
-                                    totalOverdue: 0,
-                                    oldestOverdueDate: sale.date
-                                };
-                            }
-                        }
-
-                        if (overdueCustomers[customerId]) {
-                            overdueCustomers[customerId].totalOverdue += dueAmount;
-                            if (new Date(sale.date) < new Date(overdueCustomers[customerId].oldestOverdueDate)) {
-                                overdueCustomers[customerId].oldestOverdueDate = sale.date;
-                            }
-                        }
-                    }
-                }
-            });
-
-            return Object.values(overdueCustomers);
-        }, [state.sales, state.customers]);
-
-        if (overdueCustomersArray.length === 0) {
-            return (
-                <Card className="border-l-4 border-green-500 bg-green-50">
-                    <div className="flex items-center">
-                        <ShieldCheck className="w-8 h-8 text-green-600 mr-4" />
-                        <div>
-                            <p className="font-bold text-green-800">No Overdue Dues</p>
-                            <p className="text-sm text-green-700">All customer payments older than 30 days are settled.</p>
-                        </div>
-                    </div>
-                </Card>
-            );
-        }
-
-        return (
-            <Card className="border-l-4 border-amber-500 bg-amber-50">
-                <div className="flex items-center mb-4">
-                    <AlertTriangle className="w-6 h-6 text-amber-600 mr-3" />
-                    <h2 className="text-lg font-bold text-amber-800">Overdue Dues Alert</h2>
-                </div>
-                <p className="text-sm text-amber-700 mb-4">The following customers have dues from sales older than 30 days. Please follow up.</p>
-                <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
-                    {overdueCustomersArray.sort((a, b) => b.totalOverdue - a.totalOverdue).map(({ customer, totalOverdue, oldestOverdueDate }) => (
-                        <div
-                            key={customer.id}
-                            className="p-3 bg-white rounded-lg shadow-sm cursor-pointer hover:bg-amber-100 transition-colors flex justify-between items-center"
-                            onClick={() => handleNavigateToCustomer(customer.id)}
-                            role="button"
-                            tabIndex={0}
-                            aria-label={`View details for ${customer.name}`}
-                        >
-                            <div className="flex items-center gap-3">
-                                <User className="w-6 h-6 text-amber-700 flex-shrink-0" />
-                                <div>
-                                    <p className="font-bold text-amber-900">{customer.name}</p>
-                                    <p className="text-xs text-gray-500">{customer.area}</p>
-                                </div>
-                            </div>
-                            <div className="text-right flex-shrink-0 ml-2">
-                                <p className="font-bold text-lg text-red-600">₹{totalOverdue.toLocaleString('en-IN')}</p>
-                                <p className="text-xs text-gray-500">Oldest: {new Date(oldestOverdueDate).toLocaleDateString()}</p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </Card>
-        );
-    };
-
-
-    const MetricCard = ({ icon: Icon, title, value, color, unit = '₹' }: {icon: React.ElementType, title: string, value: string | number, color: string, unit?: string}) => (
-        <Card className={`flex items-center p-4 ${color}`}>
-            <div className="p-3 bg-white/20 rounded-full">
-                <Icon className="w-8 h-8 text-white" />
-            </div>
-            <div className="ml-4">
-                <p className="text-white font-semibold text-lg">{title}</p>
-                <p className="text-2xl font-bold text-white">{unit}{typeof value === 'number' ? value.toLocaleString('en-IN') : value}</p>
-            </div>
-        </Card>
-    );
-
-    const BackupStatusCard = () => {
-        if (!lastBackupDate) {
-            return (
-                <Card className="border-l-4 border-red-500 bg-red-50">
-                    <div className="flex items-center">
-                        <ShieldX className="w-8 h-8 text-red-600 mr-4" />
-                        <div>
-                            <p className="font-bold text-red-800">No Backup Found</p>
-                            <p className="text-sm text-red-700">Please create a backup immediately to protect your data.</p>
-                        </div>
-                    </div>
-                </Card>
-            );
-        }
-
-        const now = new Date();
-        const backupDate = new Date(lastBackupDate);
-        
-        const todayStr = now.toISOString().slice(0, 10);
-        const backupDateStr = backupDate.toISOString().slice(0, 10);
-
-        const status = backupDateStr === todayStr ? 'safe' : 'overdue';
-        const diffDays = Math.floor((now.getTime() - backupDate.getTime()) / (1000 * 60 * 60 * 24));
-        
-        let overdueMessage = "Your last backup was not today. Please back up now.";
-        if (diffDays > 0) {
-            overdueMessage = `Your last backup was ${diffDays} day${diffDays > 1 ? 's' : ''} ago. Please back up now.`;
-        }
-
-        const messages = {
-            safe: { icon: ShieldCheck, color: 'green', title: 'Data Backup is Up-to-Date', text: `Last backup was today at ${backupDate.toLocaleTimeString()}.` },
-            overdue: { icon: ShieldX, color: 'red', title: 'Backup Overdue', text: overdueMessage },
-        };
-
-        const current = messages[status];
-        const Icon = current.icon;
-
-        return (
-            <Card className={`border-l-4 border-${current.color}-500 bg-${current.color}-50`}>
-                <div className="flex items-center">
-                    <Icon className={`w-8 h-8 text-${current.color}-600 mr-4`} />
-                    <div>
-                        <p className={`font-bold text-${current.color}-800`}>{current.title}</p>
-                        <p className={`text-sm text-${current.color}-700`}>{current.text}</p>
-                    </div>
-                </div>
-            </Card>
-        );
-    };
-
-    const StatusNotification = () => {
-        if (!restoreStatus) return null;
-
-        const baseClasses = "p-3 rounded-md mb-4 text-sm flex items-start justify-between";
-        const variants = {
-            info: 'bg-blue-100 text-blue-800',
-            success: 'bg-green-100 text-green-800',
-            error: 'bg-red-100 text-red-800',
-        };
-        const icons = {
-            info: <Info className="w-5 h-5 mr-3 flex-shrink-0" />,
-            success: <CheckCircle className="w-5 h-5 mr-3 flex-shrink-0" />,
-            error: <XCircle className="w-5 h-5 mr-3 flex-shrink-0" />,
-        };
-
-        return (
-            <div className={`${baseClasses} ${variants[restoreStatus.type]}`}>
-                <div className="flex items-start">
-                    {icons[restoreStatus.type]}
-                    <span>{restoreStatus.message}</span>
-                </div>
-                <button onClick={() => setRestoreStatus(null)} className="font-bold text-lg leading-none ml-4">&times;</button>
-            </div>
-        );
-    };
-
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
     return (
@@ -402,7 +401,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                 />
             </div>
 
-            <OverdueDuesCard />
+            <OverdueDuesCard sales={state.sales} customers={state.customers} onNavigate={handleNavigateToCustomer} />
             
             <Card title="Monthly Sales Report">
                 <div className="flex flex-col sm:flex-row gap-4 mb-4">
@@ -435,11 +434,11 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
             
             <Card title="Backup & Restore">
                 <div className="space-y-4">
-                    <BackupStatusCard />
+                    <BackupStatusCard lastBackupDate={lastBackupDate} />
                     <p className="text-sm text-gray-600">
                         Your data is stored on this device. Backup regularly to prevent data loss if you clear browser data or change devices.
                     </p>
-                    <StatusNotification />
+                    <StatusNotification status={restoreStatus} onClose={() => setRestoreStatus(null)} />
                     <input
                         type="file"
                         accept=".json"

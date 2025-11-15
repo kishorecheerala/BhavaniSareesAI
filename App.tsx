@@ -41,11 +41,32 @@ const Toast = () => {
     );
 };
 
+// Define NavItem outside the MainApp component to prevent re-creation on every render.
+// This improves performance and prevents flickering in the navigation bar.
+const NavItem: React.FC<{
+  page: Page;
+  label: string;
+  icon: React.ElementType;
+  onClick: () => void;
+  isActive: boolean;
+}> = ({ page, label, icon: Icon, onClick, isActive }) => (
+    <button
+      onClick={onClick}
+      className={`flex flex-col items-center justify-center w-full pt-2 pb-1 text-xs transition-colors duration-200 ${
+        isActive ? 'text-white scale-[1.02]' : 'text-purple-200 hover:text-white'
+      }`}
+    >
+      <Icon className="w-6 h-6 mb-1" />
+      <span>{label}</span>
+    </button>
+);
+
+
 const MainApp: React.FC = () => {
   const [currentPage, _setCurrentPage] = useState<Page>(
     () => (sessionStorage.getItem('currentPage') as Page) || 'DASHBOARD'
   );
-  const [isDirty, setIsDirty] = useState(false);
+  const isDirtyRef = useRef(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -69,6 +90,10 @@ const MainApp: React.FC = () => {
   useEffect(() => {
     sessionStorage.setItem('currentPage', currentPage);
   }, [currentPage]);
+
+  const setIsDirty = (dirty: boolean) => {
+    isDirtyRef.current = dirty;
+  };
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -181,7 +206,7 @@ const MainApp: React.FC = () => {
         return;
     }
 
-    if (isDirty) {
+    if (isDirtyRef.current) {
       setNavConfirm({ show: true, page });
     } else {
       _setCurrentPage(page);
@@ -202,7 +227,7 @@ const MainApp: React.FC = () => {
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (isDirty) {
+      if (isDirtyRef.current) {
         event.preventDefault();
         event.returnValue = '';
       }
@@ -211,7 +236,7 @@ const MainApp: React.FC = () => {
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [isDirty]);
+  }, []);
 
 
   const renderPage = () => {
@@ -235,19 +260,6 @@ const MainApp: React.FC = () => {
         return <Dashboard setCurrentPage={_setCurrentPage} />;
     }
   };
-  
-  // FIX: Use React.FC to correctly type the component and handle the 'key' prop, which is managed by React and not part of the component's own props.
-  const NavItem: React.FC<{ page: Page; label: string; icon: React.ElementType }> = ({ page, label, icon: Icon }) => (
-    <button
-      onClick={() => setCurrentPage(page)}
-      className={`flex flex-col items-center justify-center w-full pt-2 pb-1 text-xs transition-colors duration-200 ${
-        currentPage === page ? 'text-white scale-[1.02]' : 'text-purple-200 hover:text-white'
-      }`}
-    >
-      <Icon className="w-6 h-6 mb-1" />
-      <span>{label}</span>
-    </button>
-  );
   
   const hasUnreadNotifications = state.notifications.some(n => !n.read);
 
@@ -344,12 +356,12 @@ const MainApp: React.FC = () => {
       <nav className="fixed bottom-0 left-0 right-0 bg-primary shadow-lg z-50">
         {/* Desktop nav */}
         <div className="hidden md:flex justify-around max-w-2xl mx-auto">
-            {allNavItems.map(item => <NavItem key={item.page} page={item.page} label={item.label} icon={item.icon} />)}
+            {allNavItems.map(item => <NavItem key={item.page} page={item.page} label={item.label} icon={item.icon} onClick={() => setCurrentPage(item.page)} isActive={currentPage === item.page} />)}
         </div>
 
         {/* Mobile nav */}
         <div className="flex md:hidden justify-around max-w-2xl mx-auto">
-            {mainNavItems.map(item => <NavItem key={item.page} page={item.page} label={item.label} icon={item.icon} />)}
+            {mainNavItems.map(item => <NavItem key={item.page} page={item.page} label={item.label} icon={item.icon} onClick={() => setCurrentPage(item.page)} isActive={currentPage === item.page} />)}
             <div className="relative flex flex-col items-center justify-center w-full pt-2 pb-1" ref={moreMenuRef}>
                  <button
                     onClick={() => setIsMoreMenuOpen(prev => !prev)}

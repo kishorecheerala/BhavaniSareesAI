@@ -339,6 +339,8 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty }) => {
                 onSubmit={view === 'add_purchase' ? handleCompletePurchase : handleUpdatePurchase}
                 onBack={() => { setView('list'); setPurchaseToEdit(null); }}
                 setIsDirty={setIsDirty}
+                dispatch={dispatch}
+                showToast={showToast}
             />
         );
     }

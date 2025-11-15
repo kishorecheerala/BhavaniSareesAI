@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Plus, Trash2, Share2, Search, X, IndianRupee, QrCode, Save, Edit } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Sale, SaleItem, Customer, Product, Payment } from '../types';
@@ -30,6 +30,161 @@ interface SalesPageProps {
   setIsDirty: (isDirty: boolean) => void;
 }
 
+const newCustomerInitialState = { id: '', name: '', phone: '', address: '', area: '', reference: '' };
+
+const AddCustomerModal: React.FC<{
+    newCustomer: typeof newCustomerInitialState;
+    onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onSave: () => void;
+    onCancel: () => void;
+}> = React.memo(({ newCustomer, onInputChange, onSave, onCancel }) => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+        <Card title="Add New Customer" className="w-full max-w-md animate-scale-in">
+            <div className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Customer ID</label>
+                    <div className="flex items-center mt-1">
+                        <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                            CUST-
+                        </span>
+                        <input
+                            type="text"
+                            name="id"
+                            placeholder="Enter unique ID"
+                            value={newCustomer.id}
+                            onChange={onInputChange}
+                            className="w-full p-2 border rounded-r-md"
+                        />
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Name</label>
+                    <input type="text" placeholder="Full Name" name="name" value={newCustomer.name} onChange={onInputChange} className="w-full p-2 border rounded mt-1" />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Phone</label>
+                    <input type="text" placeholder="Phone Number" name="phone" value={newCustomer.phone} onChange={onInputChange} className="w-full p-2 border rounded mt-1" />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Address</label>
+                    <input type="text" placeholder="Full Address" name="address" value={newCustomer.address} onChange={onInputChange} className="w-full p-2 border rounded mt-1" />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Area/Location</label>
+                    <input type="text" placeholder="e.g. Ameerpet" name="area" value={newCustomer.area} onChange={onInputChange} className="w-full p-2 border rounded mt-1" />
+                </div>
+                 <div>
+                    <label className="block text-sm font-medium text-gray-700">Reference (Optional)</label>
+                    <input type="text" placeholder="Referred by..." name="reference" value={newCustomer.reference} onChange={onInputChange} className="w-full p-2 border rounded mt-1" />
+                </div>
+                <div className="flex gap-2">
+                    <Button onClick={onSave} className="w-full">Save Customer</Button>
+                    <Button onClick={onCancel} variant="secondary" className="w-full">Cancel</Button>
+                </div>
+            </div>
+        </Card>
+    </div>
+));
+
+const ProductSearchModal: React.FC<{
+    products: Product[];
+    onClose: () => void;
+    onSelect: (product: Product) => void;
+}> = ({ products, onClose, onSelect }) => {
+    const [productSearchTerm, setProductSearchTerm] = useState('');
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+          <Card className="w-full max-w-lg animate-scale-in">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold">Select Product</h2>
+              <button onClick={onClose} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
+                <X size={20}/>
+              </button>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+              <input
+                type="text"
+                placeholder="Search products..."
+                value={productSearchTerm}
+                onChange={e => setProductSearchTerm(e.target.value)}
+                className="w-full p-2 pl-10 border rounded-lg"
+                autoFocus
+              />
+            </div>
+            <div className="mt-4 max-h-80 overflow-y-auto space-y-2">
+              {products
+                .filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase()) || p.id.toLowerCase().includes(productSearchTerm.toLowerCase()))
+                .map(p => (
+                <div key={p.id} onClick={() => onSelect(p)} className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-purple-100 flex justify-between items-center">
+                  <div>
+                    <p className="font-semibold">{p.name}</p>
+                    <p className="text-sm text-gray-500">Code: {p.id}</p>
+                  </div>
+                  <div className="text-right">
+                      <p className="font-semibold">₹{p.salePrice.toLocaleString('en-IN')}</p>
+                      <p className="text-sm">Stock: {p.quantity}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+    );
+};
+    
+const QRScannerModal: React.FC<{
+    onClose: () => void;
+    onScanned: (decodedText: string) => void;
+}> = ({ onClose, onScanned }) => {
+    const [scanStatus, setScanStatus] = useState<string>("Click 'Start Scanning' to activate camera.");
+    const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
+
+    const startScan = () => {
+        if (!html5QrCodeRef.current) return;
+        setScanStatus("Requesting camera permissions...");
+
+        const qrCodeSuccessCallback = (decodedText: string) => {
+            if (html5QrCodeRef.current?.isScanning) {
+                html5QrCodeRef.current.stop().then(() => {
+                    onScanned(decodedText);
+                });
+            }
+        };
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+        html5QrCodeRef.current.start({ facingMode: "environment" }, config, qrCodeSuccessCallback, undefined)
+            .then(() => setScanStatus("Scanning for QR Code..."))
+            .catch(err => {
+                setScanStatus(`Camera Permission Error. Please allow camera access for this site in your browser's settings.`);
+                console.error("Camera start failed.", err);
+            });
+    };
+
+    useEffect(() => {
+        html5QrCodeRef.current = new Html5Qrcode("qr-reader-sales");
+        return () => {
+            if (html5QrCodeRef.current?.isScanning) {
+                html5QrCodeRef.current.stop().catch(err => console.error("Cleanup stop scan failed.", err));
+            }
+        };
+    }, []);
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-75 backdrop-blur-sm flex flex-col items-center justify-center z-50 p-4 animate-fade-in-fast">
+            <Card title="Scan Product QR Code" className="w-full max-w-md relative animate-scale-in">
+                 <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
+                    <X size={20}/>
+                 </button>
+                <div id="qr-reader-sales" className="w-full mt-4"></div>
+                <p className="text-center text-sm my-2 text-gray-600">{scanStatus}</p>
+                <Button onClick={startScan} className="w-full">Start Scanning</Button>
+            </Card>
+        </div>
+    );
+};
+
 const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     const { state, dispatch, showToast } = useAppContext();
     
@@ -48,11 +203,10 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     });
 
     const [isSelectingProduct, setIsSelectingProduct] = useState(false);
-    const [productSearchTerm, setProductSearchTerm] = useState('');
     const [isScanning, setIsScanning] = useState(false);
     
     const [isAddingCustomer, setIsAddingCustomer] = useState(false);
-    const [newCustomer, setNewCustomer] = useState({ id: '', name: '', phone: '', address: '', area: '', reference: '' });
+    const [newCustomer, setNewCustomer] = useState(newCustomerInitialState);
     const isDirtyRef = useRef(false);
 
     // Effect to handle switching to edit mode from another page
@@ -98,7 +252,6 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             date: getLocalDateString(),
             reference: '',
         });
-        setProductSearchTerm('');
         setIsSelectingProduct(false);
         setMode('add');
         setSaleToEdit(null);
@@ -132,10 +285,10 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         }
         
         setIsSelectingProduct(false);
-        setProductSearchTerm('');
     };
     
     const handleProductScanned = (decodedText: string) => {
+        setIsScanning(false);
         const product = state.products.find(p => p.id.toLowerCase() === decodedText.toLowerCase());
         if (product) {
             handleSelectProduct(product);
@@ -200,7 +353,17 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         return totalBilled - totalPaid;
     }, [customerId, state.sales]);
 
-    const handleAddCustomer = () => {
+    const handleNewCustomerChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setNewCustomer(prev => ({...prev, [name]: value}));
+    }, []);
+
+    const handleCancelAddCustomer = useCallback(() => {
+        setIsAddingCustomer(false);
+        setNewCustomer(newCustomerInitialState);
+    }, []);
+
+    const handleAddCustomer = useCallback(() => {
         const trimmedId = newCustomer.id.trim();
         if (!trimmedId) {
             alert('Customer ID is required.');
@@ -228,11 +391,12 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             reference: newCustomer.reference || ''
         };
         dispatch({ type: 'ADD_CUSTOMER', payload: customerWithId });
-        setNewCustomer({ id: '', name: '', phone: '', address: '', area: '', reference: '' });
+        setNewCustomer(newCustomerInitialState);
         setIsAddingCustomer(false);
         setCustomerId(customerWithId.id);
         showToast("Customer added successfully!");
-    };
+    }, [newCustomer, state.customers, dispatch, showToast]);
+
 
     const generateAndSharePDF = async (sale: Sale, customer: Customer, paidAmountOnSale: number) => {
       try {
@@ -510,128 +674,6 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         resetForm();
     };
 
-    const AddCustomerModal = () => (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
-            <Card title="Add New Customer" className="w-full max-w-md animate-scale-in">
-                <div className="space-y-4">
-                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Customer ID</label>
-                        <div className="flex items-center mt-1">
-                            <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-                                CUST-
-                            </span>
-                            <input 
-                                type="text" 
-                                placeholder="Enter unique ID" 
-                                value={newCustomer.id} 
-                                onChange={e => setNewCustomer({ ...newCustomer, id: e.target.value })} 
-                                className="w-full p-2 border rounded-r-md" 
-                            />
-                        </div>
-                    </div>
-                    <input type="text" placeholder="Name" value={newCustomer.name} onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })} className="w-full p-2 border rounded" autoFocus />
-                    <input type="text" placeholder="Phone" value={newCustomer.phone} onChange={e => setNewCustomer({ ...newCustomer, phone: e.target.value })} className="w-full p-2 border rounded" />
-                    <input type="text" placeholder="Address" value={newCustomer.address} onChange={e => setNewCustomer({ ...newCustomer, address: e.target.value })} className="w-full p-2 border rounded" />
-                    <input type="text" placeholder="Area/Location" value={newCustomer.area} onChange={e => setNewCustomer({ ...newCustomer, area: e.target.value })} className="w-full p-2 border rounded" />
-                    <input type="text" placeholder="Reference (Optional)" value={newCustomer.reference} onChange={e => setNewCustomer({ ...newCustomer, reference: e.target.value })} className="w-full p-2 border rounded" />
-                    <div className="flex gap-2">
-                        <Button onClick={handleAddCustomer} className="w-full">Save Customer</Button>
-                        <Button onClick={() => { setIsAddingCustomer(false); setNewCustomer({ id: '', name: '', phone: '', address: '', area: '', reference: '' }); }} variant="secondary" className="w-full">Cancel</Button>
-                    </div>
-                </div>
-            </Card>
-        </div>
-    );
-
-    const ProductSearchModal = () => (
-      <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
-        <Card className="w-full max-w-lg animate-scale-in">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-bold">Select Product</h2>
-            <button onClick={() => setIsSelectingProduct(false)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
-              <X size={20}/>
-            </button>
-          </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="text"
-              placeholder="Search products..."
-              value={productSearchTerm}
-              onChange={e => setProductSearchTerm(e.target.value)}
-              className="w-full p-2 pl-10 border rounded-lg"
-              autoFocus
-            />
-          </div>
-          <div className="mt-4 max-h-80 overflow-y-auto space-y-2">
-            {state.products
-              .filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase()) || p.id.toLowerCase().includes(productSearchTerm.toLowerCase()))
-              .map(p => (
-              <div key={p.id} onClick={() => handleSelectProduct(p)} className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-purple-100 flex justify-between items-center">
-                <div>
-                  <p className="font-semibold">{p.name}</p>
-                  <p className="text-sm text-gray-500">Code: {p.id}</p>
-                </div>
-                <div className="text-right">
-                    <p className="font-semibold">₹{p.salePrice.toLocaleString('en-IN')}</p>
-                    <p className="text-sm">Stock: {p.quantity}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-    );
-    
-     const QRScannerModal: React.FC = () => {
-        const [scanStatus, setScanStatus] = useState<string>("Click 'Start Scanning' to activate camera.");
-        const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
-
-        const startScan = () => {
-            if (!html5QrCodeRef.current) return;
-            setScanStatus("Requesting camera permissions...");
-
-            const qrCodeSuccessCallback = (decodedText: string) => {
-                if (html5QrCodeRef.current?.isScanning) {
-                    html5QrCodeRef.current.stop().then(() => {
-                        setIsScanning(false);
-                        handleProductScanned(decodedText);
-                    });
-                }
-            };
-            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-
-            html5QrCodeRef.current.start({ facingMode: "environment" }, config, qrCodeSuccessCallback, undefined)
-                .then(() => setScanStatus("Scanning for QR Code..."))
-                .catch(err => {
-                    setScanStatus(`Camera Permission Error. Please allow camera access for this site in your browser's settings.`);
-                    console.error("Camera start failed.", err);
-                });
-        };
-
-        useEffect(() => {
-            html5QrCodeRef.current = new Html5Qrcode("qr-reader-sales");
-            return () => {
-                if (html5QrCodeRef.current?.isScanning) {
-                    html5QrCodeRef.current.stop().catch(err => console.error("Cleanup stop scan failed.", err));
-                }
-            };
-        }, []);
-
-        return (
-            <div className="fixed inset-0 bg-black bg-opacity-75 backdrop-blur-sm flex flex-col items-center justify-center z-50 p-4 animate-fade-in-fast">
-                <Card title="Scan Product QR Code" className="w-full max-w-md relative animate-scale-in">
-                     <button onClick={() => setIsScanning(false)} className="absolute top-4 right-4 p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
-                        <X size={20}/>
-                     </button>
-                    <div id="qr-reader-sales" className="w-full mt-4"></div>
-                    <p className="text-center text-sm my-2 text-gray-600">{scanStatus}</p>
-                    <Button onClick={startScan} className="w-full">Start Scanning</Button>
-                </Card>
-            </div>
-        );
-    };
-
     const canCreateSale = customerId && items.length > 0 && mode === 'add';
     const canUpdateSale = customerId && items.length > 0 && mode === 'edit';
     const canRecordPayment = customerId && items.length === 0 && parseFloat(paymentDetails.amount || '0') > 0 && customerTotalDue != null && customerTotalDue > 0.01 && mode === 'add';
@@ -639,9 +681,27 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
 
     return (
         <div className="space-y-4">
-            {isAddingCustomer && <AddCustomerModal />}
-            {isSelectingProduct && <ProductSearchModal />}
-            {isScanning && <QRScannerModal />}
+            {isAddingCustomer && 
+                <AddCustomerModal 
+                    newCustomer={newCustomer}
+                    onInputChange={handleNewCustomerChange}
+                    onSave={handleAddCustomer}
+                    onCancel={handleCancelAddCustomer}
+                />
+            }
+            {isSelectingProduct && 
+                <ProductSearchModal 
+                    products={state.products}
+                    onClose={() => setIsSelectingProduct(false)}
+                    onSelect={handleSelectProduct}
+                />
+            }
+            {isScanning && 
+                <QRScannerModal 
+                    onClose={() => setIsScanning(false)}
+                    onScanned={handleProductScanned}
+                />
+            }
             <h1 className="text-2xl font-bold text-primary">{pageTitle}</h1>
             
             <Card>

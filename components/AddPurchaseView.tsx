@@ -187,14 +187,19 @@ interface PurchaseFormProps {
     onSubmit: (purchaseData: Purchase) => void;
     onBack: () => void;
     setIsDirty: (isDirty: boolean) => void;
+    dispatch: React.Dispatch<any>;
+    showToast: (message: string, type?: 'success' | 'info') => void;
 }
 
-const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, suppliers, products, onSubmit, onBack, setIsDirty }) => {
+const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, suppliers, products, onSubmit, onBack, setIsDirty, dispatch, showToast }) => {
     
     const [supplierId, setSupplierId] = useState('');
     const [items, setItems] = useState<PurchaseItem[]>([]);
     const [supplierInvoiceId, setSupplierInvoiceId] = useState('');
     const [purchaseDate, setPurchaseDate] = useState(getLocalDateString());
+
+    const [isAddingSupplier, setIsAddingSupplier] = useState(false);
+    const [newSupplier, setNewSupplier] = useState({ id: '', name: '', phone: '', location: '', gstNumber: '', reference: '', account1: '', account2: '', upi: '' });
 
     const isDirtyRef = useRef(false);
 
@@ -360,6 +365,34 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
         reader.readAsText(file);
     };
     
+    const handleAddSupplier = () => {
+        const trimmedId = newSupplier.id.trim();
+        if (!trimmedId) {
+            alert('Supplier ID is required.');
+            return;
+        }
+        if (!newSupplier.name || !newSupplier.phone || !newSupplier.location) {
+            alert('Please fill all required fields (Name, Phone, Location).');
+            return;
+        }
+
+        const finalId = `SUPP-${trimmedId}`;
+        const isIdTaken = suppliers.some(c => c.id.toLowerCase() === finalId.toLowerCase());
+        
+        if (isIdTaken) {
+            alert(`Supplier ID "${finalId}" is already taken. Please choose another one.`);
+            return;
+        }
+
+        const supplierToAdd: Supplier = { ...newSupplier, id: finalId };
+        dispatch({ type: 'ADD_SUPPLIER', payload: supplierToAdd });
+        showToast("Supplier added successfully!");
+        
+        setNewSupplier({ id: '', name: '', phone: '', location: '', gstNumber: '', reference: '', account1: '', account2: '', upi: '' });
+        setIsAddingSupplier(false);
+        setSupplierId(finalId); // Automatically select the newly added supplier
+    };
+    
     const handleSubmit = () => {
         if (!supplierId || items.length === 0) {
             return alert("Please select a supplier and add at least one item.");
@@ -410,6 +443,33 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
 
     return (
         <div className="space-y-4">
+             {isAddingSupplier && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+                    <Card title="Add New Supplier" className="w-full max-w-md animate-scale-in">
+                        <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2">
+                             <div>
+                                <label className="block text-sm font-medium">Supplier ID</label>
+                                <div className="flex items-center mt-1">
+                                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 bg-gray-50 text-gray-500 text-sm">SUPP-</span>
+                                    <input type="text" placeholder="Enter unique ID" value={newSupplier.id} onChange={e => setNewSupplier({ ...newSupplier, id: e.target.value })} className="w-full p-2 border rounded-r-md" autoFocus />
+                                </div>
+                            </div>
+                            <input type="text" placeholder="Name*" value={newSupplier.name} onChange={e => setNewSupplier({ ...newSupplier, name: e.target.value })} className="w-full p-2 border rounded" />
+                            <input type="text" placeholder="Phone*" value={newSupplier.phone} onChange={e => setNewSupplier({ ...newSupplier, phone: e.target.value })} className="w-full p-2 border rounded" />
+                            <input type="text" placeholder="Location*" value={newSupplier.location} onChange={e => setNewSupplier({ ...newSupplier, location: e.target.value })} className="w-full p-2 border rounded" />
+                            <input type="text" placeholder="GST Number (Optional)" value={newSupplier.gstNumber} onChange={e => setNewSupplier({ ...newSupplier, gstNumber: e.target.value })} className="w-full p-2 border rounded" />
+                            <input type="text" placeholder="Reference (Optional)" value={newSupplier.reference} onChange={e => setNewSupplier({ ...newSupplier, reference: e.target.value })} className="w-full p-2 border rounded" />
+                            <input type="text" placeholder="Bank Account 1 (Optional)" value={newSupplier.account1} onChange={e => setNewSupplier({ ...newSupplier, account1: e.target.value })} className="w-full p-2 border rounded" />
+                            <input type="text" placeholder="Bank Account 2 (Optional)" value={newSupplier.account2} onChange={e => setNewSupplier({ ...newSupplier, account2: e.target.value })} className="w-full p-2 border rounded" />
+                            <input type="text" placeholder="UPI ID (Optional)" value={newSupplier.upi} onChange={e => setNewSupplier({ ...newSupplier, upi: e.target.value })} className="w-full p-2 border rounded" />
+                        </div>
+                         <div className="flex gap-2 pt-4 border-t mt-4">
+                            <Button onClick={handleAddSupplier} className="w-full">Save Supplier</Button>
+                            <Button onClick={() => setIsAddingSupplier(false)} variant="secondary" className="w-full">Cancel</Button>
+                        </div>
+                    </Card>
+                </div>
+            )}
             <input 
                 type="file" 
                 accept=".csv, text/csv" 
@@ -430,15 +490,22 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
                 mode={mode}
             />
 
-            <Button onClick={onBack}>&larr; Back</Button>
+            <Button onClick={onBack} variant="secondary" className="bg-purple-200 text-primary hover:bg-purple-300">&larr; Back</Button>
             <Card title={title}>
-                <div className="space-y-4">
+                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Supplier</label>
-                        <select value={supplierId} onChange={e => setSupplierId(e.target.value)} className="w-full p-2 border rounded custom-select mt-1" disabled={mode === 'edit'}>
-                            <option value="">Select a Supplier</option>
-                            {suppliers.map(s => <option key={s.id} value={s.id}>{s.name} - {s.location}</option>)}
-                        </select>
+                        <div className="flex gap-2 items-center mt-1">
+                            <select value={supplierId} onChange={e => setSupplierId(e.target.value)} className="w-full p-2 border rounded custom-select" disabled={mode === 'edit'}>
+                                <option value="">Select a Supplier</option>
+                                {suppliers.map(s => <option key={s.id} value={s.id}>{s.name} - {s.location}</option>)}
+                            </select>
+                             {mode === 'add' && (
+                                <Button onClick={() => setIsAddingSupplier(true)} variant="secondary" className="flex-shrink-0">
+                                    <Plus size={16}/> New
+                                </Button>
+                            )}
+                        </div>
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Purchase Date</label>
@@ -481,19 +548,19 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
                                 <div>
                                     <label className="text-xs font-medium text-gray-500">Qty</label>
-                                    <input type="number" value={item.quantity} onChange={e => handleItemChange(item.productId, 'quantity', e.target.value)} className="w-full p-1 border rounded" />
+                                    <input type="number" value={item.quantity || ''} onChange={e => handleItemChange(item.productId, 'quantity', e.target.value)} className="w-full p-1 border rounded" />
                                 </div>
                                 <div>
                                     <label className="text-xs font-medium text-gray-500">Purchase Price</label>
-                                    <input type="number" value={item.price} onChange={e => handleItemChange(item.productId, 'price', e.target.value)} className="w-full p-1 border rounded" />
+                                    <input type="number" value={item.price || ''} onChange={e => handleItemChange(item.productId, 'price', e.target.value)} className="w-full p-1 border rounded" />
                                 </div>
                                 <div>
                                     <label className="text-xs font-medium text-gray-500">Sale Price</label>
-                                    <input type="number" value={item.saleValue} onChange={e => handleItemChange(item.productId, 'saleValue', e.target.value)} className="w-full p-1 border rounded" />
+                                    <input type="number" value={item.saleValue || ''} onChange={e => handleItemChange(item.productId, 'saleValue', e.target.value)} className="w-full p-1 border rounded" />
                                 </div>
                                 <div>
                                     <label className="text-xs font-medium text-gray-500">GST %</label>
-                                    <input type="number" value={item.gstPercent} onChange={e => handleItemChange(item.productId, 'gstPercent', e.target.value)} className="w-full p-1 border rounded" />
+                                    <input type="number" value={item.gstPercent || ''} onChange={e => handleItemChange(item.productId, 'gstPercent', e.target.value)} className="w-full p-1 border rounded" />
                                 </div>
                             </div>
                         </div>
