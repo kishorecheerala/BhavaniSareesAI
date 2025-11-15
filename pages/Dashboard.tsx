@@ -489,19 +489,19 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     icon={ShoppingCart} 
                     title="Total Sales (All Time)" 
                     value={totalSales} 
-                    color="bg-purple-600 shadow-lg" 
+                    color="bg-primary shadow-lg" 
                 />
                  <MetricCard 
                     icon={Package} 
                     title="Total Purchases (All Time)" 
                     value={totalPurchases} 
-                    color="bg-green-500 shadow-lg" 
+                    color="bg-emerald-500 shadow-lg" 
                 />
                 <MetricCard 
                     icon={IndianRupee} 
                     title="Customer Dues" 
                     value={totalCustomerDues} 
-                    color="bg-red-500 shadow-lg" 
+                    color="bg-rose-500 shadow-lg" 
                 />
                 <MetricCard 
                     icon={IndianRupee} 
@@ -519,7 +519,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     icon={PackageCheck} 
                     title="Items in Stock" 
                     value={totalStockQuantity} 
-                    color="bg-teal-500 shadow-lg"
+                    color="bg-cyan-500 shadow-lg"
                     unit="" 
                 />
             </div>
@@ -549,7 +549,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                         ))}
                     </select>
                 </div>
-                <div className="text-center p-4 bg-purple-50 rounded-lg flex flex-col items-center justify-center">
+                <div className="text-center p-4 bg-teal-50 rounded-lg flex flex-col items-center justify-center">
                     <div className="flex items-center gap-2">
                         <TrendingUp className="w-6 h-6 text-primary"/>
                         <p className="text-lg font-semibold text-primary">Total Sales</p>

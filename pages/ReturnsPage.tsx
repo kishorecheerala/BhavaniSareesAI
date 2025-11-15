@@ -198,7 +198,7 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                 `Rs. ${(item.quantity * item.price).toLocaleString('en-IN')}`
             ]),
             theme: 'grid',
-            headStyles: { fillColor: [106, 13, 173] },
+            headStyles: { fillColor: [13, 148, 136] },
             columnStyles: { 3: { halign: 'right' }, 4: { halign: 'right' } }
         });
 
@@ -317,7 +317,7 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                     
                     {selectedInvoice && (
                         <>
-                           <div className="p-3 bg-purple-50 rounded-lg border text-sm space-y-1">
+                           <div className="p-3 bg-teal-50 rounded-lg border text-sm space-y-1">
                                 <div className="flex justify-between"><span>Invoice Total:</span> <span className="font-semibold">₹{invoiceTotal.toLocaleString('en-IN')}</span></div>
                                 <div className="flex justify-between"><span>Amount Paid:</span> <span className="font-semibold text-green-600">₹{amountPaid.toLocaleString('en-IN')}</span></div>
                                 <div className="flex justify-between"><span>Current Due:</span> <span className="font-semibold text-red-600">₹{currentDue.toLocaleString('en-IN')}</span></div>

@@ -305,7 +305,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
                 `Rs. ${(item.quantity * item.price).toLocaleString('en-IN')}`
             ]),
             theme: 'grid',
-            headStyles: { fillColor: [106, 13, 173] },
+            headStyles: { fillColor: [13, 148, 136] },
             columnStyles: { 3: { halign: 'right' }, 4: { halign: 'right' } }
         });
 
@@ -701,7 +701,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
                             <div 
                                 key={supplier.id} 
                                 onClick={() => setSelectedSupplier(supplier)} 
-                                className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-purple-100 border animate-slide-up-fade"
+                                className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-teal-50 border animate-slide-up-fade"
                                 style={{ animationDelay: `${index * 50}ms` }}
                             >
                                 <div className="flex justify-between items-start">

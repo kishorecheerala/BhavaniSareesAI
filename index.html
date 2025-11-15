@@ -10,7 +10,7 @@
     
     <!-- PWA additions -->
     <link rel="manifest" href="/pages/manifest.json" />
-    <meta name="theme-color" content="#6a0dad">
+    <meta name="theme-color" content="#0d9488">
     <link rel="apple-touch-icon" href="/vite.svg">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
@@ -21,12 +21,12 @@
         theme: {
           extend: {
             colors: {
-              primary: '#6a0dad',
-              secondary: '#9370db',
-              accent: '#ff69b4',
-              background: '#f3e5f5',
-              text: '#333333',
-              divine_gold: '#FFBF00',
+              primary: '#0d9488', // teal-600
+              secondary: '#2dd4bf', // teal-400
+              accent: '#f59e0b', // amber-500
+              background: '#f8fafc', // slate-50
+              text: '#334155', // slate-700
+              divine_gold: '#f59e0b', // updated to match accent
             },
             keyframes: {
               'fade-in-out': {
@@ -46,8 +46,8 @@
                 '100%': { opacity: 1, transform: 'translateY(0)' },
               },
               'pulse-bg': {
-                '0%, 100%': { backgroundColor: '#f3f4f6' },
-                '50%': { backgroundColor: '#e5e7eb' },
+                '0%, 100%': { backgroundColor: '#f1f5f9' }, // slate-100
+                '50%': { backgroundColor: '#e2e8f0' }, // slate-200
               },
             },
             animation: {
@@ -63,7 +63,7 @@
     </script>
     <style>
       :root {
-        --primary-color: #6a0dad;
+        --primary-color: #0d9488;
       }
 
       .custom-select {

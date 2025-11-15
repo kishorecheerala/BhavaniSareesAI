@@ -117,7 +117,7 @@ const ProductSearchModal: React.FC<{
               {products
                 .filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase()) || p.id.toLowerCase().includes(productSearchTerm.toLowerCase()))
                 .map(p => (
-                <div key={p.id} onClick={() => onSelect(p)} className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-purple-100 flex justify-between items-center">
+                <div key={p.id} onClick={() => onSelect(p)} className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-teal-50 flex justify-between items-center">
                   <div>
                     <p className="font-semibold">{p.name}</p>
                     <p className="text-sm text-gray-500">Code: {p.id}</p>
@@ -432,7 +432,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
           
           doc.setFont('times', 'bold');
           doc.setFontSize(16);
-          doc.setTextColor('#6a0dad'); // Primary Color
+          doc.setTextColor('#0d9488'); // Primary Color
           doc.text('Bhavani Sarees', centerX, y, { align: 'center' });
           y += 7;
 
@@ -894,7 +894,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                         {customerId ? (items.length === 0 ? 'Enter payment or add items' : 'Complete billing details') : 'Select a customer'}
                     </Button>
                 )}
-                <Button onClick={resetForm} variant="secondary" className="w-full bg-purple-300 hover:bg-purple-400 focus:ring-purple-300">
+                <Button onClick={resetForm} variant="secondary" className="w-full bg-teal-200 hover:bg-teal-300 focus:ring-teal-200">
                     {mode === 'edit' ? 'Cancel Edit' : 'Clear Form'}
                 </Button>
             </div>

@@ -12,8 +12,8 @@ const Button: React.FC<ButtonProps> = ({ children, variant = 'primary', classNam
   const baseClasses = 'px-4 py-2 rounded-md font-semibold text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-sm flex items-center justify-center gap-2 transform hover:scale-[1.02] active:scale-[0.98]';
   
   const variantClasses = {
-    primary: 'bg-primary hover:bg-purple-800 focus:ring-primary',
-    secondary: 'bg-secondary hover:bg-purple-600 focus:ring-secondary',
+    primary: 'bg-primary hover:bg-teal-700 focus:ring-primary',
+    secondary: 'bg-secondary hover:bg-teal-500 focus:ring-secondary',
     danger: 'bg-red-500 hover:bg-red-600 focus:ring-red-500',
     info: 'bg-blue-500 hover:bg-blue-600 focus:ring-blue-500',
   };

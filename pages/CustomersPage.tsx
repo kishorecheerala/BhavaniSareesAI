@@ -288,7 +288,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             
             doc.setFont('times', 'bold');
             doc.setFontSize(16);
-            doc.setTextColor('#6a0dad'); // Primary Color
+            doc.setTextColor('#0d9488'); // Primary Color
             doc.text('Bhavani Sarees', centerX, y, { align: 'center' });
             y += 7;
 
@@ -419,7 +419,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
 
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(20);
-        doc.setTextColor('#6a0dad'); // Primary color
+        doc.setTextColor('#0d9488'); // Primary color
         doc.text('Customer Dues Summary', 105, currentY, { align: 'center' });
         currentY += 8;
         
@@ -456,14 +456,14 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                 ];
             }),
             theme: 'grid',
-            headStyles: { fillColor: [106, 13, 173] }, // Primary color
+            headStyles: { fillColor: [13, 148, 136] }, // Primary color
             columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } }
         });
         
         currentY = (doc as any).lastAutoTable.finalY + 15;
         doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor('#6a0dad');
+        doc.setTextColor('#0d9488');
         doc.text(
             `Total Outstanding Due: Rs. ${totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
             196, currentY, { align: 'right' }

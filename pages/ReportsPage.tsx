@@ -80,7 +80,7 @@ const ReportsPage: React.FC = () => {
             startY: 30,
             head: [['Customer Name', 'Area', 'Last Paid Date', 'Due Amount (Rs.)']],
             body: customerDues.map(c => [ c.name, c.area, c.lastPaidDate || 'N/A', c.dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 }) ]),
-            theme: 'grid', headStyles: { fillColor: [106, 13, 173] }, columnStyles: { 3: { halign: 'right' } }
+            theme: 'grid', headStyles: { fillColor: [13, 148, 136] }, columnStyles: { 3: { halign: 'right' } }
         });
         const finalY = (doc as any).lastAutoTable.finalY + 10;
         doc.text(`Total Due: Rs. ${totalDuesFiltered.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 196, finalY, { align: 'right' });
@@ -122,7 +122,7 @@ const ReportsPage: React.FC = () => {
                 s.totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 }),
                 s.outstandingDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })
             ]),
-            theme: 'grid', headStyles: { fillColor: [106, 13, 173] },
+            theme: 'grid', headStyles: { fillColor: [13, 148, 136] },
             columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } }
         });
         doc.save('customer-account-summary.pdf');
@@ -198,7 +198,7 @@ const ReportsPage: React.FC = () => {
                 p.nextDueDate || 'N/A',
                 p.dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })
             ]),
-            theme: 'grid', headStyles: { fillColor: [106, 13, 173] },
+            theme: 'grid', headStyles: { fillColor: [13, 148, 136] },
             columnStyles: { 3: { halign: 'right' } }
         });
         doc.save('supplier-dues-report.pdf');
@@ -228,7 +228,7 @@ const ReportsPage: React.FC = () => {
                 s.totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 }),
                 s.outstandingDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })
             ]),
-            theme: 'grid', headStyles: { fillColor: [106, 13, 173] },
+            theme: 'grid', headStyles: { fillColor: [13, 148, 136] },
             columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } }
         });
         doc.save('supplier-account-summary.pdf');

@@ -53,7 +53,7 @@ const NavItem: React.FC<{
     <button
       onClick={onClick}
       className={`flex flex-col items-center justify-center w-full pt-2 pb-1 text-xs transition-colors duration-200 ${
-        isActive ? 'text-white scale-[1.02]' : 'text-purple-200 hover:text-white'
+        isActive ? 'text-white scale-[1.02]' : 'text-teal-100 hover:text-white'
       }`}
     >
       <Icon className="w-6 h-6 mb-1" />
@@ -367,7 +367,7 @@ const MainApp: React.FC = () => {
       />
       {showProfit && (
         <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-[200] animate-fade-in-fast" onClick={() => setShowProfit(false)}>
-            <div className="bg-gradient-to-br from-divine_gold to-amber-400 text-white rounded-2xl shadow-2xl p-6 md:p-8 text-center animate-scale-in mx-4 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-gradient-to-br from-amber-500 to-amber-400 text-white rounded-2xl shadow-2xl p-6 md:p-8 text-center animate-scale-in mx-4 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
                 <h2 className="text-2xl font-bold mb-4">{profitCardTitle}</h2>
                 
                 <div className="flex flex-col sm:flex-row gap-2 mb-4">
@@ -487,7 +487,7 @@ const MainApp: React.FC = () => {
                  <button
                     onClick={() => setIsMoreMenuOpen(prev => !prev)}
                     className={`flex flex-col items-center justify-center w-full h-full text-xs transition-colors duration-200 ${
-                        isMoreMenuActive ? 'text-white scale-[1.02]' : 'text-purple-200 hover:text-white'
+                        isMoreMenuActive ? 'text-white scale-[1.02]' : 'text-teal-100 hover:text-white'
                     }`}
                     aria-haspopup="true"
                     aria-expanded={isMoreMenuOpen}
@@ -505,7 +505,7 @@ const MainApp: React.FC = () => {
                                     setCurrentPage(item.page);
                                     setIsMoreMenuOpen(false);
                                 }} 
-                                className="w-full flex items-center gap-3 p-3 text-left hover:bg-purple-50 transition-colors"
+                                className="w-full flex items-center gap-3 p-3 text-left hover:bg-teal-50 transition-colors"
                             >
                                 <item.icon className="w-5 h-5 text-primary" />
                                 <span className={`font-semibold text-sm ${currentPage === item.page ? 'text-primary' : ''}`}>

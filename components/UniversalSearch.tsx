@@ -158,10 +158,10 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({ isOpen, onClose, onNa
                         autoComplete="off"
                     />
                 </div>
-                <button onClick={() => setIsScanning(true)} className="p-3 rounded-full text-primary bg-purple-100 hover:bg-purple-200 transition-colors" aria-label="Scan QR Code">
+                <button onClick={() => setIsScanning(true)} className="p-3 rounded-full text-primary bg-teal-100 hover:bg-teal-200 transition-colors" aria-label="Scan QR Code">
                     <QrCode size={24} />
                 </button>
-                <button onClick={onClose} className="p-3 rounded-full text-primary bg-purple-100 hover:bg-purple-200 transition-colors" aria-label="Close search">
+                <button onClick={onClose} className="p-3 rounded-full text-primary bg-teal-100 hover:bg-teal-200 transition-colors" aria-label="Close search">
                     <X size={24} />
                 </button>
             </div>
@@ -175,10 +175,10 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({ isOpen, onClose, onNa
                     <div className="space-y-6">
                         {results.customers.length > 0 && (
                             <section>
-                                <h2 className="text-sm font-bold uppercase text-purple-700 mb-2">Customers</h2>
+                                <h2 className="text-sm font-bold uppercase text-teal-700 mb-2">Customers</h2>
                                 <div className="space-y-2">
                                     {results.customers.map(c => (
-                                        <div key={c.id} onClick={() => onNavigate('CUSTOMERS', c.id)} className="p-3 bg-white rounded-lg shadow-sm cursor-pointer hover:bg-purple-50 flex items-center gap-3">
+                                        <div key={c.id} onClick={() => onNavigate('CUSTOMERS', c.id)} className="p-3 bg-white rounded-lg shadow-sm cursor-pointer hover:bg-teal-50 flex items-center gap-3">
                                             <User className="w-5 h-5 text-primary" />
                                             <div>
                                                 <p className="font-semibold">{c.name}</p>
@@ -191,10 +191,10 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({ isOpen, onClose, onNa
                         )}
                         {results.suppliers.length > 0 && (
                              <section>
-                                <h2 className="text-sm font-bold uppercase text-purple-700 mb-2">Suppliers</h2>
+                                <h2 className="text-sm font-bold uppercase text-teal-700 mb-2">Suppliers</h2>
                                 <div className="space-y-2">
                                     {results.suppliers.map(s => (
-                                        <div key={s.id} onClick={() => onNavigate('PURCHASES', s.id)} className="p-3 bg-white rounded-lg shadow-sm cursor-pointer hover:bg-purple-50 flex items-center gap-3">
+                                        <div key={s.id} onClick={() => onNavigate('PURCHASES', s.id)} className="p-3 bg-white rounded-lg shadow-sm cursor-pointer hover:bg-teal-50 flex items-center gap-3">
                                             <Package className="w-5 h-5 text-primary" />
                                             <div>
                                                 <p className="font-semibold">{s.name}</p>
@@ -207,10 +207,10 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({ isOpen, onClose, onNa
                         )}
                         {results.products.length > 0 && (
                             <section>
-                                <h2 className="text-sm font-bold uppercase text-purple-700 mb-2">Products</h2>
+                                <h2 className="text-sm font-bold uppercase text-teal-700 mb-2">Products</h2>
                                 <div className="space-y-2">
                                     {results.products.map(p => (
-                                        <div key={p.id} onClick={() => onNavigate('PRODUCTS', p.id)} className="p-3 bg-white rounded-lg shadow-sm cursor-pointer hover:bg-purple-50 flex items-center gap-3">
+                                        <div key={p.id} onClick={() => onNavigate('PRODUCTS', p.id)} className="p-3 bg-white rounded-lg shadow-sm cursor-pointer hover:bg-teal-50 flex items-center gap-3">
                                             <Boxes className="w-5 h-5 text-primary" />
                                             <div>
                                                 <p className="font-semibold">{p.name}</p>
@@ -223,12 +223,12 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({ isOpen, onClose, onNa
                         )}
                          {results.sales.length > 0 && (
                              <section>
-                                <h2 className="text-sm font-bold uppercase text-purple-700 mb-2">Sale Invoices</h2>
+                                <h2 className="text-sm font-bold uppercase text-teal-700 mb-2">Sale Invoices</h2>
                                 <div className="space-y-2">
                                     {results.sales.map(s => {
                                         const customer = state.customers.find(c => c.id === s.customerId);
                                         return (
-                                            <div key={s.id} onClick={() => onNavigate('CUSTOMERS', s.customerId)} className="p-3 bg-white rounded-lg shadow-sm cursor-pointer hover:bg-purple-50 flex items-center gap-3">
+                                            <div key={s.id} onClick={() => onNavigate('CUSTOMERS', s.customerId)} className="p-3 bg-white rounded-lg shadow-sm cursor-pointer hover:bg-teal-50 flex items-center gap-3">
                                                 <ShoppingCart className="w-5 h-5 text-primary" />
                                                 <div>
                                                     <p className="font-semibold">To: {customer?.name || 'Unknown'}</p>
@@ -242,19 +242,19 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({ isOpen, onClose, onNa
                         )}
                         {results.purchases.length > 0 && (
                              <section>
-                                <h2 className="text-sm font-bold uppercase text-purple-700 mb-2">Purchase Invoices</h2>
+                                <h2 className="text-sm font-bold uppercase text-teal-700 mb-2">Purchase Invoices</h2>
                                 <div className="space-y-2">
                                     {results.purchases.map(p => {
                                         const supplier = state.suppliers.find(s => s.id === p.supplierId);
                                         return (
-                                            <div key={p.id} onClick={() => onNavigate('PURCHASES', p.supplierId)} className="p-3 bg-white rounded-lg shadow-sm cursor-pointer hover:bg-purple-50 flex items-center gap-3">
+                                            <div key={p.id} onClick={() => onNavigate('PURCHASES', p.supplierId)} className="p-3 bg-white rounded-lg shadow-sm cursor-pointer hover:bg-teal-50 flex items-center gap-3">
                                                 <Package className="w-5 h-5 text-primary" />
                                                 <div>
                                                     <p className="font-semibold">From: {supplier?.name || 'Unknown'}</p>
                                                     <p className="text-xs text-gray-500">ID: {p.id} &middot; {new Date(p.date).toLocaleDateString()}</p>
                                                 </div>
                                             </div>
-                                        )
+                                        );
                                     })}
                                 </div>
                             </section>
@@ -262,7 +262,7 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({ isOpen, onClose, onNa
                     </div>
                 ) : (
                     <div className="text-center text-gray-500 pt-10">
-                        <p>No results found for "{searchTerm}"</p>
+                        <p>No results found for "{searchTerm}".</p>
                     </div>
                 )}
             </div>
