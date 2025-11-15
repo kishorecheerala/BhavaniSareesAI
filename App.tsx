@@ -311,7 +311,7 @@ const MainApp: React.FC = () => {
       case 'PRODUCTS':
         return <ProductsPage {...commonProps} />;
       case 'INSIGHTS':
-        return <InsightsPage />;
+        return <InsightsPage setCurrentPage={_setCurrentPage} />;
       default:
         return <Dashboard setCurrentPage={_setCurrentPage} />;
     }

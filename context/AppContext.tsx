@@ -474,7 +474,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const validatedMetadata = Array.isArray(app_metadata) ? app_metadata : [];
         const pinData = validatedMetadata.find(m => m.id === 'securityPin') as AppMetadataPin | undefined;
 
-        // FIX: Update validatedState type to omit 'pin' as it's handled separately.
         const validatedState: Omit<AppState, 'toast' | 'selection' | 'installPromptEvent' | 'notifications' | 'profile' | 'pin'> = {
             customers: Array.isArray(customers) ? customers : [],
             suppliers: Array.isArray(suppliers) ? suppliers : [],
@@ -485,7 +484,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             app_metadata: validatedMetadata,
         };
         dispatch({ type: 'SET_STATE', payload: validatedState });
-        dispatch({ type: 'SET_PIN', payload: pinData?.pin || '' });
+        if (pinData?.pin) {
+            dispatch({ type: 'SET_PIN', payload: pinData.pin });
+        }
         dispatch({ type: 'SET_NOTIFICATIONS', payload: Array.isArray(notifications) ? notifications : [] });
         dispatch({ type: 'SET_PROFILE', payload: (Array.isArray(profile) && profile.length > 0) ? profile[0] : null });
       } catch (error) {

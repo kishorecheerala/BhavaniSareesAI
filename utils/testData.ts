@@ -1,6 +1,5 @@
 
 
-// FIX: Changed import for AppState from '../types' to '../context/AppContext' as it's defined there.
 import { AppState } from '../context/AppContext';
 import { ProfileData, Customer, Supplier, Product, Purchase, Sale, Return } from '../types';
 
@@ -228,7 +227,6 @@ const returns: Return[] = [
 // For this static file, the quantities in the `products` array are pre-calculated for simplicity.
 // (Total Purchases) - (Total Sales) + (Total Customer Returns)
 
-// FIX: Add 'pin' to Omit<> to match the SET_STATE action payload type, which handles pin separately.
 export const testData: Omit<AppState, 'toast' | 'selection' | 'installPromptEvent' | 'notifications' | 'profile' | 'pin'> = {
   customers,
   suppliers,

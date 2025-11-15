@@ -1,6 +1,6 @@
 
+
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-// FIX: Import AppMetadata from types to use the correct union type
 import { Customer, Supplier, Product, Sale, Purchase, Return, Notification, ProfileData, AppMetadata } from '../types';
 import { AppState } from '../context/AppContext';
 
@@ -9,8 +9,6 @@ const DB_VERSION = 4; // Bump version for schema change
 
 export type StoreName = 'customers' | 'suppliers' | 'products' | 'sales' | 'purchases' | 'returns' | 'app_metadata' | 'notifications' | 'profile';
 const STORE_NAMES: StoreName[] = ['customers', 'suppliers', 'products', 'sales', 'purchases', 'returns', 'app_metadata', 'notifications', 'profile'];
-
-// FIX: Remove incorrect local definition of AppMetadata. The imported one is the correct union type.
 
 interface BhavaniSareesDB extends DBSchema {
   customers: { key: string; value: Customer; };

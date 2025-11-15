@@ -7,7 +7,6 @@ interface FloatingActionButtonProps {
     onNavigate: (page: Page, action?: 'new') => void;
 }
 
-// FIX: Define a type for the action items to ensure type safety for the 'page' property.
 interface FabAction {
     icon: React.ElementType;
     label: string;

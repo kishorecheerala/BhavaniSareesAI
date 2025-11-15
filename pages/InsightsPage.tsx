@@ -4,8 +4,13 @@ import { useAppContext } from '../context/AppContext';
 import Card from '../components/Card';
 import PinModal from '../components/PinModal';
 import ConfirmationModal from '../components/ConfirmationModal';
+import { Page } from '../types';
 
-const InsightsPage: React.FC = () => {
+interface InsightsPageProps {
+    setCurrentPage: (page: Page) => void;
+}
+
+const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
     const { state, isDbLoaded, dispatch, showToast } = useAppContext();
     
     type PinState = 'checking' | 'locked' | 'unlocked' | 'no_pin_setup';
@@ -43,6 +48,10 @@ const InsightsPage: React.FC = () => {
         dispatch({ type: 'REMOVE_PIN' });
         setIsResetConfirmOpen(false);
         showToast('PIN has been reset. Please set a new one.', 'info');
+    };
+    
+    const handleCancelPin = () => {
+        setCurrentPage('DASHBOARD');
     };
 
     // --- Profit Calculation ---
@@ -176,12 +185,14 @@ const InsightsPage: React.FC = () => {
                         correctPin={state.pin}
                         onCorrectPin={handlePinCorrect}
                         onResetRequest={() => setIsResetConfirmOpen(true)}
+                        onCancel={handleCancelPin}
                     />
                 )}
                 {pinState === 'no_pin_setup' && (
                     <PinModal
                         mode="setup"
                         onSetPin={handlePinSet}
+                        onCancel={handleCancelPin}
                     />
                 )}
             </div>
@@ -263,6 +274,7 @@ const InsightsPage: React.FC = () => {
                         ))}
                     </div>
                 </Card>
+
             </div>
         </div>
     );
