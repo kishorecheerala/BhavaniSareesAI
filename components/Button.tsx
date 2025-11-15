@@ -4,7 +4,7 @@ import React from 'react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
-  variant?: 'primary' | 'secondary' | 'danger';
+  variant?: 'primary' | 'secondary' | 'danger' | 'info';
   className?: string;
 }
 
@@ -15,6 +15,7 @@ const Button: React.FC<ButtonProps> = ({ children, variant = 'primary', classNam
     primary: 'bg-primary hover:bg-purple-800 focus:ring-primary',
     secondary: 'bg-secondary hover:bg-purple-600 focus:ring-secondary',
     danger: 'bg-red-500 hover:bg-red-600 focus:ring-red-500',
+    info: 'bg-blue-500 hover:bg-blue-600 focus:ring-blue-500',
   };
 
   return (

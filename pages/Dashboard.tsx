@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { IndianRupee, User, AlertTriangle, Download, Upload, ShoppingCart, Package, XCircle, CheckCircle, Info, Calendar, ShieldCheck, ShieldAlert, ShieldX, Archive, PackageCheck } from 'lucide-react';
+import { IndianRupee, User, AlertTriangle, Download, Upload, ShoppingCart, Package, XCircle, CheckCircle, Info, Calendar, ShieldCheck, ShieldAlert, ShieldX, Archive, PackageCheck, TestTube2 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import * as db from '../utils/db';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { Page, Customer, Sale } from '../types';
+import { testData, testProfile } from '../utils/testData';
 
 interface DashboardProps {
     setCurrentPage: (page: Page) => void;
@@ -355,6 +356,14 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
         setCurrentPage('CUSTOMERS');
     };
 
+    const handleLoadDemoData = () => {
+        if (window.confirm('Are you sure you want to load demo data? This will overwrite ALL existing data in the app.')) {
+            dispatch({ type: 'SET_STATE', payload: testData });
+            dispatch({ type: 'SET_PROFILE', payload: testProfile });
+            showToast('Demo data loaded successfully!');
+        }
+    };
+
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
     return (
@@ -446,7 +455,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                         ref={fileInputRef}
                         onChange={handleFileSelect}
                     />
-                    <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <Button onClick={handleBackup} className="w-full">
                             <Download className="w-4 h-4 mr-2" />
                             Backup Data Now
@@ -454,6 +463,10 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                         <Button onClick={() => fileInputRef.current?.click()} variant="secondary" className="w-full">
                             <Upload className="w-4 h-4 mr-2" />
                             Restore from Backup
+                        </Button>
+                         <Button onClick={handleLoadDemoData} variant="info" className="w-full sm:col-span-2">
+                            <TestTube2 className="w-4 h-4 mr-2" />
+                            Load Demo Data
                         </Button>
                     </div>
                      {installPromptEvent && (

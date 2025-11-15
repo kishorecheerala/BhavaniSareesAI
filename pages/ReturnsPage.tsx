@@ -187,8 +187,11 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
             return;
         }
         
+        const now = new Date();
+        const returnId = `RET-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}-${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
+
         const newReturn: Return = {
-            id: `RET-${Date.now()}`,
+            id: returnId,
             type: activeTab,
             partyId,
             referenceId,
@@ -403,6 +406,7 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                                         <div>
                                             <p className={`font-bold text-sm ${ret.type === 'CUSTOMER' ? 'text-blue-600' : 'text-teal-600'}`}>{ret.type === 'CUSTOMER' ? 'Customer Return' : 'Return to Supplier'}</p>
                                             <p className="font-semibold">{party?.name || 'Unknown'}</p>
+                                            <p className="text-xs text-gray-500">ID: {ret.id}</p>
                                             <p className="text-xs text-gray-500">Date: {new Date(ret.returnDate).toLocaleDateString()}</p>
                                             <p className="text-xs text-gray-500">Ref Invoice: {ret.referenceId}</p>
                                         </div>
