@@ -10,6 +10,7 @@ import PurchaseForm from '../components/AddPurchaseView';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import BatchBarcodeModal from '../components/BatchBarcodeModal';
+import { logoBase64 } from '../utils/logo';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -264,28 +265,34 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
 
         const doc = new jsPDF();
         
+        doc.addImage(logoBase64, 'JPEG', 14, 10, 20, 20);
+
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(20);
-        doc.text('DEBIT NOTE', 105, 15, { align: 'center' });
+        doc.text('DEBIT NOTE', 105, 20, { align: 'center' });
+        
+        let currentY = 35;
         
         doc.setFontSize(12);
-        doc.text(profile.name, 14, 25);
+        doc.text(profile.name, 14, currentY);
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
         const addressLines = doc.splitTextToSize(profile.address, 80);
-        doc.text(addressLines, 14, 30);
-        let currentY = 30 + (addressLines.length * 5);
-        if (profile.phone) doc.text(`Phone: ${profile.phone}`, 14, currentY);
-        if (profile.gstNumber) { currentY += 5; doc.text(`GSTIN: ${profile.gstNumber}`, 14, currentY); }
+        doc.text(addressLines, 14, currentY + 5);
+        let leftY = currentY + 5 + (addressLines.length * 5);
+        if (profile.phone) { doc.text(`Phone: ${profile.phone}`, 14, leftY); leftY += 5; }
+        if (profile.gstNumber) { doc.text(`GSTIN: ${profile.gstNumber}`, 14, leftY); }
         
         doc.setFont('helvetica', 'bold');
-        doc.text('To:', 120, 25);
+        doc.text('To:', 120, currentY);
         doc.setFont('helvetica', 'normal');
-        doc.text(supplier.name, 120, 30);
+        doc.text(supplier.name, 120, currentY + 5);
         const supplierAddressLines = doc.splitTextToSize(supplier.location, 80);
-        doc.text(supplierAddressLines, 120, 35);
+        doc.text(supplierAddressLines, 120, currentY + 10);
+        let rightY = currentY + 10 + (supplierAddressLines.length * 5);
 
-        currentY += 15;
+        currentY = Math.max(leftY, rightY) + 15;
+        
         doc.setDrawColor(100);
         doc.line(14, currentY, 196, currentY);
         currentY += 8;

@@ -6,6 +6,7 @@ import Button from '../components/Button';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Customer, Sale, Supplier, Page } from '../types';
+import { logoBase64 } from '../utils/logo';
 
 interface CustomerWithDue extends Customer {
   dueAmount: number;
@@ -84,9 +85,10 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ setCurrentPage }) => {
     const generateDuesPDF = () => {
         if (customerDues.length === 0) return alert("No customer dues data to export.");
         const doc = new jsPDF();
+        doc.addImage(logoBase64, 'JPEG', doc.internal.pageSize.getWidth() - 34, 10, 20, 20);
         doc.text('Customer Dues Report', 14, 22);
         autoTable(doc, {
-            startY: 30,
+            startY: 40,
             head: [['Customer Name', 'Area', 'Last Paid Date', 'Due Amount (Rs.)']],
             body: customerDues.map(c => [ c.name, c.area, c.lastPaidDate || 'N/A', c.dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 }) ]),
             theme: 'grid', headStyles: { fillColor: [13, 148, 136] }, columnStyles: { 3: { halign: 'right' } }
@@ -130,9 +132,10 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ setCurrentPage }) => {
     const generateCustomerSummaryPDF = () => {
         if (customerAccountSummary.length === 0) return alert("No customer account data to export.");
         const doc = new jsPDF();
+        doc.addImage(logoBase64, 'JPEG', doc.internal.pageSize.getWidth() - 34, 10, 20, 20);
         doc.text('Customer Account Summary Report', 14, 22);
         autoTable(doc, {
-            startY: 30,
+            startY: 40,
             head: [['Customer Name', 'Last Purchase Date', 'Total Purchased', 'Total Paid', 'Outstanding Due']],
             body: customerAccountSummary.map(s => [
                 s.customer.name,
@@ -207,9 +210,10 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ setCurrentPage }) => {
     const generateSupplierDuesPDF = () => {
         if (supplierDues.length === 0) return alert("No supplier dues data to export.");
         const doc = new jsPDF();
+        doc.addImage(logoBase64, 'JPEG', doc.internal.pageSize.getWidth() - 34, 10, 20, 20);
         doc.text('Supplier Dues Report', 14, 22);
         autoTable(doc, {
-            startY: 30,
+            startY: 40,
             head: [['Supplier', 'Purchase ID', 'Next Due Date', 'Due Amount']],
             body: supplierDues.map(p => [
                 p.supplierName,
@@ -237,9 +241,10 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ setCurrentPage }) => {
     const generateSupplierSummaryPDF = () => {
         if (supplierAccountSummary.length === 0) return alert("No supplier account data to export.");
         const doc = new jsPDF();
+        doc.addImage(logoBase64, 'JPEG', doc.internal.pageSize.getWidth() - 34, 10, 20, 20);
         doc.text('Supplier Account Summary Report', 14, 22);
         autoTable(doc, {
-            startY: 30,
+            startY: 40,
             head: [['Supplier Name', 'Total Purchased', 'Total Paid', 'Outstanding Due']],
             body: supplierAccountSummary.map(s => [
                 s.supplier.name,

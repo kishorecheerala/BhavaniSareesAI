@@ -9,6 +9,7 @@ import DeleteButton from '../components/DeleteButton';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
+import { logoBase64 } from '../utils/logo';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -291,7 +292,9 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             const maxLineWidth = pageWidth - margin * 2;
             let y = 5;
 
-            y = 10;
+            doc.addImage(logoBase64, 'JPEG', centerX - 10, y, 20, 20);
+            y += 22;
+
             doc.setFont('times', 'italic');
             doc.setFontSize(12);
             doc.setTextColor('#000000');
@@ -411,6 +414,8 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         const doc = new jsPDF();
         const profile = state.profile;
         let currentY = 15;
+
+        doc.addImage(logoBase64, 'JPEG', 14, 10, 25, 25);
     
         if (profile) {
             doc.setFont('helvetica', 'bold');
@@ -424,9 +429,10 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             doc.text(addressLines, 105, currentY, { align: 'center' });
             currentY += (addressLines.length * 5);
             doc.text(`Phone: ${profile.phone} | GSTIN: ${profile.gstNumber}`, 105, currentY, { align: 'center' });
-            currentY += 5;
         }
     
+        currentY = Math.max(currentY, 10 + 25) + 5;
+
         doc.setDrawColor('#cccccc');
         doc.line(14, currentY, 196, currentY);
         currentY += 10;
@@ -540,7 +546,11 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             const centerX = pageWidth / 2;
             const margin = 5;
             const maxLineWidth = pageWidth - margin * 2;
-            let y = 10;
+            let y = 5;
+
+            doc.addImage(logoBase64, 'JPEG', centerX - 10, y, 20, 20);
+            y += 22;
+
             doc.setFont('times', 'italic');
             doc.setFontSize(12);
             doc.text('Om Namo Venkatesaya', centerX, y, { align: 'center' });

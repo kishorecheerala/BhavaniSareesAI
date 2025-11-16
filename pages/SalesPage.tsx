@@ -9,6 +9,7 @@ import autoTable from 'jspdf-autotable';
 import { Html5Qrcode } from 'html5-qrcode';
 import DeleteButton from '../components/DeleteButton';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
+import { logoBase64 } from '../utils/logo';
 
 
 const getLocalDateString = (date = new Date()) => {
@@ -432,6 +433,8 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         const profile = state.profile;
         let currentY = 15;
 
+        doc.addImage(logoBase64, 'JPEG', 14, 10, 25, 25);
+
         if (profile) {
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(20);
@@ -444,8 +447,9 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             doc.text(addressLines, 105, currentY, { align: 'center' });
             currentY += (addressLines.length * 5);
             doc.text(`Phone: ${profile.phone} | GSTIN: ${profile.gstNumber}`, 105, currentY, { align: 'center' });
-            currentY += 5;
         }
+        
+        currentY = Math.max(currentY, 10 + 25) + 5;
 
         doc.setDrawColor('#cccccc');
         doc.line(14, currentY, 196, currentY);
@@ -698,7 +702,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             }
             <h1 className="text-2xl font-bold text-primary">{pageTitle}</h1>
             
-            <Card className={isCustomerDropdownOpen ? 'relative z-20' : ''}>
+            <Card>
                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
@@ -716,7 +720,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                                 </button>
 
                                 {isCustomerDropdownOpen && (
-                                    <div className="absolute top-full left-0 w-full mt-1 bg-gray-800 text-white rounded-md shadow-lg z-30 animate-fade-in-fast">
+                                    <div className="absolute top-full left-0 w-full mt-1 bg-gray-800 text-white rounded-md shadow-lg z-10 animate-fade-in-fast">
                                         <div className="p-2 border-b border-gray-700">
                                             <input
                                                 type="text"
