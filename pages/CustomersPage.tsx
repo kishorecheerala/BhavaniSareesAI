@@ -8,6 +8,7 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import DeleteButton from '../components/DeleteButton';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { useOnClickOutside } from '../hooks/useOnClickOutside';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -100,6 +101,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
     const [newCustomer, setNewCustomer] = useState({ id: '', name: '', phone: '', address: '', area: '', reference: '' });
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [activeSaleId, setActiveSaleId] = useState<string | null>(null);
+    const [actionMenuSaleId, setActionMenuSaleId] = useState<string | null>(null);
 
     const [isEditing, setIsEditing] = useState(false);
     const [editedCustomer, setEditedCustomer] = useState<Customer | null>(null);
@@ -114,6 +116,9 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
     
     const [confirmModalState, setConfirmModalState] = useState<{ isOpen: boolean, saleIdToDelete: string | null }>({ isOpen: false, saleIdToDelete: null });
     const isDirtyRef = useRef(false);
+    const actionMenuRef = useRef<HTMLDivElement>(null);
+
+    useOnClickOutside(actionMenuRef, () => setActionMenuSaleId(null));
 
     useEffect(() => {
         if (state.selection && state.selection.page === 'CUSTOMERS') {
@@ -263,7 +268,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         setPaymentDetails({ amount: '', method: 'CASH', date: getLocalDateString(), reference: '' });
     };
 
-    const handleDownloadInvoice = async (sale: Sale) => {
+    const handleDownloadThermalReceipt = async (sale: Sale) => {
         if (!selectedCustomer) return;
 
         let qrCodeBase64: string | null = null;
@@ -401,6 +406,137 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         
         doc.save(`${sale.id}.pdf`);
     };
+
+    const generateA4InvoicePdf = async (sale: Sale, customer: Customer) => {
+        const doc = new jsPDF();
+        const profile = state.profile;
+        let currentY = 15;
+    
+        if (profile) {
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(20);
+            doc.setTextColor('#0d9488');
+            doc.text(profile.name, 105, currentY, { align: 'center' });
+            currentY += 8;
+            doc.setFontSize(10);
+            doc.setTextColor('#333333');
+            const addressLines = doc.splitTextToSize(profile.address, 180);
+            doc.text(addressLines, 105, currentY, { align: 'center' });
+            currentY += (addressLines.length * 5);
+            doc.text(`Phone: ${profile.phone} | GSTIN: ${profile.gstNumber}`, 105, currentY, { align: 'center' });
+            currentY += 5;
+        }
+    
+        doc.setDrawColor('#cccccc');
+        doc.line(14, currentY, 196, currentY);
+        currentY += 10;
+        
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text('TAX INVOICE', 105, currentY, { align: 'center' });
+        currentY += 10;
+        
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Billed To:', 14, currentY);
+        doc.text('Invoice Details:', 120, currentY);
+        currentY += 5;
+    
+        doc.setFont('helvetica', 'normal');
+        doc.text(customer.name, 14, currentY);
+        doc.text(`Invoice ID: ${sale.id}`, 120, currentY);
+        currentY += 5;
+        
+        const customerAddressLines = doc.splitTextToSize(customer.address, 80);
+        doc.text(customerAddressLines, 14, currentY);
+        doc.text(`Date: ${new Date(sale.date).toLocaleString()}`, 120, currentY);
+        currentY += (customerAddressLines.length * 5) + 5;
+        
+        const subTotal = Number(sale.totalAmount) + Number(sale.discount);
+        autoTable(doc, {
+            startY: currentY,
+            head: [['#', 'Item Description', 'Qty', 'Rate', 'Amount']],
+            body: sale.items.map((item, index) => [
+                index + 1,
+                item.productName,
+                item.quantity,
+                `Rs. ${Number(item.price).toLocaleString('en-IN')}`,
+                `Rs. ${(Number(item.quantity) * Number(item.price)).toLocaleString('en-IN')}`
+            ]),
+            theme: 'grid',
+            headStyles: { fillColor: [13, 148, 136] },
+            columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } }
+        });
+        
+        currentY = (doc as any).lastAutoTable.finalY + 10;
+        
+        const paidAmount = (sale.payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+        const dueAmount = Number(sale.totalAmount) - paidAmount;
+        
+        const totalsX = 196;
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Subtotal:', totalsX - 30, currentY, { align: 'right' });
+        doc.text(`Rs. ${subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
+        currentY += 7;
+    
+        doc.text('Discount:', totalsX - 30, currentY, { align: 'right' });
+        doc.text(`- Rs. ${Number(sale.discount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
+        currentY += 7;
+    
+        doc.text('GST Included:', totalsX - 30, currentY, { align: 'right' });
+        doc.text(`Rs. ${Number(sale.gstAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
+        currentY += 7;
+        
+        doc.setFont('helvetica', 'bold');
+        doc.text('Grand Total:', totalsX - 30, currentY, { align: 'right' });
+        doc.text(`Rs. ${Number(sale.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
+        currentY += 7;
+    
+        doc.setFont('helvetica', 'normal');
+        doc.text('Paid:', totalsX - 30, currentY, { align: 'right' });
+        doc.text(`Rs. ${paidAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
+        currentY += 7;
+    
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(dueAmount > 0.01 ? '#dc2626' : '#16a34a');
+        doc.text('Amount Due:', totalsX - 30, currentY, { align: 'right' });
+        doc.text(`Rs. ${dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
+        
+        currentY = doc.internal.pageSize.height - 20;
+        doc.setFontSize(10);
+        doc.setTextColor('#888888');
+        doc.text('Thank you for your business!', 105, currentY, { align: 'center' });
+    
+        return doc;
+    };
+    
+    const handlePrintA4Invoice = async (sale: Sale) => {
+        if (!selectedCustomer) return;
+        const doc = await generateA4InvoicePdf(sale, selectedCustomer);
+        doc.autoPrint();
+        const pdfUrl = doc.output('bloburl');
+        window.open(pdfUrl, '_blank');
+    };
+
+    const handleShareInvoice = async (sale: Sale) => {
+        if (!selectedCustomer) return;
+        const doc = await generateA4InvoicePdf(sale, selectedCustomer);
+        const pdfBlob = doc.output('blob');
+        const pdfFile = new File([pdfBlob], `Invoice-${sale.id}.pdf`, { type: 'application/pdf' });
+        const businessName = state.profile?.name || 'Invoice';
+
+        if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
+            await navigator.share({
+                title: `${businessName} - Invoice ${sale.id}`,
+                files: [pdfFile],
+            });
+        } else {
+            doc.save(`Invoice-${sale.id}.pdf`);
+        }
+    };
+
 
     const handleShareDuesSummary = async () => {
         if (!selectedCustomer) return;
@@ -600,7 +736,18 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                                             <div className="flex justify-end items-start mb-2">
                                                 <div className="flex items-center gap-1">
                                                     <button onClick={() => handleEditSale(sale.id)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Edit Sale"><Edit size={16} /></button>
-                                                    <button onClick={() => handleDownloadInvoice(sale)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Download Invoice"><Download size={16} /></button>
+                                                     <div className="relative" ref={actionMenuSaleId === sale.id ? actionMenuRef : undefined}>
+                                                        <button onClick={() => setActionMenuSaleId(sale.id)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Share or Download Invoice">
+                                                            <Share2 size={16} />
+                                                        </button>
+                                                        {actionMenuSaleId === sale.id && (
+                                                            <div className="absolute top-full right-0 mt-1 w-48 bg-white rounded-md shadow-lg border text-text z-10 animate-scale-in origin-top-right">
+                                                                <button onClick={() => { handlePrintA4Invoice(sale); setActionMenuSaleId(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100">Print (A4)</button>
+                                                                <button onClick={() => { handleDownloadThermalReceipt(sale); setActionMenuSaleId(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100">Download Receipt</button>
+                                                                <button onClick={() => { handleShareInvoice(sale); setActionMenuSaleId(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100">Share Invoice</button>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                     <DeleteButton 
                                                         variant="delete" 
                                                         onClick={(e) => { e.stopPropagation(); handleDeleteSale(sale.id); }} 

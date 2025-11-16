@@ -16,7 +16,8 @@ import AppSkeletonLoader from './components/AppSkeletonLoader';
 import NotificationsPanel from './components/NotificationsPanel';
 import MenuPanel from './components/MenuPanel';
 import ProfileModal from './components/ProfileModal';
-import { BeforeInstallPromptEvent, Notification, Page } from './types';
+// FIX: Import AppMetadataBackup to use for type assertion.
+import { BeforeInstallPromptEvent, Notification, Page, AppMetadataBackup } from './types';
 import { useOnClickOutside } from './hooks/useOnClickOutside';
 import ConfirmationModal from './components/ConfirmationModal';
 
@@ -127,7 +128,8 @@ const MainApp: React.FC = () => {
   useOnClickOutside(notificationsRef, () => setIsNotificationsOpen(false));
   useOnClickOutside(moreMenuRef, () => setIsMoreMenuOpen(false));
 
-  const lastBackupDate = state.app_metadata.find(m => m.id === 'lastBackup')?.date;
+  // FIX: Cast the result of find to AppMetadataBackup to satisfy TypeScript, as it cannot infer the discriminated union type from the predicate.
+  const lastBackupDate = (state.app_metadata.find(m => m.id === 'lastBackup') as AppMetadataBackup | undefined)?.date;
 
   useEffect(() => {
     if (state.profile?.name) {

@@ -4,114 +4,11 @@ import { useAppContext } from '../context/AppContext';
 import { Product } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import jsPDF from 'jspdf';
-
-declare var JsBarcode: any;
+import { BarcodeModal } from '../components/BarcodeModal';
 
 interface ProductsPageProps {
   setIsDirty: (isDirty: boolean) => void;
 }
-
-const DownloadLabelsModal: React.FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    onDownload: (quantity: number) => void;
-    onPrint: (quantity: number, barcodeSvg: string, viewBox: string | null) => void;
-    product: Product;
-    quantity: string;
-    setQuantity: (q: string) => void;
-    businessName: string;
-}> = ({ isOpen, onClose, onDownload, onPrint, product, quantity, setQuantity, businessName }) => {
-    const barcodeRef = useRef<SVGSVGElement>(null);
-
-    useEffect(() => {
-        if (isOpen && product && barcodeRef.current) {
-            try {
-                // Clear previous barcode
-                barcodeRef.current.innerHTML = '';
-                JsBarcode(barcodeRef.current, product.id, {
-                    format: "CODE128",
-                    displayValue: false,
-                    fontSize: 14,
-                    height: 40,
-                    width: 1.5,
-                    margin: 0,
-                });
-            } catch (e) {
-                console.error("JsBarcode render error:", e);
-            }
-        }
-    }, [isOpen, product]);
-
-    if (!isOpen) return null;
-    
-    const handlePrintClick = () => {
-        if (barcodeRef.current) {
-            const barcodeSvgInnerHTML = barcodeRef.current.innerHTML;
-            const barcodeViewBox = barcodeRef.current.getAttribute('viewBox');
-            onPrint(parseInt(quantity, 10) || 1, barcodeSvgInnerHTML, barcodeViewBox);
-        } else {
-            alert('Could not generate barcode for printing.');
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
-            <Card title="Download Barcode Labels" className="w-full max-w-sm animate-scale-in">
-                <div className="space-y-4">
-                    <div>
-                        <h4 className="text-sm font-semibold mb-2">Label Preview:</h4>
-                        <div className="border rounded-md p-2 flex justify-center bg-white">
-                            <div style={{
-                                width: '2in',
-                                height: '1in',
-                                fontFamily: `'Helvetica', 'Arial', sans-serif`,
-                                boxSizing: 'border-box',
-                                color: 'black'
-                            }} className="text-center flex flex-col justify-around items-center p-1 bg-white border border-dashed">
-                                <div style={{ fontSize: '9px', fontWeight: 'bold', lineHeight: '1' }}>{businessName}</div>
-                                <div style={{ fontSize: '12px', fontWeight: 'bold', lineHeight: '1.1', padding: '0 2px', margin: '1px 0' }}>{product.name}</div>
-                                <svg ref={barcodeRef} style={{ height: '32px', width: '90%' }}></svg>
-                                <div className="flex flex-col items-center" style={{ lineHeight: '1.1', marginTop: '1px' }}>
-                                    <div style={{ fontSize: '9px', fontWeight: 'bold' }}>{product.id}</div>
-                                    <div style={{ fontSize: '14px', fontWeight: '900' }}>
-                                        MRP : ₹{product.salePrice.toLocaleString('en-IN')}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Number of copies</label>
-                        <input
-                            type="number"
-                            value={quantity}
-                            onChange={(e) => setQuantity(e.target.value)}
-                            className="w-full p-2 border rounded mt-1"
-                            min="1"
-                            autoFocus
-                        />
-                    </div>
-                    <div className="p-3 bg-amber-50 border-l-4 border-amber-400 text-amber-800 flex items-start gap-3">
-                        <AlertTriangle className="w-6 h-6 text-amber-500 flex-shrink-0" />
-                        <div>
-                            <h5 className="font-bold">Important Print Settings</h5>
-                            <p className="text-xs mt-1">
-                                When printing, ensure your printer settings use <strong>'Actual Size'</strong> and the <strong>Paper Size</strong> is set to <strong>2x1 inch</strong>.
-                            </p>
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                       <Button onClick={handlePrintClick} className="w-full"><Printer className="w-4 h-4 mr-2" /> Print</Button>
-                       <Button onClick={() => onDownload(parseInt(quantity, 10) || 1)} className="w-full">Download PDF</Button>
-                    </div>
-                    <Button onClick={onClose} variant="secondary" className="w-full mt-2">Cancel</Button>
-                </div>
-            </Card>
-        </div>
-    );
-};
-
 
 const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
     const { state, dispatch, showToast } = useAppContext();
@@ -122,7 +19,6 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
     const [newQuantity, setNewQuantity] = useState<string>('');
     const isDirtyRef = useRef(false);
     const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
-    const [printQuantity, setPrintQuantity] = useState('1');
     
     useEffect(() => {
         if (state.selection && state.selection.page === 'PRODUCTS') {
@@ -165,12 +61,6 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
         }
         setIsEditing(false);
     }, [selectedProduct?.id, state.products]); // Depend on ID to avoid loop
-
-    useEffect(() => {
-        if (isDownloadModalOpen && selectedProduct) {
-            setPrintQuantity(selectedProduct.quantity.toString());
-        }
-    }, [isDownloadModalOpen, selectedProduct]);
     
     const handleUpdateProduct = () => {
         if (editedProduct) {
@@ -201,193 +91,6 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
         }
     };
 
-    const handleDownloadPdf = async (product: Product, quantity: number) => {
-        setIsDownloadModalOpen(false);
-    
-        const labelWidth = 50.8; // 2 inches in mm
-        const labelHeight = 25.4; // 1 inch in mm
-    
-        const doc = new jsPDF({
-            orientation: 'landscape',
-            unit: 'mm',
-            format: [labelWidth, labelHeight]
-        });
-    
-        const canvas = document.createElement('canvas');
-        try {
-            JsBarcode(canvas, product.id, {
-                format: "CODE128",
-                displayValue: false,
-                height: 40,
-                width: 2, // Bolder lines
-                margin: 0,
-            });
-        } catch (e) {
-            console.error("JsBarcode error", e);
-            showToast("Failed to generate barcode.", 'info');
-            return;
-        }
-        const barcodeDataUrl = canvas.toDataURL('image/png');
-    
-        for (let i = 0; i < quantity; i++) {
-            if (i > 0) {
-                doc.addPage();
-            }
-    
-            const margin = 1; 
-            const centerX = labelWidth / 2;
-            let currentY = margin + 1.5;
-    
-            // --- Top elements ---
-            const businessName = state.profile?.name || 'Your Business';
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(9);
-            doc.text(businessName, centerX, currentY, { align: 'center', baseline: 'top' });
-            currentY += doc.getTextDimensions(businessName).h + 0.5;
-    
-            doc.setFontSize(12);
-            const nameLines = doc.splitTextToSize(product.name, labelWidth - (margin * 4)); // more horizontal margin for text
-            const nameDimensions = doc.getTextDimensions(nameLines);
-            doc.text(nameLines, centerX, currentY, { align: 'center', baseline: 'top' });
-            currentY += nameDimensions.h;
-    
-            // --- Bottom elements (from bottom up) ---
-            let bottomY = labelHeight - (margin + 1.5);
-
-            doc.setFontSize(14);
-            const mrpText = `MRP : ₹${product.salePrice.toLocaleString('en-IN')}`;
-            const mrpDimensions = doc.getTextDimensions(mrpText);
-            doc.text(mrpText, centerX, bottomY, { align: 'center', baseline: 'bottom' });
-            bottomY -= mrpDimensions.h;
-
-            doc.setFontSize(9);
-            const productIdText = product.id;
-            const productIdDimensions = doc.getTextDimensions(productIdText);
-            bottomY -= 0.5; // gap
-            doc.text(productIdText, centerX, bottomY, { align: 'center', baseline: 'bottom' });
-            const bottomBlockTop = bottomY - productIdDimensions.h;
-
-            // --- Barcode in the middle ---
-            const barcodeTop = currentY + 0.5; 
-            const availableHeightForBarcode = bottomBlockTop - barcodeTop - 0.5; 
-            
-            if (availableHeightForBarcode > 3) {
-                const aspectRatio = canvas.width / canvas.height;
-                let barcodeHeight = availableHeightForBarcode;
-                let barcodeWidth = barcodeHeight * aspectRatio;
-                
-                const maxBarcodeWidth = labelWidth - (margin * 6); // even more margin for barcode
-                if (barcodeWidth > maxBarcodeWidth) {
-                    barcodeWidth = maxBarcodeWidth;
-                    barcodeHeight = barcodeWidth / aspectRatio;
-                }
-    
-                const barcodeX = (labelWidth - barcodeWidth) / 2;
-                const barcodeY = barcodeTop + (availableHeightForBarcode - barcodeHeight) / 2;
-                
-                doc.addImage(barcodeDataUrl, 'PNG', barcodeX, barcodeY, barcodeWidth, barcodeHeight);
-            } else {
-                 // Fallback if space is tight, just draw barcode with fixed size
-                 const barcodeHeight = 6;
-                 const aspectRatio = canvas.width / canvas.height;
-                 const barcodeWidth = barcodeHeight * aspectRatio;
-                 const barcodeX = (labelWidth - barcodeWidth) / 2;
-                 const barcodeY = (labelHeight - barcodeHeight) / 2;
-                 doc.addImage(barcodeDataUrl, 'PNG', barcodeX, barcodeY, barcodeWidth, barcodeHeight);
-                 console.warn("Not enough space for barcode on the label, using fallback size.");
-            }
-        }
-    
-        doc.save(`${product.id}-labels.pdf`);
-    };
-
-    const handlePrint = (product: Product, quantity: number, barcodeSvg: string, viewBox: string | null) => {
-        setIsDownloadModalOpen(false);
-
-        const businessName = state.profile?.name || 'Your Business';
-        let labelsHtml = '';
-        for (let i = 0; i < quantity; i++) {
-            labelsHtml += `
-                <div class="label">
-                    <div class="business-name">${businessName}</div>
-                    <div class="product-name">${product.name}</div>
-                    <svg viewBox="${viewBox}" style="height: 32px; width: 90%;">${barcodeSvg}</svg>
-                    <div class="details">
-                        <div class="product-id">${product.id}</div>
-                        <div class="mrp">MRP : ₹${product.salePrice.toLocaleString('en-IN')}</div>
-                    </div>
-                </div>
-            `;
-        }
-
-        const printStyles = `
-            @page {
-                size: 2in 1in;
-                margin: 0;
-            }
-            @media print {
-                html, body {
-                    width: 2in;
-                    height: 1in;
-                    margin: 0;
-                    padding: 0;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
-                }
-                .label {
-                    width: 2in;
-                    height: 1in;
-                    box-sizing: border-box;
-                    font-family: 'Helvetica', 'Arial', sans-serif;
-                    color: black;
-                    text-align: center;
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: space-around;
-                    align-items: center;
-                    padding: 1mm;
-                    page-break-after: always;
-                }
-                .business-name { font-size: 9px; font-weight: bold; line-height: 1; }
-                .product-name { font-size: 12px; font-weight: bold; line-height: 1.1; padding: 0 2px; margin: 1px 0; }
-                .details { line-height: 1.1; margin-top: 1px; }
-                .product-id { font-size: 9px; font-weight: bold; }
-                .mrp { font-size: 14px; font-weight: 900; }
-            }
-        `;
-
-        const iframe = document.createElement('iframe');
-        iframe.style.position = 'absolute';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
-        iframe.style.left = '-9999px';
-        iframe.style.top = '-9999px';
-        document.body.appendChild(iframe);
-
-        const doc = iframe.contentDocument;
-        if (doc) {
-            doc.open();
-            doc.write(`
-                <html>
-                    <head>
-                        <title>Print Labels</title>
-                        <style>${printStyles}</style>
-                    </head>
-                    <body>${labelsHtml}</body>
-                </html>
-            `);
-            doc.close();
-
-            iframe.onload = () => {
-                iframe.contentWindow?.focus();
-                iframe.contentWindow?.print();
-                setTimeout(() => {
-                    document.body.removeChild(iframe);
-                }, 500);
-            };
-        }
-    }
-
     const filteredProducts = state.products.filter(p =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.id.toLowerCase().includes(searchTerm.toLowerCase())
@@ -402,16 +105,14 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
 
         return (
             <div className="space-y-4">
-                <DownloadLabelsModal
-                    isOpen={isDownloadModalOpen}
-                    onClose={() => setIsDownloadModalOpen(false)}
-                    product={selectedProduct}
-                    onDownload={(quantity) => handleDownloadPdf(selectedProduct, quantity)}
-                    onPrint={(quantity, svg, viewBox) => handlePrint(selectedProduct, quantity, svg, viewBox)}
-                    quantity={printQuantity}
-                    setQuantity={setPrintQuantity}
-                    businessName={state.profile?.name || 'Your Business'}
-                />
+                {isDownloadModalOpen && (
+                    <BarcodeModal
+                        isOpen={isDownloadModalOpen}
+                        onClose={() => setIsDownloadModalOpen(false)}
+                        product={selectedProduct}
+                        businessName={state.profile?.name || 'Your Business'}
+                    />
+                )}
                 <Button onClick={() => setSelectedProduct(null)}>&larr; Back to Products List</Button>
                 
                 <Card>
