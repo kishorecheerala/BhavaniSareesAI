@@ -175,17 +175,29 @@ export const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, product, onC
             doc.write(`<html><head><title>Print Labels</title><style>${printStyles}</style></head><body>${labelsHtml}</body></html>`);
             doc.close();
             iframe.onload = () => {
-                iframe.contentWindow?.focus();
-                iframe.contentWindow?.print();
-                setTimeout(() => { document.body.removeChild(iframe); }, 500);
+                if (iframe.contentWindow) {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                }
+                // After print dialog is closed (or even if it's non-blocking),
+                // wait a moment before cleaning up and closing the modal.
+                setTimeout(() => {
+                    document.body.removeChild(iframe);
+                    onClose();
+                }, 500);
             };
+        } else {
+             // Fallback if doc is not available
+             document.body.removeChild(iframe);
+             onClose();
         }
-        onClose();
     } catch (error) {
         console.error('Printing failed:', error);
         alert('Failed to print labels. Please try again.');
+        onClose();
     }
   };
+
 
   if (!isOpen || !product) return null;
 
