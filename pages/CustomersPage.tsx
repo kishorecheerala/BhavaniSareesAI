@@ -523,7 +523,6 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
     const handleShareInvoice = async (sale: Sale) => {
         if (!selectedCustomer) return;
         
-        // Generate thermal receipt for sharing
         let qrCodeBase64: string | null = null;
         try {
             const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(sale.id)}&size=50x50&margin=0`;
