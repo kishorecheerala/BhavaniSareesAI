@@ -21,6 +21,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
     const isDirtyRef = useRef(false);
     const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
     const [printQuantity, setPrintQuantity] = useState('1');
+    const printButtonRef = useRef<HTMLDivElement>(null);
     
     useEffect(() => {
         if (state.selection && state.selection.page === 'PRODUCTS') {
@@ -63,6 +64,29 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
         }
         setIsEditing(false);
     }, [selectedProduct, state.products]);
+
+    // Definitive fix for the print button bug
+    useEffect(() => {
+        const buttonElement = printButtonRef.current;
+
+        const handleMouseDown = (event: MouseEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (selectedProduct) {
+                handleOpenPrintModal(selectedProduct);
+            }
+        };
+
+        if (buttonElement) {
+            buttonElement.addEventListener('mousedown', handleMouseDown);
+        }
+
+        return () => {
+            if (buttonElement) {
+                buttonElement.removeEventListener('mousedown', handleMouseDown);
+            }
+        };
+    }, [selectedProduct]);
 
 
     const handleUpdateProduct = () => {
@@ -304,24 +328,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
 
                 <div className="mt-4">
                     <div
-                        role="button"
-                        tabIndex={0}
-                        onMouseDown={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleOpenPrintModal(selectedProduct);
-                        }}
-                        onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                        }}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                handleOpenPrintModal(selectedProduct);
-                            }
-                        }}
+                        ref={printButtonRef}
                         className="px-4 py-2 rounded-md font-semibold text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-sm flex items-center justify-center gap-2 transform hover:shadow-md hover:-translate-y-px active:shadow-sm active:translate-y-0 bg-primary hover:bg-teal-700 focus:ring-primary w-full cursor-pointer"
                     >
                         <Barcode className="w-5 h-5 mr-2" />
