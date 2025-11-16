@@ -303,16 +303,20 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                 </Card>
 
                 <div className="mt-4">
-                    <Button
-                        onClick={(e) => {
-                            e.preventDefault();
-                            handleOpenPrintModal(selectedProduct);
+                    <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => handleOpenPrintModal(selectedProduct)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                handleOpenPrintModal(selectedProduct);
+                            }
                         }}
-                        className="w-full"
+                        className="px-4 py-2 rounded-md font-semibold text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-sm flex items-center justify-center gap-2 transform hover:shadow-md hover:-translate-y-px active:shadow-sm active:translate-y-0 bg-primary hover:bg-teal-700 focus:ring-primary w-full cursor-pointer"
                     >
                         <Barcode className="w-5 h-5 mr-2" />
                         Print Barcode Label
-                    </Button>
+                    </div>
                 </div>
             </div>
         );
@@ -324,7 +328,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
             <h1 className="text-2xl font-bold text-primary">Products & Inventory</h1>
             
             <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                <Search className="absolute left-3 top-1-2 -translate-y-1/2 text-gray-400" size={20} />
                 <input
                     type="text"
                     placeholder="Search products by name or code..."
