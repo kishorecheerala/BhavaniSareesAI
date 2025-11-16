@@ -5,15 +5,19 @@ import Card from '../components/Card';
 import Button from '../components/Button';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Customer, Sale, Supplier } from '../types';
+import { Customer, Sale, Supplier, Page } from '../types';
 
 interface CustomerWithDue extends Customer {
   dueAmount: number;
   lastPaidDate: string | null;
 }
 
-const ReportsPage: React.FC = () => {
-    const { state } = useAppContext();
+interface ReportsPageProps {
+    setCurrentPage: (page: Page) => void;
+}
+
+const ReportsPage: React.FC<ReportsPageProps> = ({ setCurrentPage }) => {
+    const { state, dispatch } = useAppContext();
     const [activeTab, setActiveTab] = useState<'customer' | 'supplier'>('customer');
 
     // --- Customer Filters ---
@@ -23,6 +27,11 @@ const ReportsPage: React.FC = () => {
 
     // --- Supplier Filters ---
     const [supplierFilter, setSupplierFilter] = useState('all');
+
+    const handleCustomerClick = (customerId: string) => {
+        dispatch({ type: 'SET_SELECTION', payload: { page: 'CUSTOMERS', id: customerId } });
+        setCurrentPage('CUSTOMERS');
+    };
 
     // --- Customer Dues Report Logic ---
     const customerDues = useMemo((): CustomerWithDue[] => {
@@ -105,7 +114,16 @@ const ReportsPage: React.FC = () => {
             const totalPurchased = customerSales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
             const totalPaid = customerSales.reduce((sum, s) => sum + (s.payments || []).reduce((pSum, p) => pSum + Number(p.amount), 0), 0);
             const outstandingDue = totalPurchased - totalPaid;
-            return { customer, totalPurchased, totalPaid, outstandingDue };
+            
+            let lastPurchaseDate: string | null = null;
+            if (customerSales.length > 0) {
+                const lastSale = customerSales.reduce((latest, sale) => {
+                    return new Date(sale.date) > new Date(latest.date) ? sale : latest;
+                });
+                lastPurchaseDate = new Date(lastSale.date).toLocaleDateString('en-IN');
+            }
+
+            return { customer, totalPurchased, totalPaid, outstandingDue, lastPurchaseDate };
         });
     }, [state.customers, state.sales]);
 
@@ -115,23 +133,24 @@ const ReportsPage: React.FC = () => {
         doc.text('Customer Account Summary Report', 14, 22);
         autoTable(doc, {
             startY: 30,
-            head: [['Customer Name', 'Total Purchased', 'Total Paid', 'Outstanding Due']],
+            head: [['Customer Name', 'Last Purchase Date', 'Total Purchased', 'Total Paid', 'Outstanding Due']],
             body: customerAccountSummary.map(s => [
                 s.customer.name,
+                s.lastPurchaseDate || 'N/A',
                 s.totalPurchased.toLocaleString('en-IN', { minimumFractionDigits: 2 }),
                 s.totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 }),
                 s.outstandingDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })
             ]),
             theme: 'grid', headStyles: { fillColor: [13, 148, 136] },
-            columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } }
+            columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } }
         });
         doc.save('customer-account-summary.pdf');
     };
 
     const generateCustomerSummaryCSV = () => {
         if (customerAccountSummary.length === 0) return alert("No customer account data to export.");
-        const headers = ['Customer Name', 'Total Purchased', 'Total Paid', 'Outstanding Due'];
-        const rows = customerAccountSummary.map(s => `"${s.customer.name}",${s.totalPurchased},${s.totalPaid},${s.outstandingDue}`);
+        const headers = ['Customer Name', 'Last Purchase Date', 'Total Purchased', 'Total Paid', 'Outstanding Due'];
+        const rows = customerAccountSummary.map(s => `"${s.customer.name}","${s.lastPurchaseDate || 'N/A'}",${s.totalPurchased},${s.totalPaid},${s.outstandingDue}`);
         const csv = [headers.join(','), ...rows].join('\n');
         const link = document.createElement("a");
         link.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
@@ -313,7 +332,15 @@ const ReportsPage: React.FC = () => {
                                 <tbody>
                                     {customerDues.length > 0 ? customerDues.map(c => (
                                         <tr key={c.id} className="border-b">
-                                            <td className="p-2 font-semibold">{c.name}</td><td className="p-2">{c.area}</td><td className="p-2">{c.lastPaidDate || 'N/A'}</td><td className="p-2 text-right font-semibold text-red-600">₹{c.dueAmount.toLocaleString('en-IN')}</td>
+                                            <td className="p-2 font-semibold">
+                                                <button 
+                                                    onClick={() => handleCustomerClick(c.id)}
+                                                    className="text-primary hover:underline text-left"
+                                                >
+                                                    {c.name}
+                                                </button>
+                                            </td>
+                                            <td className="p-2">{c.area}</td><td className="p-2">{c.lastPaidDate || 'N/A'}</td><td className="p-2 text-right font-semibold text-red-600">₹{c.dueAmount.toLocaleString('en-IN')}</td>
                                         </tr>
                                     )) : <tr><td colSpan={4} className="text-center p-4 text-gray-500">No dues found for the selected filters.</td></tr>}
                                 </tbody>
@@ -335,13 +362,25 @@ const ReportsPage: React.FC = () => {
                             <table className="w-full text-sm">
                                 <thead className="text-left text-gray-600 bg-gray-50">
                                     <tr>
-                                        <th className="p-2">Name</th><th className="p-2 text-right">Total Purchased</th><th className="p-2 text-right">Total Paid</th><th className="p-2 text-right">Outstanding Due</th>
+                                        <th className="p-2">Name</th>
+                                        <th className="p-2">Last Purchase Date</th>
+                                        <th className="p-2 text-right">Total Purchased</th>
+                                        <th className="p-2 text-right">Total Paid</th>
+                                        <th className="p-2 text-right">Outstanding Due</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {customerAccountSummary.map(s => (
                                         <tr key={s.customer.id} className="border-b">
-                                            <td className="p-2 font-semibold">{s.customer.name}</td>
+                                            <td className="p-2 font-semibold">
+                                                <button 
+                                                    onClick={() => handleCustomerClick(s.customer.id)}
+                                                    className="text-primary hover:underline text-left"
+                                                >
+                                                    {s.customer.name}
+                                                </button>
+                                            </td>
+                                            <td className="p-2">{s.lastPurchaseDate || 'N/A'}</td>
                                             <td className="p-2 text-right">₹{s.totalPurchased.toLocaleString('en-IN')}</td>
                                             <td className="p-2 text-right text-green-600">₹{s.totalPaid.toLocaleString('en-IN')}</td>
                                             <td className="p-2 text-right font-semibold text-red-600">₹{s.outstandingDue.toLocaleString('en-IN')}</td>
