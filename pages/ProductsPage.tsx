@@ -28,7 +28,7 @@ const DownloadLabelsModal: React.FC<{
             try {
                 JsBarcode(barcodeRef.current, product.id, {
                     format: "CODE128",
-                    displayValue: false, // Set to false to manually render text
+                    displayValue: false,
                     fontSize: 14,
                     height: 30,
                     width: 1.5,
@@ -49,13 +49,21 @@ const DownloadLabelsModal: React.FC<{
                     <div>
                         <h4 className="text-sm font-semibold mb-2">Label Preview:</h4>
                         <div className="border rounded-md p-2 flex justify-center bg-white">
-                            <div style={{ width: '2in', height: '1in', fontFamily: 'sans-serif', boxSizing: 'border-box' }} className="text-center flex flex-col justify-between items-center p-1 border border-dashed bg-white">
-                                <div style={{ fontSize: '10px', fontWeight: 'bold' }}>{businessName}</div>
-                                <div style={{ fontSize: '13px', fontWeight: 'bold', lineHeight: '1.1' }}>{product.name}</div>
-                                <svg ref={barcodeRef} style={{ height: '30px', width: '90%' }}></svg>
-                                <div className="flex flex-col items-center" style={{lineHeight: '1.2'}}>
-                                    <div style={{ fontSize: '10px' }}>{product.id}</div>
-                                    <div style={{ fontSize: '14px', fontWeight: 'bold' }}>MRP : {product.salePrice.toLocaleString('en-IN')}</div>
+                            <div style={{
+                                width: '2in',
+                                height: '1in',
+                                fontFamily: `'Arial Black', Gadget, sans-serif`,
+                                boxSizing: 'border-box',
+                                color: 'black'
+                            }} className="text-center flex flex-col justify-around items-center p-1 bg-white border border-dashed">
+                                <div style={{ fontSize: '11px', fontWeight: '600' }}>{businessName}</div>
+                                <div style={{ fontSize: '16px', fontWeight: 'bold', lineHeight: '1.1', padding: '0 2px' }}>{product.name}</div>
+                                <svg ref={barcodeRef} style={{ height: '28px', width: '90%', margin: '1px 0' }}></svg>
+                                <div className="flex flex-col items-center" style={{ lineHeight: '1.1' }}>
+                                    <div style={{ fontSize: '11px', fontWeight: '600' }}>{product.id}</div>
+                                    <div style={{ fontSize: '18px', fontWeight: '900' }}>
+                                        MRP : ₹{product.salePrice.toLocaleString('en-IN')}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -213,30 +221,30 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
             }
     
             const centerX = labelWidth / 2;
-            let currentY = 2.5;
+            let currentY = 3;
     
             // 1. Brand Name (Top)
-            doc.setFontSize(8);
+            doc.setFontSize(9);
             doc.setFont('helvetica', 'bold');
             doc.text(state.profile?.name || 'Your Business', centerX, currentY, { align: 'center' });
-            currentY += 3.5;
+            currentY += 4;
     
             // 2. Product Name
-            doc.setFontSize(10);
+            doc.setFontSize(12);
             const nameLines = doc.splitTextToSize(product.name, labelWidth - 4);
             doc.text(nameLines, centerX, currentY, { align: 'center' });
             const topBlockEnd = currentY + doc.getTextDimensions(nameLines).h;
     
             // 4. Bottom text block (calculate positions from the bottom up)
-            let bottomY = labelHeight - 2.5;
+            let bottomY = labelHeight - 3;
             
-            doc.setFontSize(11); // Larger font for MRP
+            doc.setFontSize(14);
             doc.setFont('helvetica', 'bold');
-            const mrpText = `MRP : ${product.salePrice.toLocaleString('en-IN')}`;
+            const mrpText = `MRP : ₹${product.salePrice.toLocaleString('en-IN')}`;
             doc.text(mrpText, centerX, bottomY, { align: 'center' });
-            bottomY -= 4;
+            bottomY -= 5;
     
-            doc.setFontSize(8);
+            doc.setFontSize(9);
             doc.setFont('helvetica', 'normal');
             doc.text(product.id, centerX, bottomY, { align: 'center' });
             const bottomTextHeight = doc.getTextDimensions(product.id).h;
