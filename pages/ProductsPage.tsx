@@ -28,10 +28,9 @@ const DownloadLabelsModal: React.FC<{
             try {
                 JsBarcode(barcodeRef.current, product.id, {
                     format: "CODE128",
-                    displayValue: false, // Set to false to manually render text
-                    fontSize: 14,
-                    height: 30,
-                    width: 1.5,
+                    displayValue: false,
+                    height: 50,
+                    width: 1.8,
                     margin: 0,
                 });
             } catch (e) {
@@ -48,14 +47,33 @@ const DownloadLabelsModal: React.FC<{
                 <div className="space-y-4">
                     <div>
                         <h4 className="text-sm font-semibold mb-2">Label Preview:</h4>
-                        <div className="border rounded-md p-2 flex justify-center bg-white">
-                            <div style={{ width: '2in', height: '1in', fontFamily: 'sans-serif', boxSizing: 'border-box' }} className="text-center flex flex-col justify-between items-center p-1 border border-dashed bg-white">
-                                <div style={{ fontSize: '10px', fontWeight: 'bold' }}>{businessName}</div>
-                                <div style={{ fontSize: '13px', fontWeight: 'bold', lineHeight: '1.1' }}>{product.name}</div>
-                                <svg ref={barcodeRef} style={{ height: '30px', width: '90%' }}></svg>
-                                <div className="flex flex-col items-center" style={{lineHeight: '1.2'}}>
-                                    <div style={{ fontSize: '10px' }}>{product.id}</div>
-                                    <div style={{ fontSize: '14px', fontWeight: 'bold' }}>MRP : {product.salePrice.toLocaleString('en-IN')}</div>
+                         <div className="border rounded-md p-2 flex justify-center bg-white">
+                            <div style={{ 
+                                width: '2in', 
+                                height: '1in', 
+                                fontFamily: 'Helvetica, Arial, sans-serif', 
+                                boxSizing: 'border-box',
+                                position: 'relative',
+                            }} className="text-center border border-dashed bg-white overflow-hidden">
+                                
+                                <div style={{ position: 'absolute', top: '5%', left: 0, right: 0, fontSize: '9pt', fontWeight: 'normal' }}>
+                                    {businessName}
+                                </div>
+                                
+                                <div style={{ position: 'absolute', top: '20%', left: '5%', right: '5%', fontSize: '12pt', fontWeight: 'bold', lineHeight: '1.1' }}>
+                                    {product.name}
+                                </div>
+
+                                <div style={{ position: 'absolute', top: '48%', left: '5%', right: '5%', height: '28%' }}>
+                                    <svg ref={barcodeRef} style={{ height: '100%', width: '100%' }}></svg>
+                                </div>
+                                
+                                <div style={{ position: 'absolute', bottom: '15%', left: 0, right: 0, fontSize: '9pt' }}>
+                                    {product.id}
+                                </div>
+
+                                <div style={{ position: 'absolute', bottom: '2%', left: 0, right: 0, fontSize: '14pt', fontWeight: 'bold' }}>
+                                    MRP : ₹ {product.salePrice.toLocaleString('en-IN')}
                                 </div>
                             </div>
                         </div>
@@ -196,8 +214,8 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
             JsBarcode(canvas, product.id, {
                 format: "CODE128",
                 displayValue: false,
-                height: 40,
-                width: 1.5,
+                height: 50,
+                width: 1.8,
                 margin: 0,
             });
         } catch (e) {
@@ -213,60 +231,34 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
             }
     
             const centerX = labelWidth / 2;
-            let currentY = 2.5;
     
-            // 1. Brand Name (Top)
-            doc.setFontSize(8);
-            doc.setFont('helvetica', 'bold');
-            doc.text(state.profile?.name || 'Your Business', centerX, currentY, { align: 'center' });
-            currentY += 3.5;
+            // 1. Business Name
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.text(state.profile?.name || 'SVR Sarees', centerX, 4.5, { align: 'center' });
     
             // 2. Product Name
-            doc.setFontSize(10);
-            const nameLines = doc.splitTextToSize(product.name, labelWidth - 4);
-            doc.text(nameLines, centerX, currentY, { align: 'center' });
-            const topBlockEnd = currentY + doc.getTextDimensions(nameLines).h;
-    
-            // 4. Bottom text block (calculate positions from the bottom up)
-            let bottomY = labelHeight - 2.5;
-            
-            doc.setFontSize(11); // Larger font for MRP
             doc.setFont('helvetica', 'bold');
-            const mrpText = `MRP : ${product.salePrice.toLocaleString('en-IN')}`;
-            doc.text(mrpText, centerX, bottomY, { align: 'center' });
-            bottomY -= 4;
+            doc.setFontSize(12);
+            const nameLines = doc.splitTextToSize(product.name, labelWidth - 6);
+            doc.text(nameLines, centerX, 8.5, { align: 'center' });
+            
+            // 3. Barcode
+            const barcodeHeight = 7;
+            const barcodeWidth = (canvas.width / canvas.height) * barcodeHeight;
+            const barcodeX = (labelWidth - barcodeWidth) / 2;
+            doc.addImage(barcodeDataUrl, 'PNG', barcodeX, 12.5, barcodeWidth, barcodeHeight);
     
-            doc.setFontSize(8);
+            // 4. Product ID
             doc.setFont('helvetica', 'normal');
-            doc.text(product.id, centerX, bottomY, { align: 'center' });
-            const bottomTextHeight = doc.getTextDimensions(product.id).h;
-            const bottomBlockStart = bottomY - bottomTextHeight;
+            doc.setFontSize(9);
+            doc.text(product.id, centerX, 20.5, { align: 'center' });
     
-            // 3. Barcode (fit into the calculated available space)
-            const barcodeTopPadding = 1;
-            const barcodeBottomPadding = 1;
-            const barcodeYStart = topBlockEnd + barcodeTopPadding;
-            const availableHeightForBarcode = bottomBlockStart - barcodeYStart - barcodeBottomPadding;
-    
-            if (availableHeightForBarcode > 2) { // Ensure there is meaningful space
-                const aspectRatio = canvas.width / canvas.height;
-                let barcodeHeight = availableHeightForBarcode;
-                let barcodeWidth = barcodeHeight * aspectRatio;
-                
-                // If calculated width is too wide for the label, scale down based on width instead
-                const maxWidth = labelWidth - 6; // 3mm margin on each side
-                if (barcodeWidth > maxWidth) {
-                    barcodeWidth = maxWidth;
-                    barcodeHeight = barcodeWidth / aspectRatio;
-                }
-    
-                const barcodeX = (labelWidth - barcodeWidth) / 2;
-                const barcodeY = barcodeYStart + (availableHeightForBarcode - barcodeHeight) / 2;
-    
-                doc.addImage(barcodeDataUrl, 'PNG', barcodeX, barcodeY, barcodeWidth, barcodeHeight);
-            } else {
-                console.warn("Not enough vertical space for the barcode. Product name might be too long.");
-            }
+            // 5. MRP
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(14);
+            const mrpText = `MRP : ₹ ${product.salePrice.toLocaleString('en-IN')}`;
+            doc.text(mrpText, centerX, 24, { align: 'center' });
         }
     
         doc.save(`${product.id}-labels.pdf`);
