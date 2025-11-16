@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, IndianRupee, Edit, Save, X, Search, Package, Download, ChevronDown } from 'lucide-react';
+import { Plus, IndianRupee, Edit, Save, X, Search, Package, Download, ChevronDown, Printer } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Supplier, Purchase, Payment, Return, Page } from '../types';
 import Card from '../components/Card';
@@ -533,6 +533,16 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
                                                     <div className="flex items-center gap-1">
                                                         <button onClick={() => { setPurchaseToEdit(purchase); setView('edit_purchase'); }} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Edit Purchase">
                                                             <Edit size={16} />
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => {
+                                                                setLastPurchase(purchase);
+                                                                setIsBatchBarcodeModalOpen(true);
+                                                            }}
+                                                            className="p-2 text-green-600 hover:bg-green-100 rounded-full"
+                                                            aria-label="Print Barcode Labels"
+                                                        >
+                                                            <Printer size={16} />
                                                         </button>
                                                         <DeleteButton 
                                                             variant="delete" 
