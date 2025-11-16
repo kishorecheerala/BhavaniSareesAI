@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Edit, Save, X, Package, IndianRupee, Percent, PackageCheck, Barcode } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Product } from '../types';
@@ -65,33 +65,35 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
         setIsEditing(false);
     }, [selectedProduct, state.products]);
 
-    const handleOpenPrintModal = useCallback((product: Product) => {
-        setPrintQuantity(product.quantity.toString());
-        setIsPrintModalOpen(true);
-    }, []);
-
-    // Definitive fix for the print button bug
+    // Attach event listener to print button.
     useEffect(() => {
         const buttonElement = printButtonRef.current;
 
         const handleMouseDown = (event: MouseEvent) => {
             event.preventDefault();
             event.stopPropagation();
-            if (selectedProduct) {
-                handleOpenPrintModal(selectedProduct);
-            }
+            // This handler's only job is to open the modal.
+            setIsPrintModalOpen(true);
         };
 
         if (buttonElement) {
             buttonElement.addEventListener('mousedown', handleMouseDown);
         }
 
+        // The cleanup function correctly uses the 'buttonElement' from its closure.
         return () => {
             if (buttonElement) {
                 buttonElement.removeEventListener('mousedown', handleMouseDown);
             }
         };
-    }, [selectedProduct, handleOpenPrintModal]);
+    }, [selectedProduct]); // Rerun when the button appears/disappears
+
+    // Populate the modal with data once it's open.
+    useEffect(() => {
+        if (isPrintModalOpen && selectedProduct) {
+            setPrintQuantity(selectedProduct.quantity.toString());
+        }
+    }, [isPrintModalOpen, selectedProduct]);
 
 
     const handleUpdateProduct = () => {
