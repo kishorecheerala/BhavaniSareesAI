@@ -27,7 +27,7 @@ const DownloadLabelsModal: React.FC<{
             try {
                 JsBarcode(barcodeRef.current, product.id, {
                     format: "CODE128",
-                    displayValue: true,
+                    displayValue: false, // Set to false to manually render text
                     fontSize: 14,
                     height: 30,
                     width: 1.5,
@@ -48,11 +48,14 @@ const DownloadLabelsModal: React.FC<{
                     <div>
                         <h4 className="text-sm font-semibold mb-2">Label Preview:</h4>
                         <div className="border rounded-md p-2 flex justify-center bg-white">
-                            <div style={{ width: '1.9in', height: '0.9in', fontFamily: 'sans-serif', boxSizing: 'border-box', padding: '2px' }} className="text-center flex flex-col justify-around items-center border border-dashed bg-white">
-                                <div style={{ fontSize: '10px', fontWeight: 'bold' }}>Bhavani Sarees</div>
-                                <div style={{ fontSize: '14px', fontWeight: 'bold', lineHeight: '1.1', maxWidth: '1.8in' }}>{product.name}</div>
-                                <svg ref={barcodeRef} style={{ height: '30px', width: '90%' }}></svg>
-                                <div style={{ fontSize: '14px', fontWeight: 'bold' }}>MRP : {product.salePrice.toLocaleString('en-IN')}</div>
+                            <div style={{ width: '2in', height: '1in', fontFamily: 'sans-serif', boxSizing: 'border-box' }} className="text-center flex flex-col justify-between items-center p-1 border border-dashed bg-white">
+                                <div style={{ fontSize: '11px', fontWeight: 'bold' }}>Bhavani Sarees</div>
+                                <div style={{ fontSize: '15px', fontWeight: 'bold', lineHeight: '1.1' }}>{product.name}</div>
+                                <svg ref={barcodeRef} style={{ height: '35px', width: '90%' }}></svg>
+                                <div className="flex flex-col items-center" style={{lineHeight: '1.2'}}>
+                                    <div style={{ fontSize: '11px' }}>{product.id}</div>
+                                    <div style={{ fontSize: '15px', fontWeight: 'bold' }}>MRP : {product.salePrice.toLocaleString('en-IN')}</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -189,13 +192,12 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
     
         const canvas = document.createElement('canvas');
         try {
-            JsBarcode(canvas, product.id, {
+             JsBarcode(canvas, product.id, {
                 format: "CODE128",
-                displayValue: true,
-                fontSize: 16,
-                height: 30, // A reasonable height for barcode bars
+                displayValue: false, // Set to false to manually render text
+                height: 40,
                 margin: 0,
-                width: 1.5,
+                width: 2,
             });
         } catch (e) {
             console.error("JsBarcode error", e);
@@ -211,30 +213,44 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
     
             const centerX = labelWidth / 2;
     
-            // 1. Bhavani Sarees - Top, smaller font
+            // 1. Brand Name
             doc.setFontSize(10);
             doc.setFont('helvetica', 'bold');
-            doc.text('Bhavani Sarees', centerX, 4, { align: 'center' });
+            doc.text('Bhavani Sarees', centerX, 3.5, { align: 'center' });
+
+            // 2. Product Name
+            doc.setFontSize(14);
+            const nameLines = doc.splitTextToSize(product.name, labelWidth - 8);
+            const nameYStart = 7.5;
+            doc.text(nameLines, centerX, nameYStart, { align: 'center' });
+            const nameBlockHeight = nameLines.length * 4.5;
             
-            // 2. Product Name - Below brand, larger font
+            // Bottom-aligned text
+            const mrpY = 24;
+            const productIdY = 20.5;
+
+            // 5. MRP
             doc.setFontSize(14);
             doc.setFont('helvetica', 'bold');
-            const productNameLines = doc.splitTextToSize(product.name, labelWidth - 8);
-            const nameY = productNameLines.length > 1 ? 7.5 : 8.5; // Adjust Y pos to center if name wraps
-            doc.text(productNameLines, centerX, nameY, { align: 'center' });
-    
-            // 3. Barcode - Positioned to leave space for MRP at the bottom
-            const barcodeWidth = 44;
-            // Calculate height to maintain aspect ratio, preventing distortion
-            const barcodeHeight = barcodeWidth * (canvas.height / canvas.width); 
-            const barcodeX = (labelWidth - barcodeWidth) / 2;
-            const barcodeY = 13;
-            doc.addImage(barcodeDataUrl, 'PNG', barcodeX, barcodeY, barcodeWidth, barcodeHeight);
+            doc.text(`MRP : ${product.salePrice.toLocaleString('en-IN')}`, centerX, mrpY, { align: 'center' });
+
+            // 4. Product ID
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.text(product.id, centerX, productIdY, { align: 'center' });
+
+            // 3. Barcode (centered in remaining space)
+            const barcodeTopBound = nameYStart + nameBlockHeight;
+            const barcodeBottomBound = productIdY - 2; // give 2mm space above product ID
+
+            const barcodeWidthMM = 44;
+            const barcodeHeightMM = barcodeWidthMM * (canvas.height / canvas.width);
             
-            // 4. MRP - Bottom, larger font
-            doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
-            doc.text(`MRP : ${product.salePrice.toLocaleString('en-IN')}`, centerX, 23, { align: 'center' });
+            const availableSpaceForBarcode = barcodeBottomBound - barcodeTopBound;
+            // Center the barcode vertically in the calculated available space
+            const barcodeY = barcodeTopBound + (availableSpaceForBarcode - barcodeHeightMM) / 2;
+            
+            doc.addImage(barcodeDataUrl, 'PNG', (labelWidth - barcodeWidthMM) / 2, barcodeY, barcodeWidthMM, barcodeHeightMM);
         }
     
         doc.save(`${product.id}-labels.pdf`);
