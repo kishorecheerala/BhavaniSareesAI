@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, Edit, Save, X, Package, IndianRupee, Percent, PackageCheck, Barcode } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Product } from '../types';
@@ -65,6 +65,11 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
         setIsEditing(false);
     }, [selectedProduct, state.products]);
 
+    const handleOpenPrintModal = useCallback((product: Product) => {
+        setPrintQuantity(product.quantity.toString());
+        setIsPrintModalOpen(true);
+    }, []);
+
     // Definitive fix for the print button bug
     useEffect(() => {
         const buttonElement = printButtonRef.current;
@@ -86,7 +91,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                 buttonElement.removeEventListener('mousedown', handleMouseDown);
             }
         };
-    }, [selectedProduct]);
+    }, [selectedProduct, handleOpenPrintModal]);
 
 
     const handleUpdateProduct = () => {
@@ -117,11 +122,6 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
             dispatch({ type: 'UPDATE_PRODUCT_STOCK', payload: { productId: selectedProduct.id, change } });
             showToast("Stock adjusted successfully.");
         }
-    };
-    
-    const handleOpenPrintModal = (product: Product) => {
-        setPrintQuantity(product.quantity.toString());
-        setIsPrintModalOpen(true);
     };
 
     const handlePrint = (product: Product, quantity: number) => {
