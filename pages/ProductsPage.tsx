@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Edit, Save, X, Package, IndianRupee, Percent, PackageCheck, Barcode } from 'lucide-react';
+import { Search, Edit, Save, X, Package, IndianRupee, Percent, PackageCheck, Barcode, AlertTriangle } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Product } from '../types';
 import Card from '../components/Card';
@@ -62,9 +62,15 @@ const PrintModal: React.FC<{
                             autoFocus
                         />
                     </div>
-                    <p className="text-xs text-gray-500">
-                        Ensure your TSC printer and correct label size (e.g., 2x1 inch) are selected in the print dialog.
-                    </p>
+                    <div className="p-3 bg-amber-50 border-l-4 border-amber-400 text-amber-800 flex items-start gap-3">
+                        <AlertTriangle className="w-6 h-6 text-amber-500 flex-shrink-0" />
+                        <div>
+                            <h5 className="font-bold">Important Printer Settings</h5>
+                            <p className="text-xs mt-1">
+                                In the print dialog, you MUST select your TSC printer and set the <strong>Paper Size</strong> to <strong>2x1 inch</strong>. It may default to 'A4' or 'Letter'.
+                            </p>
+                        </div>
+                    </div>
                     <div className="flex gap-2">
                        <Button onClick={() => onPrint(parseInt(quantity, 10) || 1)} className="w-full">Print</Button>
                        <Button onClick={onClose} variant="secondary" className="w-full">Cancel</Button>
@@ -347,7 +353,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
             <h1 className="text-2xl font-bold text-primary">Products & Inventory</h1>
             
             <div className="relative">
-                <Search className="absolute left-3 top-1-2 -translate-y-1/2 text-gray-400" size={20} />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                 <input
                     type="text"
                     placeholder="Search products by name or code..."
