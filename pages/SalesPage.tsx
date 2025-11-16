@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Plus, Trash2, Share2, Search, X, IndianRupee, QrCode, Save, Edit } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
@@ -139,16 +140,20 @@ const QRScannerModal: React.FC<{
     onClose: () => void;
     onScanned: (decodedText: string) => void;
 }> = ({ onClose, onScanned }) => {
-    const [scanStatus, setScanStatus] = useState<string>("Click 'Start Scanning' to activate camera.");
+    const [scanStatus, setScanStatus] = useState<string>("Initializing camera...");
     const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
-    const startScan = () => {
-        if (!html5QrCodeRef.current) return;
+    useEffect(() => {
+        html5QrCodeRef.current = new Html5Qrcode("qr-reader-sales");
         setScanStatus("Requesting camera permissions...");
 
         const qrCodeSuccessCallback = (decodedText: string) => {
             if (html5QrCodeRef.current?.isScanning) {
                 html5QrCodeRef.current.stop().then(() => {
+                    onScanned(decodedText);
+                }).catch(err => {
+                    console.error("Error stopping scanner", err);
+                    // Still call onScanned even if stopping fails, to proceed with logic
                     onScanned(decodedText);
                 });
             }
@@ -161,16 +166,13 @@ const QRScannerModal: React.FC<{
                 setScanStatus(`Camera Permission Error. Please allow camera access for this site in your browser's settings.`);
                 console.error("Camera start failed.", err);
             });
-    };
-
-    useEffect(() => {
-        html5QrCodeRef.current = new Html5Qrcode("qr-reader-sales");
+            
         return () => {
             if (html5QrCodeRef.current?.isScanning) {
                 html5QrCodeRef.current.stop().catch(err => console.error("Cleanup stop scan failed.", err));
             }
         };
-    }, []);
+    }, [onScanned]);
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-75 backdrop-blur-sm flex flex-col items-center justify-center z-50 p-4 animate-fade-in-fast">
@@ -178,9 +180,8 @@ const QRScannerModal: React.FC<{
                  <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
                     <X size={20}/>
                  </button>
-                <div id="qr-reader-sales" className="w-full mt-4"></div>
+                <div id="qr-reader-sales" className="w-full mt-4 rounded-lg overflow-hidden border"></div>
                 <p className="text-center text-sm my-2 text-gray-600">{scanStatus}</p>
-                <Button onClick={startScan} className="w-full">Start Scanning</Button>
             </Card>
         </div>
     );

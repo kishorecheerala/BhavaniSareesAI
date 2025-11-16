@@ -56,7 +56,7 @@ const QRScannerModal: React.FC<{ onClose: () => void; onScanned: (text: string) 
         <div className="fixed inset-0 bg-black bg-opacity-75 backdrop-blur-sm flex flex-col items-center justify-center z-[101] p-4 animate-fade-in-fast">
             <div className="bg-white rounded-lg shadow-xl p-4 w-full max-w-md relative animate-scale-in">
                 <div className="flex justify-between items-center mb-2">
-                     <h3 className="text-lg font-bold text-primary">Scan Invoice QR</h3>
+                     <h3 className="text-lg font-bold text-primary">Scan QR Code</h3>
                      <button onClick={onClose} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
                         <X size={20}/>
                      </button>
@@ -127,14 +127,32 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({ isOpen, onClose, onNa
         }
     }, [isOpen]);
     
-    const handleScannedInvoice = (saleId: string) => {
+    const handleScan = (scannedText: string) => {
         setIsScanning(false);
-        const sale = state.sales.find(s => s.id.toLowerCase() === saleId.toLowerCase());
+        const text = scannedText.toLowerCase();
+
+        // Check for product
+        const product = state.products.find(p => p.id.toLowerCase() === text);
+        if (product) {
+            onNavigate('PRODUCTS', product.id);
+            return;
+        }
+
+        // Check for sale
+        const sale = state.sales.find(s => s.id.toLowerCase() === text);
         if (sale) {
             onNavigate('CUSTOMERS', sale.customerId);
-        } else {
-            alert(`Sale with ID "${saleId}" not found.`);
+            return;
         }
+        
+        // Check for purchase
+        const purchase = state.purchases.find(p => p.id.toLowerCase() === text);
+        if (purchase) {
+            onNavigate('PURCHASES', purchase.supplierId);
+            return;
+        }
+
+        alert(`QR Code content "${scannedText}" not recognized as a product, sale, or purchase.`);
     };
 
 
@@ -144,7 +162,7 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({ isOpen, onClose, onNa
 
     return (
         <div className="fixed inset-0 bg-background z-[100] flex flex-col p-4 animate-fade-in-fast" role="dialog" aria-modal="true">
-            {isScanning && <QRScannerModal onClose={() => setIsScanning(false)} onScanned={handleScannedInvoice} />}
+            {isScanning && <QRScannerModal onClose={() => setIsScanning(false)} onScanned={handleScan} />}
             <div className="flex items-center gap-2 mb-4">
                 <div className="relative flex-grow">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
