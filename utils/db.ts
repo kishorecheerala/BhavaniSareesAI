@@ -1,5 +1,6 @@
 
 
+
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { Customer, Supplier, Product, Sale, Purchase, Return, Notification, ProfileData, AppMetadata } from '../types';
 import { AppState } from '../context/AppContext';
@@ -72,7 +73,7 @@ export async function setLastBackupDate(): Promise<void> {
     await db.put('app_metadata', { id: 'lastBackup', date: now });
 }
 
-export async function exportData(): Promise<Omit<AppState, 'toast' | 'selection'>> {
+export async function exportData(): Promise<Omit<AppState, 'toast' | 'selection' | 'pin'>> {
     const db = await getDb();
     const data: any = {};
     for (const storeName of STORE_NAMES) {
@@ -80,10 +81,10 @@ export async function exportData(): Promise<Omit<AppState, 'toast' | 'selection'
         if (storeName === 'notifications') continue;
         data[storeName] = await db.getAll(storeName);
     }
-    return data as Omit<AppState, 'toast' | 'selection' >;
+    return data as Omit<AppState, 'toast' | 'selection' | 'pin'>;
 }
 
-export async function importData(data: Omit<AppState, 'toast' | 'selection' >): Promise<void> {
+export async function importData(data: Omit<AppState, 'toast' | 'selection' | 'pin'>): Promise<void> {
     const db = await getDb();
     const tx = db.transaction(STORE_NAMES, 'readwrite');
     

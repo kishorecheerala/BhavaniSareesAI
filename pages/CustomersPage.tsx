@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, User, Phone, MapPin, Search, Edit, Save, X, Trash2, IndianRupee, ShoppingCart, Download, Share2 } from 'lucide-react';
+import { Plus, User, Phone, MapPin, Search, Edit, Save, X, Trash2, IndianRupee, ShoppingCart, Download, Share2, ChevronDown } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Customer, Payment, Sale, Page } from '../types';
 import Card from '../components/Card';
@@ -99,6 +99,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
     const [isAdding, setIsAdding] = useState(false);
     const [newCustomer, setNewCustomer] = useState({ id: '', name: '', phone: '', address: '', area: '', reference: '' });
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+    const [activeSaleId, setActiveSaleId] = useState<string | null>(null);
 
     const [isEditing, setIsEditing] = useState(false);
     const [editedCustomer, setEditedCustomer] = useState<Customer | null>(null);
@@ -159,6 +160,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
     useEffect(() => {
         if (selectedCustomer) {
             setEditedCustomer(selectedCustomer);
+            setActiveSaleId(null); // Close any open accordion when customer changes
         }
         setIsEditing(false);
     }, [selectedCustomer]);
@@ -565,80 +567,88 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                 </Card>
                 <Card title="Sales History">
                     {customerSales.length > 0 ? (
-                        <div className="space-y-4">
+                        <div className="space-y-2">
                             {customerSales.slice().reverse().map(sale => {
                                 const amountPaid = sale.payments.reduce((sum, p) => sum + Number(p.amount), 0);
                                 const dueAmount = Number(sale.totalAmount) - amountPaid;
-                                const isPaid = dueAmount <= 0.01; // Epsilon for float comparison
+                                const isPaid = dueAmount <= 0.01;
                                 const subTotal = Number(sale.totalAmount) + Number(sale.discount);
+                                const isExpanded = activeSaleId === sale.id;
 
                                 return (
-                                <div key={sale.id} className="p-3 bg-gray-50 rounded-lg border">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div>
+                                <div key={sale.id} className="bg-gray-50 rounded-lg border overflow-hidden transition-all duration-300">
+                                    <button 
+                                        onClick={() => setActiveSaleId(isExpanded ? null : sale.id)}
+                                        className="w-full text-left p-3 flex justify-between items-center hover:bg-gray-100 focus:outline-none focus:bg-gray-100 transition-colors"
+                                    >
+                                        <div className="flex-1">
+                                            <p className="font-semibold text-gray-800">{sale.id}</p>
                                             <p className="text-xs text-gray-600">{new Date(sale.date).toLocaleString()}</p>
-                                            <p className="text-xs text-gray-500 mt-1">Invoice ID: {sale.id}</p>
-                                            <p className={`font-bold mt-1 ${isPaid ? 'text-green-600' : 'text-red-600'}`}>
-                                                 {isPaid ? 'Paid' : `Due: ₹${dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
+                                        </div>
+                                        <div className="text-right mx-2">
+                                            <p className="font-bold text-lg text-primary">₹{Number(sale.totalAmount).toLocaleString('en-IN')}</p>
+                                            <p className={`text-sm font-semibold ${isPaid ? 'text-green-600' : 'text-red-600'}`}>
+                                                {isPaid ? 'Paid' : `Due: ₹${dueAmount.toLocaleString('en-IN')}`}
                                             </p>
                                         </div>
-                                        <div className="text-right flex-shrink-0">
-                                            <div className="flex items-center gap-1">
-                                                <p className="font-bold text-lg text-primary">₹{Number(sale.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
-                                                <button onClick={() => handleEditSale(sale.id)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Edit Sale"><Edit size={16} /></button>
-                                                <button onClick={() => handleDownloadInvoice(sale)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Download Invoice"><Download size={16} /></button>
-                                                <DeleteButton 
-                                                    variant="delete" 
-                                                    onClick={(e) => { e.stopPropagation(); handleDeleteSale(sale.id); }} 
-                                                />
+                                        <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                                    </button>
+                                    
+                                    {isExpanded && (
+                                        <div className="p-3 border-t bg-white animate-slide-down-fade">
+                                            <div className="flex justify-end items-start mb-2">
+                                                <div className="flex items-center gap-1">
+                                                    <button onClick={() => handleEditSale(sale.id)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Edit Sale"><Edit size={16} /></button>
+                                                    <button onClick={() => handleDownloadInvoice(sale)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Download Invoice"><Download size={16} /></button>
+                                                    <DeleteButton 
+                                                        variant="delete" 
+                                                        onClick={(e) => { e.stopPropagation(); handleDeleteSale(sale.id); }} 
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-3">
+                                                <div>
+                                                    <h4 className="font-semibold text-sm text-gray-700 mb-1">Items Purchased:</h4>
+                                                    <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                                                        {sale.items.map((item, index) => (
+                                                            <li key={index}>
+                                                                {item.productName} (x{item.quantity}) @ ₹{Number(item.price).toLocaleString('en-IN')} each
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                                <div className="p-2 bg-white rounded-md text-sm border">
+                                                    <h4 className="font-semibold text-gray-700 mb-2">Transaction Details:</h4>
+                                                    <div className="space-y-1">
+                                                        <div className="flex justify-between"><span>Subtotal:</span> <span>₹{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                                                        <div className="flex justify-between"><span>Discount:</span> <span>- ₹{Number(sale.discount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                                                        <div className="flex justify-between"><span>GST Included:</span> <span>₹{Number(sale.gstAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                                                        <div className="flex justify-between font-bold border-t pt-1 mt-1"><span>Grand Total:</span> <span>₹{Number(sale.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-semibold text-sm text-gray-700 mb-1">Payments Made:</h4>
+                                                    {sale.payments.length > 0 ? (
+                                                        <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                                                            {sale.payments.map(payment => (
+                                                                <li key={payment.id}>
+                                                                    ₹{Number(payment.amount).toLocaleString('en-IN')} {payment.method === 'RETURN_CREDIT' ? <span className="text-blue-600 font-semibold">(Return Credit)</span> : `via ${payment.method}`} on {new Date(payment.date).toLocaleDateString()}
+                                                                    {payment.reference && <span className="text-xs text-gray-500 block">Ref: {payment.reference}</span>}
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    ) : <p className="text-sm text-gray-500">No payments made yet.</p>}
+                                                </div>
+                                                {!isPaid && (
+                                                    <div className="pt-2">
+                                                        <Button onClick={() => setPaymentModalState({ isOpen: true, saleId: sale.id })} className="w-full">
+                                                            <Plus size={16} className="mr-2"/> Add Payment
+                                                        </Button>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
-                                    </div>
-
-                                    <div className="space-y-3">
-                                        <div>
-                                            <h4 className="font-semibold text-sm text-gray-700 mb-1">Items Purchased:</h4>
-                                            <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                                                {sale.items.map((item, index) => (
-                                                    <li key={index}>
-                                                        {item.productName} (x{item.quantity}) @ ₹{Number(item.price).toLocaleString('en-IN')} each
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </div>
-
-                                        <div className="p-2 bg-white rounded-md text-sm border">
-                                            <h4 className="font-semibold text-gray-700 mb-2">Transaction Details:</h4>
-                                            <div className="space-y-1">
-                                                <div className="flex justify-between"><span>Subtotal:</span> <span>₹{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
-                                                <div className="flex justify-between"><span>Discount:</span> <span>- ₹{Number(sale.discount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
-                                                <div className="flex justify-between"><span>GST Included:</span> <span>₹{Number(sale.gstAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
-                                                <div className="flex justify-between font-bold border-t pt-1 mt-1"><span>Grand Total:</span> <span>₹{Number(sale.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <h4 className="font-semibold text-sm text-gray-700 mb-1">Payments Made:</h4>
-                                            {sale.payments.length > 0 ? (
-                                                <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                                                    {sale.payments.map(payment => (
-                                                        <li key={payment.id}>
-                                                            ₹{Number(payment.amount).toLocaleString('en-IN')} {payment.method === 'RETURN_CREDIT' ? <span className="text-blue-600 font-semibold">(Return Credit)</span> : `via ${payment.method}`} on {new Date(payment.date).toLocaleDateString()}
-                                                            {payment.reference && <span className="text-xs text-gray-500 block">Ref: {payment.reference}</span>}
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            ) : <p className="text-sm text-gray-500">No payments made yet.</p>}
-                                        </div>
-
-                                        {!isPaid && (
-                                            <div className="pt-2">
-                                                <Button onClick={() => setPaymentModalState({ isOpen: true, saleId: sale.id })} className="w-full">
-                                                    <Plus size={16} className="mr-2"/> Add Payment
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </div>
+                                    )}
                                 </div>
                             )})}
                         </div>

@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, IndianRupee, Edit, Save, X, Search, Package, Download } from 'lucide-react';
+import { Plus, IndianRupee, Edit, Save, X, Search, Package, Download, ChevronDown } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Supplier, Purchase, Payment, Return, Page } from '../types';
 import Card from '../components/Card';
@@ -73,6 +72,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
     const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [purchaseToEdit, setPurchaseToEdit] = useState<Purchase | null>(null);
+    const [activePurchaseId, setActivePurchaseId] = useState<string | null>(null);
 
     // State for 'add_supplier' view
     const [newSupplier, setNewSupplier] = useState({ id: '', name: '', phone: '', location: '', gstNumber: '', reference: '', account1: '', account2: '', upi: '' });
@@ -137,6 +137,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
     useEffect(() => {
         if (selectedSupplier) {
             setEditedSupplier(selectedSupplier);
+            setActivePurchaseId(null);
         }
         setIsEditing(false); // Always reset edit mode when supplier changes
     }, [selectedSupplier]);
@@ -487,12 +488,13 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
                 </Card>
                 <Card title="Purchase History">
                     {supplierPurchases.length > 0 ? (
-                        <div className="space-y-4">
+                        <div className="space-y-2">
                             {supplierPurchases.slice().reverse().map(purchase => {
                                 const amountPaid = (purchase.payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
                                 const dueAmount = Number(purchase.totalAmount) - amountPaid;
                                 const isPaid = dueAmount <= 0.01;
                                 const isEditingThisSchedule = editingScheduleId === purchase.id;
+                                const isExpanded = activePurchaseId === purchase.id;
 
                                 const totalGst = purchase.items.reduce((sum, item) => {
                                     const itemTotal = Number(item.price) * Number(item.quantity);
@@ -502,115 +504,125 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
                                 const subTotal = Number(purchase.totalAmount) - totalGst;
 
                                 return (
-                                <div key={purchase.id} className="p-3 bg-gray-50 rounded-lg border">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div>
-                                            <p className="font-semibold">{new Date(purchase.date).toLocaleString([], { year: '2-digit', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
-                                            <p className="text-xs text-gray-500 mt-1">Internal ID: {purchase.id}</p>
-                                            {purchase.supplierInvoiceId && <p className="text-xs text-gray-500">Supplier Invoice: {purchase.supplierInvoiceId}</p>}
-                                            <p className={`font-bold mt-1 text-red-600`}>
-                                                Due: ₹{dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                <div key={purchase.id} className="bg-gray-50 rounded-lg border overflow-hidden transition-all duration-300">
+                                     <button 
+                                        onClick={() => setActivePurchaseId(isExpanded ? null : purchase.id)}
+                                        className="w-full text-left p-3 flex justify-between items-center hover:bg-gray-100 focus:outline-none focus:bg-gray-100 transition-colors"
+                                     >
+                                        <div className="flex-1">
+                                            <p className="font-semibold text-gray-800">{purchase.id}</p>
+                                            <p className="text-xs text-gray-600">{new Date(purchase.date).toLocaleString([], { year: '2-digit', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
+                                            {purchase.supplierInvoiceId && <p className="text-xs text-gray-500">Inv: {purchase.supplierInvoiceId}</p>}
+                                        </div>
+                                        <div className="text-right mx-2">
+                                            <p className="font-bold text-lg text-primary">₹{Number(purchase.totalAmount).toLocaleString('en-IN')}</p>
+                                            <p className={`text-sm font-semibold text-red-600`}>
+                                                Due: ₹{dueAmount.toLocaleString('en-IN')}
                                             </p>
                                         </div>
-                                        <div className="text-right flex-shrink-0">
-                                            <div className="flex items-center gap-1">
-                                                <p className="font-bold text-lg text-primary">₹{Number(purchase.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
-                                                <button onClick={() => { setPurchaseToEdit(purchase); setView('edit_purchase'); }} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Edit Purchase">
-                                                    <Edit size={16} />
-                                                </button>
-                                                <DeleteButton 
-                                                    variant="delete" 
-                                                    onClick={(e) => { e.stopPropagation(); handleDeletePurchase(purchase.id); }} 
-                                                />
+                                        <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                                     </button>
+
+                                    {isExpanded && (
+                                        <div className="p-3 border-t bg-white animate-slide-down-fade">
+                                            <div className="flex justify-end items-center mb-2">
+                                                <div className="flex items-center gap-1">
+                                                    <button onClick={() => { setPurchaseToEdit(purchase); setView('edit_purchase'); }} className="p-2 text-blue-600 hover:bg-blue-100 rounded-full" aria-label="Edit Purchase">
+                                                        <Edit size={16} />
+                                                    </button>
+                                                    <DeleteButton 
+                                                        variant="delete" 
+                                                        onClick={(e) => { e.stopPropagation(); handleDeletePurchase(purchase.id); }} 
+                                                    />
+                                                </div>
                                             </div>
-                                        </div>
-                                    </div>
+                                            <div className="space-y-3">
+                                                <div>
+                                                    <h4 className="font-semibold text-sm text-gray-700 mb-1">Items:</h4>
+                                                    <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                                                        {purchase.items.map((item, index) => (
+                                                            <li key={index}>
+                                                                {item.productName} (x{item.quantity}) @ ₹{Number(item.price).toLocaleString('en-IN')}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
 
-                                    <div className="space-y-3">
-                                        <div>
-                                            <h4 className="font-semibold text-sm text-gray-700 mb-1">Items:</h4>
-                                            <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                                                {purchase.items.map((item, index) => (
-                                                    <li key={index}>
-                                                        {item.productName} (x{item.quantity}) @ ₹{Number(item.price).toLocaleString('en-IN')}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </div>
-
-                                        <div className="p-2 bg-white rounded-md text-sm border">
-                                            <h4 className="font-semibold text-gray-700 mb-2">Transaction Details:</h4>
-                                            <div className="space-y-1">
-                                                <div className="flex justify-between"><span>Subtotal (excl. GST):</span> <span>₹{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
-                                                <div className="flex justify-between"><span>GST Amount:</span> <span>+ ₹{totalGst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
-                                                <div className="flex justify-between font-bold border-t pt-1 mt-1"><span>Grand Total:</span> <span>₹{Number(purchase.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
-                                            </div>
-                                        </div>
-
-                                        <div className="p-2 bg-white rounded-md text-sm border">
-                                            <h4 className="font-semibold text-gray-700 mb-2">Payment Schedule</h4>
-                                            {isEditingThisSchedule ? (
-                                                <div className="space-y-2">
-                                                    {tempDueDates.map((date, index) => (
-                                                        <div key={index} className="flex items-center gap-2">
-                                                            <input type="date" value={date} onChange={(e) => handleTempDateChange(index, e.target.value)} className="w-full p-2 border rounded" />
-                                                            <DeleteButton variant="remove" onClick={() => removeTempDate(index)} />
-                                                        </div>
-                                                    ))}
-                                                    <Button onClick={addTempDate} variant="secondary" className="w-full py-1 text-xs">
-                                                        <Plus size={14} className="mr-1"/> Add Date
-                                                    </Button>
-                                                    <div className="flex gap-2 pt-2 border-t mt-2">
-                                                        <Button onClick={() => handleSaveSchedule(purchase)} className="flex-grow py-1">Save</Button>
-                                                        <Button onClick={() => setTempDueDates([])} variant="secondary" className="bg-red-100 text-red-700 hover:bg-red-200 py-1">Clear All</Button>
-                                                        <Button onClick={() => { setEditingScheduleId(null); setTempDueDates([]); }} variant="secondary" className="bg-gray-200 text-gray-700 hover:bg-gray-300 py-1">Cancel</Button>
+                                                <div className="p-2 bg-white rounded-md text-sm border">
+                                                    <h4 className="font-semibold text-gray-700 mb-2">Transaction Details:</h4>
+                                                    <div className="space-y-1">
+                                                        <div className="flex justify-between"><span>Subtotal (excl. GST):</span> <span>₹{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                                                        <div className="flex justify-between"><span>GST Amount:</span> <span>+ ₹{totalGst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                                                        <div className="flex justify-between font-bold border-t pt-1 mt-1"><span>Grand Total:</span> <span>₹{Number(purchase.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
                                                     </div>
                                                 </div>
-                                            ) : (
-                                                <div className="flex justify-between items-start">
-                                                    {(purchase.paymentDueDates && purchase.paymentDueDates.length > 0) ? (
-                                                        <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                                                            {purchase.paymentDueDates.map((dateStr, index) => {
-                                                                const today = new Date(); today.setHours(0, 0, 0, 0);
-                                                                const dueDate = new Date(dateStr + 'T00:00:00');
-                                                                const isOverdue = dueDate < today;
-                                                                return (
-                                                                    <li key={index} className={`${isOverdue ? 'text-red-600 font-bold' : ''}`}>
-                                                                        {dueDate.toLocaleDateString('en-IN')} {isOverdue && '(Overdue)'}
-                                                                    </li>
-                                                                );
-                                                            })}
-                                                        </ul>
-                                                    ) : <p className="text-xs text-gray-500">No due dates scheduled.</p>}
-                                                    <Button onClick={() => handleEditScheduleClick(purchase)} variant="secondary" className="py-1 px-2 text-xs">
-                                                        <Edit size={14}/> Edit
-                                                    </Button>
-                                                </div>
-                                            )}
-                                        </div>
 
-                                        {(purchase.payments || []).length > 0 && (
-                                            <div>
-                                                <h4 className="font-semibold text-sm text-gray-700 mb-1">Payments Made:</h4>
-                                                <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                                                    {(purchase.payments || []).map(p => (
-                                                    <li key={p.id}>
-                                                        ₹{Number(p.amount).toLocaleString('en-IN')} {p.method === 'RETURN_CREDIT' ? <span className="text-blue-600 font-semibold">(Return Credit)</span> : `via ${p.method}`} on {new Date(p.date).toLocaleDateString()}
-                                                        {p.reference && <span className="text-xs text-gray-500 block">Ref: {p.reference}</span>}
-                                                    </li>
-                                                    ))}
-                                                </ul>
+                                                <div className="p-2 bg-white rounded-md text-sm border">
+                                                    <h4 className="font-semibold text-gray-700 mb-2">Payment Schedule</h4>
+                                                    {isEditingThisSchedule ? (
+                                                        <div className="space-y-2">
+                                                            {tempDueDates.map((date, index) => (
+                                                                <div key={index} className="flex items-center gap-2">
+                                                                    <input type="date" value={date} onChange={(e) => handleTempDateChange(index, e.target.value)} className="w-full p-2 border rounded" />
+                                                                    <DeleteButton variant="remove" onClick={() => removeTempDate(index)} />
+                                                                </div>
+                                                            ))}
+                                                            <Button onClick={addTempDate} variant="secondary" className="w-full py-1 text-xs">
+                                                                <Plus size={14} className="mr-1"/> Add Date
+                                                            </Button>
+                                                            <div className="flex gap-2 pt-2 border-t mt-2">
+                                                                <Button onClick={() => handleSaveSchedule(purchase)} className="flex-grow py-1">Save</Button>
+                                                                <Button onClick={() => setTempDueDates([])} variant="secondary" className="bg-red-100 text-red-700 hover:bg-red-200 py-1">Clear All</Button>
+                                                                <Button onClick={() => { setEditingScheduleId(null); setTempDueDates([]); }} variant="secondary" className="bg-gray-200 text-gray-700 hover:bg-gray-300 py-1">Cancel</Button>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex justify-between items-start">
+                                                            {(purchase.paymentDueDates && purchase.paymentDueDates.length > 0) ? (
+                                                                <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                                                                    {purchase.paymentDueDates.map((dateStr, index) => {
+                                                                        const today = new Date(); today.setHours(0, 0, 0, 0);
+                                                                        const dueDate = new Date(dateStr + 'T00:00:00');
+                                                                        const isOverdue = dueDate < today;
+                                                                        return (
+                                                                            <li key={index} className={`${isOverdue ? 'text-red-600 font-bold' : ''}`}>
+                                                                                {dueDate.toLocaleDateString('en-IN')} {isOverdue && '(Overdue)'}
+                                                                            </li>
+                                                                        );
+                                                                    })}
+                                                                </ul>
+                                                            ) : <p className="text-xs text-gray-500">No due dates scheduled.</p>}
+                                                            <Button onClick={() => handleEditScheduleClick(purchase)} variant="secondary" className="py-1 px-2 text-xs">
+                                                                <Edit size={14}/> Edit
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {(purchase.payments || []).length > 0 && (
+                                                    <div>
+                                                        <h4 className="font-semibold text-sm text-gray-700 mb-1">Payments Made:</h4>
+                                                        <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                                                            {(purchase.payments || []).map(p => (
+                                                            <li key={p.id}>
+                                                                ₹{Number(p.amount).toLocaleString('en-IN')} {p.method === 'RETURN_CREDIT' ? <span className="text-blue-600 font-semibold">(Return Credit)</span> : `via ${p.method}`} on {new Date(p.date).toLocaleDateString()}
+                                                                {p.reference && <span className="text-xs text-gray-500 block">Ref: {p.reference}</span>}
+                                                            </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
+                                                
+                                                {!isPaid && (
+                                                    <div className="pt-2">
+                                                        <Button onClick={() => setPaymentModalState({ isOpen: true, purchaseId: purchase.id })} className="w-full">
+                                                            <Plus size={16} className="mr-2"/> Add Payment
+                                                        </Button>
+                                                    </div>
+                                                )}
                                             </div>
-                                        )}
-                                        
-                                        {!isPaid && (
-                                            <div className="pt-2">
-                                                <Button onClick={() => setPaymentModalState({ isOpen: true, purchaseId: purchase.id })} className="w-full">
-                                                    <Plus size={16} className="mr-2"/> Add Payment
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </div>
+                                        </div>
+                                    )}
                                 </div>
                             )})}
                         </div>
