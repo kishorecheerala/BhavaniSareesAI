@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Edit, Save, X, Package, IndianRupee, Percent, PackageCheck } from 'lucide-react';
+import { Search, Edit, Save, X, Package, IndianRupee, Percent, PackageCheck, Barcode } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Product } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
+
+declare var JsBarcode: any;
 
 interface ProductsPageProps {
   setIsDirty: (isDirty: boolean) => void;
@@ -17,6 +19,8 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
     const [editedProduct, setEditedProduct] = useState<Product | null>(null);
     const [newQuantity, setNewQuantity] = useState<string>('');
     const isDirtyRef = useRef(false);
+    const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+    const [printQuantity, setPrintQuantity] = useState('1');
     
     useEffect(() => {
         if (state.selection && state.selection.page === 'PRODUCTS') {
@@ -91,6 +95,132 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
         }
     };
     
+    const handleOpenPrintModal = (product: Product) => {
+        setPrintQuantity(product.quantity.toString());
+        setIsPrintModalOpen(true);
+    };
+
+    const handlePrint = (product: Product, quantity: number) => {
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'absolute';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        document.body.appendChild(iframe);
+        
+        const iframeDoc = iframe.contentWindow!.document;
+
+        let labelsHtml = '';
+        for (let i = 0; i < quantity; i++) {
+            labelsHtml += `
+                <div class="label">
+                    <div class="business-name">Bhavani Sarees</div>
+                    <div class="product-name">${product.name}</div>
+                    <svg id="barcode-${i}"></svg>
+                    <div class="price">MRP: ₹${product.salePrice.toLocaleString('en-IN')}</div>
+                </div>
+            `;
+        }
+
+        iframeDoc.open();
+        iframeDoc.write(`
+            <html><head><title>Print Labels</title>
+            <style>
+                @page { size: 2in 1in; margin: 0; }
+                body { margin: 0; padding: 0; font-family: sans-serif; }
+                .label {
+                    width: 1.9in; height: 0.9in;
+                    padding: 0.02in;
+                    text-align: center;
+                    display: flex; flex-direction: column;
+                    justify-content: center; align-items: center;
+                    box-sizing: border-box;
+                    page-break-after: always;
+                    overflow: hidden;
+                }
+                .business-name { font-size: 8px; font-weight: bold; margin-bottom: 1px; }
+                .product-name { font-size: 9px; margin: 1px 0; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 1.8in; }
+                .price { font-size: 10px; font-weight: bold; margin-top: 1px; }
+                svg { height: 20px; width: 100%; }
+            </style>
+            </head><body>${labelsHtml}</body></html>
+        `);
+        iframeDoc.close();
+
+        for (let i = 0; i < quantity; i++) {
+            const barcodeElement = iframeDoc.getElementById(`barcode-${i}`);
+            if (barcodeElement) {
+                JsBarcode(barcodeElement, product.id, {
+                    format: "CODE128", displayValue: true, fontSize: 10,
+                    height: 20, margin: 0
+                });
+            }
+        }
+        
+        iframe.contentWindow!.focus();
+        setTimeout(() => {
+            iframe.contentWindow!.print();
+            document.body.removeChild(iframe);
+        }, 500);
+
+        setIsPrintModalOpen(false);
+    };
+
+    const PrintModal = () => {
+        if (!isPrintModalOpen || !selectedProduct) return null;
+    
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+                <Card title="Print Barcode Labels" className="w-full max-w-sm animate-scale-in">
+                    <div className="space-y-4">
+                        <div>
+                            <h4 className="text-sm font-semibold mb-2">Label Preview:</h4>
+                            <div className="border rounded-md p-2 flex justify-center bg-white">
+                                <div style={{ width: '1.9in', height: '0.9in', fontFamily: 'sans-serif', boxSizing: 'border-box', padding: '0.02in' }} className="text-center flex flex-col justify-center items-center border border-dashed">
+                                    <div style={{ fontSize: '8px', fontWeight: 'bold', marginBottom: '1px' }}>Bhavani Sarees</div>
+                                    <div style={{ fontSize: '9px', margin: '1px 0', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '1.8in' }}>{selectedProduct.name}</div>
+                                    <svg id="preview-barcode" style={{ height: '20px', width: '100%' }}></svg>
+                                    <div style={{ fontSize: '10px', fontWeight: 'bold', marginTop: '1px' }}>MRP: ₹{selectedProduct.salePrice.toLocaleString('en-IN')}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Number of copies</label>
+                            <input
+                                type="number"
+                                value={printQuantity}
+                                onChange={(e) => setPrintQuantity(e.target.value)}
+                                className="w-full p-2 border rounded mt-1"
+                                min="1"
+                                autoFocus
+                            />
+                        </div>
+                        <p className="text-xs text-gray-500">
+                            Ensure your TSC printer and correct label size (e.g., 2x1 inch) are selected in the print dialog.
+                        </p>
+                        <div className="flex gap-2">
+                           <Button onClick={() => handlePrint(selectedProduct, parseInt(printQuantity, 10))} className="w-full">Print</Button>
+                           <Button onClick={() => setIsPrintModalOpen(false)} variant="secondary" className="w-full">Cancel</Button>
+                        </div>
+                    </div>
+                </Card>
+            </div>
+        );
+    };
+
+    // Effect to render the preview barcode after the modal is visible
+    useEffect(() => {
+        if (isPrintModalOpen && selectedProduct) {
+            const barcodeElement = document.getElementById('preview-barcode');
+            if (barcodeElement) {
+                JsBarcode(barcodeElement, selectedProduct.id, {
+                    format: "CODE128", displayValue: true, fontSize: 10,
+                    height: 20, margin: 0
+                });
+            }
+        }
+    }, [isPrintModalOpen, selectedProduct]);
+
     const filteredProducts = state.products.filter(p =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.id.toLowerCase().includes(searchTerm.toLowerCase())
@@ -105,6 +235,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
 
         return (
             <div className="space-y-4">
+                <PrintModal />
                 <Button onClick={() => setSelectedProduct(null)}>&larr; Back to Products List</Button>
                 
                 <Card>
@@ -167,12 +298,19 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                         </Button>
                     </div>
                 </Card>
+                <div className="mt-4">
+                    <Button onClick={() => handleOpenPrintModal(selectedProduct)} className="w-full">
+                        <Barcode size={16} className="mr-2" />
+                        Print Barcode Label
+                    </Button>
+                </div>
             </div>
         );
     }
 
     return (
         <div className="space-y-4">
+            <PrintModal />
             <h1 className="text-2xl font-bold text-primary">Products & Inventory</h1>
             
             <div className="relative">
