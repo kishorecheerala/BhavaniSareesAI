@@ -499,7 +499,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     color="bg-teal-100"
                     iconBgColor="bg-teal-200"
                     textColor="text-teal-900"
-                    onClick={() => setCurrentPage('SALES')}
+                    onClick={() => setCurrentPage('CUSTOMERS')}
                 />
                  <MetricCard 
                     icon={Package} 

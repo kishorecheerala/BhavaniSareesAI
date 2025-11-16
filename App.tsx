@@ -19,6 +19,7 @@ import ProfileModal from './components/ProfileModal';
 // FIX: Import AppMetadataBackup to use for type assertion.
 import { BeforeInstallPromptEvent, Notification, Page, AppMetadataBackup } from './types';
 import { useOnClickOutside } from './hooks/useOnClickOutside';
+import { useSwipe } from './hooks/useSwipe';
 import ConfirmationModal from './components/ConfirmationModal';
 
 const Toast = () => {
@@ -345,6 +346,27 @@ const MainApp: React.FC = () => {
   const allNavItems = [...mainNavItems, ...moreNavItems];
   const isMoreMenuActive = moreNavItems.some(item => item.page === currentPage);
 
+  const navItemsOrder = useMemo(() => allNavItems.map(item => item.page), [allNavItems]);
+
+  const handleSwipe = (direction: 'next' | 'prev') => {
+      const currentIndex = navItemsOrder.indexOf(currentPage);
+      if (currentIndex === -1) return; // Current page is not in the swipeable list (e.g., Insights)
+
+      let nextIndex;
+      if (direction === 'next') { // Swipe Left
+          nextIndex = (currentIndex + 1) % navItemsOrder.length;
+      } else { // Swipe Right
+          nextIndex = (currentIndex - 1 + navItemsOrder.length) % navItemsOrder.length;
+      }
+      
+      setCurrentPage(navItemsOrder[nextIndex]);
+  };
+
+  const swipeHandlers = useSwipe({
+      onSwipeLeft: () => handleSwipe('next'),
+      onSwipeRight: () => handleSwipe('prev'),
+  });
+
 
   return (
     <div className="flex flex-col h-screen font-sans text-text bg-background">
@@ -396,7 +418,9 @@ const MainApp: React.FC = () => {
               <Search className="w-6 h-6" />
             </button>
           </div>
-          <h1 className="text-xl font-bold text-center truncate px-2">{state.profile?.name || 'Business Manager'}</h1>
+          <button onClick={() => setCurrentPage('DASHBOARD')} className="flex-grow min-w-0 px-2 py-1 rounded-md hover:bg-white/10 transition-colors">
+            <h1 className="text-xl font-bold text-center truncate">{state.profile?.name || 'Business Manager'}</h1>
+          </button>
           <div className="flex items-center gap-2">
              <div className="relative" ref={quickAddRef}>
                 <button onClick={() => setIsQuickAddOpen(prev => !prev)} className="p-1 rounded-full hover:bg-white/20 transition-colors" aria-label="Open quick add menu">
@@ -449,7 +473,7 @@ const MainApp: React.FC = () => {
         </div>
       )}
 
-      <main className="flex-grow overflow-y-auto p-4 pb-20">
+      <main {...swipeHandlers} className="flex-grow overflow-y-auto p-4 pb-20">
         <div key={currentPage} className="animate-fade-in-fast">
           {renderPage()}
         </div>

@@ -99,7 +99,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
     if (selectedProduct && editedProduct) {
         const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             const { name, value } = e.target;
-            const isNumeric = ['salePrice', 'purchasePrice', 'gstPercent'].includes(name);
+            const isNumeric = ['salePrice', 'gstPercent'].includes(name);
             setEditedProduct({ ...editedProduct, [name]: isNumeric ? parseFloat(value) || 0 : value });
         };
 
@@ -133,27 +133,22 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                         <div className="space-y-3">
                             <div><label className="text-sm font-medium">Product Name</label><input type="text" name="name" value={editedProduct.name} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
                             <div><label className="text-sm font-medium">Sale Price</label><input type="number" name="salePrice" value={editedProduct.salePrice} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
-                            <div><label className="text-sm font-medium">Purchase Price</label><input type="number" name="purchasePrice" value={editedProduct.purchasePrice} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
                             <div><label className="text-sm font-medium">GST %</label><input type="number" name="gstPercent" value={editedProduct.gstPercent} onChange={handleInputChange} className="w-full p-2 border rounded" /></div>
                         </div>
                     ) : (
-                        <div className="space-y-2">
+                         <div className="space-y-2">
                             <h3 className="text-xl font-bold">{selectedProduct.name}</h3>
                             <p className="text-sm text-gray-500">Product Code: {selectedProduct.id}</p>
-                            <div className="grid grid-cols-2 gap-4 pt-4">
-                                <div className="p-3 bg-gray-50 rounded-lg">
+                            <div className="pt-4 space-y-3">
+                                <div className="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
                                     <p className="text-sm font-semibold text-gray-600">Sale Price</p>
                                     <p className="text-lg font-bold text-green-600">₹{selectedProduct.salePrice.toLocaleString('en-IN')}</p>
                                 </div>
-                                 <div className="p-3 bg-gray-50 rounded-lg">
-                                    <p className="text-sm font-semibold text-gray-600">Purchase Price</p>
-                                    <p className="text-lg font-bold text-orange-600">₹{selectedProduct.purchasePrice.toLocaleString('en-IN')}</p>
-                                </div>
-                                <div className="p-3 bg-gray-50 rounded-lg">
+                                <div className="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
                                     <p className="text-sm font-semibold text-gray-600">GST</p>
                                     <p className="text-lg font-bold">{selectedProduct.gstPercent}%</p>
                                 </div>
-                                <div className="p-3 bg-gray-50 rounded-lg">
+                                <div className="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
                                     <p className="text-sm font-semibold text-gray-600">Stock on Hand</p>
                                     <p className="text-lg font-bold">{selectedProduct.quantity}</p>
                                 </div>
