@@ -19,37 +19,13 @@ interface BarcodeModalProps {
 
 export const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, product, onClose, businessName }) => {
   const [numberOfCopies, setNumberOfCopies] = useState(1);
-  const previewCanvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    if (isOpen && product) {
-        setNumberOfCopies(product.quantity || 0); // Default to current stock
-        handleGeneratePreview();
-    }
-  }, [isOpen, product]);
-
-  const handleGeneratePreview = () => {
-    if (!previewCanvasRef.current) return;
-
-    try {
-      JsBarcode(previewCanvasRef.current, product.id, {
-        format: 'CODE128',
-        width: 1.5,
-        height: 40,
-        displayValue: true,
-        fontSize: 10,
-        margin: 5,
-      });
-    } catch (error) {
-      console.error('Barcode generation failed:', error);
-    }
-  };
+  const labelPreviewCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const generateLabelCanvas = (): HTMLCanvasElement => {
     const labelCanvas = document.createElement('canvas');
-    const dpiScale = 2; // Increase resolution for better print quality
-    labelCanvas.width = 300 * dpiScale; // 600px for a 2-inch label @ 300 DPI
-    labelCanvas.height = 150 * dpiScale; // 300px for a 1-inch label @ 300 DPI
+    const dpiScale = 4; // Upped to 4 for ~600 DPI on a 2x1 inch label
+    labelCanvas.width = 300 * dpiScale;
+    labelCanvas.height = 150 * dpiScale;
 
     const ctx = labelCanvas.getContext('2d');
     if (!ctx) throw new Error('Failed to get canvas context');
@@ -59,35 +35,66 @@ export const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, product, onC
     ctx.fillRect(0, 0, labelCanvas.width, labelCanvas.height);
 
     // Add Business Name
-    ctx.font = `bold ${10 * dpiScale}px Arial`;
+    ctx.font = `bold ${12 * dpiScale}px Arial`;
     ctx.fillStyle = '#000000';
     ctx.textAlign = 'center';
-    ctx.fillText(businessName, 150 * dpiScale, 15 * dpiScale);
+    ctx.fillText(businessName, labelCanvas.width / 2, 20 * dpiScale);
 
-    // Generate barcode on temporary canvas
+    // Generate barcode on a temporary canvas
     const barcodeCanvas = document.createElement('canvas');
     JsBarcode(barcodeCanvas, product.id, {
       format: 'CODE128',
       width: 2 * dpiScale,
-      height: 80 * dpiScale,
+      height: 60 * dpiScale,
       displayValue: true,
-      fontSize: 14 * dpiScale,
+      fontSize: 16 * dpiScale,
       margin: 10 * dpiScale,
     });
-    // Draw barcode onto label canvas
-    ctx.drawImage(barcodeCanvas, (labelCanvas.width - (280 * dpiScale))/2, 25 * dpiScale, 280 * dpiScale, 70 * dpiScale);
+    
+    // Draw barcode onto the main label canvas, centered, without distortion
+    const barcodeX = (labelCanvas.width - barcodeCanvas.width) / 2;
+    ctx.drawImage(barcodeCanvas, barcodeX, 30 * dpiScale);
 
     // Add product name
-    ctx.font = `bold ${10 * dpiScale}px Arial`;
-    const productText = product.name.substring(0, 25);
-    ctx.fillText(productText, 150 * dpiScale, 115 * dpiScale);
+    const productNameY = (30 + 60 + 20) * dpiScale;
+    ctx.font = `bold ${12 * dpiScale}px Arial`;
+    const productText = product.name.substring(0, 30);
+    ctx.fillText(productText, labelCanvas.width / 2, productNameY);
 
     // Add MRP
-    ctx.font = `bold ${12 * dpiScale}px Arial`;
-    ctx.fillText(`MRP: ₹${product.salePrice.toLocaleString('en-IN')}`, 150 * dpiScale, 135 * dpiScale);
+    const mrpY = (30 + 60 + 40) * dpiScale;
+    ctx.font = `bold ${14 * dpiScale}px Arial`;
+    ctx.fillText(`MRP: ₹${product.salePrice.toLocaleString('en-IN')}`, labelCanvas.width / 2, mrpY);
 
     return labelCanvas;
   }
+
+  useEffect(() => {
+    if (isOpen && product) {
+        setNumberOfCopies(product.quantity || 0);
+    }
+  }, [isOpen, product]);
+
+  useEffect(() => {
+    if (isOpen && product && labelPreviewCanvasRef.current) {
+        const fullLabelCanvas = generateLabelCanvas();
+        const previewCtx = labelPreviewCanvasRef.current.getContext('2d');
+        if (previewCtx) {
+            const previewWidth = 200;
+            const previewHeight = 100;
+            // Render at 2x for retina displays, then style down
+            labelPreviewCanvasRef.current.width = previewWidth * 2; 
+            labelPreviewCanvasRef.current.height = previewHeight * 2;
+            labelPreviewCanvasRef.current.style.width = `${previewWidth}px`;
+            labelPreviewCanvasRef.current.style.height = `${previewHeight}px`;
+
+            previewCtx.fillStyle = '#FFFFFF';
+            previewCtx.fillRect(0, 0, labelPreviewCanvasRef.current.width, labelPreviewCanvasRef.current.height);
+            previewCtx.drawImage(fullLabelCanvas, 0, 0, labelPreviewCanvasRef.current.width, labelPreviewCanvasRef.current.height);
+        }
+    }
+  }, [isOpen, product, businessName]);
+
 
   const handleDownloadPDF = async () => {
     if (numberOfCopies <= 0) {
@@ -187,15 +194,7 @@ export const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, product, onC
           <div>
             <h3 className="text-sm font-semibold mb-2">Label Preview:</h3>
             <div className="border-2 border-dashed border-purple-300 bg-gray-50 p-4 rounded-lg flex justify-center">
-              <div
-                className="bg-white p-2 rounded flex flex-col items-center justify-center shadow-inner"
-                style={{ width: '200px', height: '100px', border: '1px solid #ddd' }}
-              >
-                <p className="text-xs font-bold">{businessName}</p>
-                <canvas ref={previewCanvasRef} style={{ maxWidth: '90%', maxHeight: '50px', margin: '2px 0' }}/>
-                <p className="text-xs font-semibold text-center leading-tight">{product.name.substring(0, 20)}</p>
-                <p className="text-sm font-bold">₹{product.salePrice.toLocaleString('en-IN')}</p>
-              </div>
+              <canvas ref={labelPreviewCanvasRef} style={{ border: '1px solid #ddd', background: 'white' }} />
             </div>
           </div>
 
