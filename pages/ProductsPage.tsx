@@ -192,12 +192,13 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
     
         const canvas = document.createElement('canvas');
         try {
-             JsBarcode(canvas, product.id, {
+            // Match parameters from preview modal for consistency
+            JsBarcode(canvas, product.id, {
                 format: "CODE128",
-                displayValue: false, // Set to false to manually render text
-                height: 40,
+                displayValue: false,
+                height: 30,
                 margin: 0,
-                width: 2,
+                width: 1.5,
             });
         } catch (e) {
             console.error("JsBarcode error", e);
@@ -212,45 +213,54 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
             }
     
             const centerX = labelWidth / 2;
+            const margin = 2;
+            let currentY = 3.5;
     
-            // 1. Brand Name
-            doc.setFontSize(10);
+            // --- Top elements ---
             doc.setFont('helvetica', 'bold');
-            doc.text('Bhavani Sarees', centerX, 3.5, { align: 'center' });
-
-            // 2. Product Name
-            doc.setFontSize(14);
-            const nameLines = doc.splitTextToSize(product.name, labelWidth - 8);
-            const nameYStart = 7.5;
-            doc.text(nameLines, centerX, nameYStart, { align: 'center' });
-            const nameBlockHeight = nameLines.length * 4.5;
+            doc.setFontSize(8); // ~11px
+            doc.text('Bhavani Sarees', centerX, currentY, { align: 'center' });
+    
+            currentY += 4; // Move down for product name
+    
+            doc.setFontSize(11); // ~15px
+            const nameLines = doc.splitTextToSize(product.name, labelWidth - (margin * 2));
+            doc.text(nameLines, centerX, currentY, { align: 'center' });
+            const nameDimensions = doc.getTextDimensions(nameLines);
+            const topBlockEnd = currentY + nameDimensions.h - 1; // Subtract 1 for tighter spacing
+    
+            // --- Bottom elements ---
+            let bottomY = labelHeight - 2.5;
+    
+            doc.text(`MRP : ${product.salePrice.toLocaleString('en-IN')}`, centerX, bottomY, { align: 'center' });
             
-            // Bottom-aligned text
-            const mrpY = 24;
-            const productIdY = 20.5;
-
-            // 5. MRP
-            doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
-            doc.text(`MRP : ${product.salePrice.toLocaleString('en-IN')}`, centerX, mrpY, { align: 'center' });
-
-            // 4. Product ID
-            doc.setFontSize(10);
+            bottomY -= 4; // Move up for product ID
+    
             doc.setFont('helvetica', 'normal');
-            doc.text(product.id, centerX, productIdY, { align: 'center' });
-
-            // 3. Barcode (centered in remaining space)
-            const barcodeTopBound = nameYStart + nameBlockHeight;
-            const barcodeBottomBound = productIdY - 2; // give 2mm space above product ID
-
-            const barcodeWidthMM = 44;
+            doc.setFontSize(8);
+            doc.text(product.id, centerX, bottomY, { align: 'center' });
+            const productIDDimensions = doc.getTextDimensions(product.id);
+            const bottomBlockStart = bottomY - productIDDimensions.h;
+    
+            // --- Barcode in the middle ---
+            const barcodeWidthMM = 42; // give some side margin
             const barcodeHeightMM = barcodeWidthMM * (canvas.height / canvas.width);
+    
+            const availableSpaceForBarcode = bottomBlockStart - topBlockEnd;
             
-            const availableSpaceForBarcode = barcodeBottomBound - barcodeTopBound;
-            // Center the barcode vertically in the calculated available space
-            const barcodeY = barcodeTopBound + (availableSpaceForBarcode - barcodeHeightMM) / 2;
-            
-            doc.addImage(barcodeDataUrl, 'PNG', (labelWidth - barcodeWidthMM) / 2, barcodeY, barcodeWidthMM, barcodeHeightMM);
+            let finalBarcodeHeight = barcodeHeightMM;
+            let finalBarcodeWidth = barcodeWidthMM;
+    
+            // If barcode is too tall for the space, scale it down
+            if (barcodeHeightMM > availableSpaceForBarcode) {
+                finalBarcodeHeight = availableSpaceForBarcode - 1; // 1mm vertical margin
+                finalBarcodeWidth = finalBarcodeHeight * (canvas.width / canvas.height);
+            }
+    
+            if (finalBarcodeHeight > 0) {
+                const barcodeY = topBlockEnd + (availableSpaceForBarcode - finalBarcodeHeight) / 2;
+                doc.addImage(barcodeDataUrl, 'PNG', (labelWidth - finalBarcodeWidth) / 2, barcodeY, finalBarcodeWidth, finalBarcodeHeight);
+            }
         }
     
         doc.save(`${product.id}-labels.pdf`);
