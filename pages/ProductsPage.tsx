@@ -171,13 +171,8 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
     };
 
     const handlePrint = (product: Product, quantity: number) => {
-        const iframe = document.createElement('iframe');
-        iframe.style.position = 'absolute';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
-        iframe.style.border = '0';
-        document.body.appendChild(iframe);
-    
+        setIsPrintModalOpen(false);
+
         let labelsHtml = '';
         for (let i = 0; i < quantity; i++) {
             labelsHtml += `
@@ -191,7 +186,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
         }
     
         const fullHtml = `
-            <html><head><title>Print Labels</title>
+            <html><head><title>Print Labels - ${product.name}</title>
             <style>
                 @page { size: 2in 1in; margin: 0; }
                 body { margin: 0; padding: 0; font-family: sans-serif; }
@@ -213,69 +208,39 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
             </head><body>${labelsHtml}</body></html>
         `;
     
-        iframe.onload = () => {
-            const printWindow = iframe.contentWindow;
-            if (!printWindow) {
-                if (document.body.contains(iframe)) document.body.removeChild(iframe);
-                return;
-            }
+        const printWindow = window.open('', '_blank', 'height=500,width=400');
     
-            const iframeDoc = printWindow.document;
-            for (let i = 0; i < quantity; i++) {
-                const barcodeElement = iframeDoc.getElementById(`barcode-${i}`);
-                if (barcodeElement) {
-                    try {
-                        JsBarcode(barcodeElement, product.id, {
-                            format: "CODE128", displayValue: true, fontSize: 10,
-                            height: 20, margin: 0
-                        });
-                    } catch (e) {
-                        console.error('Error rendering barcode in iframe:', e);
-                    }
+        if (!printWindow) {
+            alert('Please allow pop-ups for this website to print labels.');
+            return;
+        }
+    
+        printWindow.document.write(fullHtml);
+        printWindow.document.close();
+    
+        for (let i = 0; i < quantity; i++) {
+            const barcodeElement = printWindow.document.getElementById(`barcode-${i}`);
+            if (barcodeElement) {
+                try {
+                    JsBarcode(barcodeElement, product.id, {
+                        format: "CODE128", displayValue: true, fontSize: 10,
+                        height: 20, margin: 0
+                    });
+                } catch (e) {
+                    console.error('Error rendering barcode in new window:', e);
                 }
             }
-            
-            let printInProgress = true;
+        }
     
-            const cleanup = () => {
-                if (!printInProgress) return;
-                printInProgress = false;
-    
+        setTimeout(() => {
+            printWindow.focus();
+            printWindow.print();
+            printWindow.onafterprint = () => {
                 setTimeout(() => {
-                    if (document.body.contains(iframe)) {
-                        document.body.removeChild(iframe);
-                    }
-                    setIsPrintModalOpen(false);
-                }, 100);
+                    printWindow.close();
+                }, 500);
             };
-    
-            printWindow.onafterprint = cleanup;
-    
-            const mediaQueryList = printWindow.matchMedia('print');
-            const mqlListener = (mql: MediaQueryListEvent) => {
-                if (!mql.matches) {
-                    cleanup();
-                    if (mediaQueryList.removeEventListener) {
-                        mediaQueryList.removeEventListener('change', mqlListener);
-                    } else {
-                        mediaQueryList.removeListener(mqlListener);
-                    }
-                }
-            };
-            
-            if (mediaQueryList.addEventListener) {
-                mediaQueryList.addEventListener('change', mqlListener);
-            } else {
-                mediaQueryList.addListener(mqlListener);
-            }
-            
-            setTimeout(() => {
-                printWindow.focus();
-                printWindow.print();
-            }, 100);
-        };
-    
-        iframe.srcdoc = fullHtml;
+        }, 250);
     };
 
     const filteredProducts = state.products.filter(p =>
