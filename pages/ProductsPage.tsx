@@ -300,13 +300,17 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                             Save Adjustment
                         </Button>
                     </div>
-                    <Button 
-                        onClick={(e) => { e.preventDefault(); handleOpenPrintModal(selectedProduct); }}
-                        variant="secondary" 
-                        className="w-full mt-4 !bg-gray-200 !text-gray-700 hover:!bg-gray-300 font-normal"
+                    <button 
+                        type="button"
+                        onClick={(e) => { 
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleOpenPrintModal(selectedProduct); 
+                        }}
+                        className="w-full mt-4 px-4 py-2 rounded-md font-normal text-gray-700 bg-gray-200 hover:bg-gray-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-sm flex items-center justify-center gap-2"
                     >
                         Print Barcode Label
-                    </Button>
+                    </button>
                 </Card>
             </div>
         );
