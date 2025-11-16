@@ -11,6 +11,71 @@ interface ProductsPageProps {
   setIsDirty: (isDirty: boolean) => void;
 }
 
+const PrintModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    onPrint: (quantity: number) => void;
+    product: Product;
+    quantity: string;
+    setQuantity: (q: string) => void;
+}> = ({ isOpen, onClose, onPrint, product, quantity, setQuantity }) => {
+    const barcodeRef = useRef<SVGSVGElement>(null);
+
+    useEffect(() => {
+        if (isOpen && product && barcodeRef.current) {
+            try {
+                JsBarcode(barcodeRef.current, product.id, {
+                    format: "CODE128", displayValue: true, fontSize: 10,
+                    height: 20, margin: 0
+                });
+            } catch (e) {
+                console.error("JsBarcode render error:", e);
+            }
+        }
+    }, [isOpen, product]);
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+            <Card title="Print Barcode Labels" className="w-full max-w-sm animate-scale-in">
+                <div className="space-y-4">
+                    <div>
+                        <h4 className="text-sm font-semibold mb-2">Label Preview:</h4>
+                        <div className="border rounded-md p-2 flex justify-center bg-white">
+                            <div style={{ width: '1.9in', height: '0.9in', fontFamily: 'sans-serif', boxSizing: 'border-box', padding: '0.02in' }} className="text-center flex flex-col justify-center items-center border border-dashed">
+                                <div style={{ fontSize: '8px', fontWeight: 'bold', marginBottom: '1px' }}>Bhavani Sarees</div>
+                                <div style={{ fontSize: '9px', margin: '1px 0', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '1.8in' }}>{product.name}</div>
+                                <svg ref={barcodeRef} style={{ height: '20px', width: '100%' }}></svg>
+                                <div style={{ fontSize: '10px', fontWeight: 'bold', marginTop: '1px' }}>MRP: ₹${product.salePrice.toLocaleString('en-IN')}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Number of copies</label>
+                        <input
+                            type="number"
+                            value={quantity}
+                            onChange={(e) => setQuantity(e.target.value)}
+                            className="w-full p-2 border rounded mt-1"
+                            min="1"
+                            autoFocus
+                        />
+                    </div>
+                    <p className="text-xs text-gray-500">
+                        Ensure your TSC printer and correct label size (e.g., 2x1 inch) are selected in the print dialog.
+                    </p>
+                    <div className="flex gap-2">
+                       <Button onClick={() => onPrint(parseInt(quantity, 10) || 1)} className="w-full">Print</Button>
+                       <Button onClick={onClose} variant="secondary" className="w-full">Cancel</Button>
+                    </div>
+                </div>
+            </Card>
+        </div>
+    );
+};
+
+
 const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
     const { state, dispatch, showToast } = useAppContext();
     const [searchTerm, setSearchTerm] = useState('');
@@ -21,6 +86,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
     const isDirtyRef = useRef(false);
     const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
     const [printQuantity, setPrintQuantity] = useState('1');
+    const printButtonRef = useRef<HTMLButtonElement>(null);
     
     useEffect(() => {
         if (state.selection && state.selection.page === 'PRODUCTS') {
@@ -62,20 +128,36 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
             setEditedProduct(null);
         }
         setIsEditing(false);
-    }, [selectedProduct, state.products]);
+    }, [selectedProduct?.id, state.products]); // Depend on ID to avoid loop
 
     useEffect(() => {
         if (isPrintModalOpen && selectedProduct) {
             setPrintQuantity(selectedProduct.quantity.toString());
         }
     }, [isPrintModalOpen, selectedProduct]);
+    
+    useEffect(() => {
+        const button = printButtonRef.current;
+        if (!button) return;
+
+        const handleMouseDown = (event: MouseEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setIsPrintModalOpen(true);
+        };
+
+        button.addEventListener('mousedown', handleMouseDown);
+
+        return () => {
+            button.removeEventListener('mousedown', handleMouseDown);
+        };
+    }, [selectedProduct]); // Rerun when a product is selected to ensure the button ref is attached
 
 
     const handleUpdateProduct = () => {
         if (editedProduct) {
              if (window.confirm('Are you sure you want to update this product\'s details?')) {
                 dispatch({ type: 'UPDATE_PRODUCT', payload: editedProduct });
-                setSelectedProduct(editedProduct);
                 setIsEditing(false);
                 showToast("Product details updated successfully.");
             }
@@ -151,10 +233,14 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
         for (let i = 0; i < quantity; i++) {
             const barcodeElement = iframeDoc.getElementById(`barcode-${i}`);
             if (barcodeElement) {
-                JsBarcode(barcodeElement, product.id, {
-                    format: "CODE128", displayValue: true, fontSize: 10,
-                    height: 20, margin: 0
-                });
+                try {
+                    JsBarcode(barcodeElement, product.id, {
+                        format: "CODE128", displayValue: true, fontSize: 10,
+                        height: 20, margin: 0
+                    });
+                } catch (e) {
+                    console.error('Error rendering barcode in iframe:', e);
+                }
             }
         }
         
@@ -166,61 +252,6 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
 
         setIsPrintModalOpen(false);
     };
-
-    const PrintModal = () => {
-        if (!isPrintModalOpen || !selectedProduct) return null;
-    
-        return (
-            <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
-                <Card title="Print Barcode Labels" className="w-full max-w-sm animate-scale-in">
-                    <div className="space-y-4">
-                        <div>
-                            <h4 className="text-sm font-semibold mb-2">Label Preview:</h4>
-                            <div className="border rounded-md p-2 flex justify-center bg-white">
-                                <div style={{ width: '1.9in', height: '0.9in', fontFamily: 'sans-serif', boxSizing: 'border-box', padding: '0.02in' }} className="text-center flex flex-col justify-center items-center border border-dashed">
-                                    <div style={{ fontSize: '8px', fontWeight: 'bold', marginBottom: '1px' }}>Bhavani Sarees</div>
-                                    <div style={{ fontSize: '9px', margin: '1px 0', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '1.8in' }}>{selectedProduct.name}</div>
-                                    <svg id="preview-barcode" style={{ height: '20px', width: '100%' }}></svg>
-                                    <div style={{ fontSize: '10px', fontWeight: 'bold', marginTop: '1px' }}>MRP: ₹${selectedProduct.salePrice.toLocaleString('en-IN')}</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Number of copies</label>
-                            <input
-                                type="number"
-                                value={printQuantity}
-                                onChange={(e) => setPrintQuantity(e.target.value)}
-                                className="w-full p-2 border rounded mt-1"
-                                min="1"
-                                autoFocus
-                            />
-                        </div>
-                        <p className="text-xs text-gray-500">
-                            Ensure your TSC printer and correct label size (e.g., 2x1 inch) are selected in the print dialog.
-                        </p>
-                        <div className="flex gap-2">
-                           <Button onClick={() => handlePrint(selectedProduct, parseInt(printQuantity, 10))} className="w-full">Print</Button>
-                           <Button onClick={() => setIsPrintModalOpen(false)} variant="secondary" className="w-full">Cancel</Button>
-                        </div>
-                    </div>
-                </Card>
-            </div>
-        );
-    };
-
-    // Effect to render the preview barcode after the modal is visible
-    useEffect(() => {
-        if (isPrintModalOpen && selectedProduct) {
-            const barcodeElement = document.getElementById('preview-barcode');
-            if (barcodeElement) {
-                JsBarcode(barcodeElement, selectedProduct.id, {
-                    format: "CODE128", displayValue: true, fontSize: 10,
-                    height: 20, margin: 0
-                });
-            }
-        }
-    }, [isPrintModalOpen, selectedProduct]);
 
     const filteredProducts = state.products.filter(p =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -236,7 +267,14 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
 
         return (
             <div className="space-y-4">
-                <PrintModal />
+                <PrintModal
+                    isOpen={isPrintModalOpen}
+                    onClose={() => setIsPrintModalOpen(false)}
+                    product={selectedProduct}
+                    onPrint={handlePrint}
+                    quantity={printQuantity}
+                    setQuantity={setPrintQuantity}
+                />
                 <Button onClick={() => setSelectedProduct(null)}>&larr; Back to Products List</Button>
                 
                 <Card>
@@ -286,41 +324,38 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                     )}
                 </Card>
 
-                <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
-                    <Card title="Stock Adjustment">
-                        <p className="text-sm text-gray-600 mb-2">Use this to correct the stock count after a physical inventory check.</p>
-                        <div className="flex flex-col sm:flex-row gap-2 items-end">
-                            <div className="w-full">
-                                 <label className="block text-sm font-medium text-gray-700">New Quantity</label>
-                                 <input type="number" value={newQuantity} onChange={e => setNewQuantity(e.target.value)} className="w-full p-2 border rounded" />
-                            </div>
-                            <Button 
-                                type="button"
-                                onClick={handleStockAdjustment} 
-                                variant="secondary"
-                                className="w-full sm:w-auto flex-shrink-0 !text-gray-700 !bg-white hover:!bg-gray-100 border border-gray-300 shadow-sm"
-                            >
-                                Save Adjustment
-                            </Button>
+                <Card title="Stock Adjustment">
+                    <p className="text-sm text-gray-600 mb-2">Use this to correct the stock count after a physical inventory check.</p>
+                    <div className="flex flex-col sm:flex-row gap-2 items-end">
+                        <div className="w-full">
+                             <label className="block text-sm font-medium text-gray-700">New Quantity</label>
+                             <input type="number" value={newQuantity} onChange={e => setNewQuantity(e.target.value)} className="w-full p-2 border rounded" />
                         </div>
-                    </Card>
+                        <Button 
+                            type="button"
+                            onClick={handleStockAdjustment} 
+                            variant="secondary"
+                            className="w-full sm:w-auto flex-shrink-0 !text-gray-700 !bg-white hover:!bg-gray-100 border border-gray-300 shadow-sm"
+                        >
+                            Save Adjustment
+                        </Button>
+                    </div>
+                </Card>
 
-                    <Button
-                        type="button"
-                        onClick={() => setIsPrintModalOpen(true)}
-                        className="w-full"
-                    >
-                        <Barcode className="w-5 h-5 mr-2" />
-                        Print Barcode Label
-                    </Button>
-                </form>
+                <Button
+                    ref={printButtonRef}
+                    type="button"
+                    className="w-full"
+                >
+                    <Barcode className="w-5 h-5 mr-2" />
+                    Print Barcode Label
+                </Button>
             </div>
         );
     }
 
     return (
         <div className="space-y-4">
-            <PrintModal />
             <h1 className="text-2xl font-bold text-primary">Products & Inventory</h1>
             
             <div className="relative">
