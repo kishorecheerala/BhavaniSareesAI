@@ -180,7 +180,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                                     <div style={{ fontSize: '8px', fontWeight: 'bold', marginBottom: '1px' }}>Bhavani Sarees</div>
                                     <div style={{ fontSize: '9px', margin: '1px 0', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '1.8in' }}>{selectedProduct.name}</div>
                                     <svg id="preview-barcode" style={{ height: '20px', width: '100%' }}></svg>
-                                    <div style={{ fontSize: '10px', fontWeight: 'bold', marginTop: '1px' }}>MRP: ₹{selectedProduct.salePrice.toLocaleString('en-IN')}</div>
+                                    <div style={{ fontSize: '10px', fontWeight: 'bold', marginTop: '1px' }}>MRP: ₹${selectedProduct.salePrice.toLocaleString('en-IN')}</div>
                                 </div>
                             </div>
                         </div>
@@ -301,7 +301,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                         </Button>
                     </div>
                     <Button 
-                        onClick={() => handleOpenPrintModal(selectedProduct)} 
+                        onClick={(e) => { e.preventDefault(); handleOpenPrintModal(selectedProduct); }}
                         variant="secondary" 
                         className="w-full mt-4 !bg-gray-200 !text-gray-700 hover:!bg-gray-300 font-normal"
                     >
