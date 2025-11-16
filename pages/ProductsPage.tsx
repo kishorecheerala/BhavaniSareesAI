@@ -227,53 +227,59 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
     
             // 1. Business Name
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(7); // ~9px
+            doc.setFontSize(7); // Corresponds to ~9px in preview
             doc.text(state.profile?.name || 'Your Business', centerX, currentY, { align: 'center', baseline: 'top' });
             currentY += 3.5;
     
             // 2. Product Name
-            doc.setFont('helvetica', 'bold'); // Match bold style in preview
-            doc.setFontSize(9); // ~12px
-            const nameLines = doc.splitTextToSize(product.name, labelWidth - (margin * 2) - 2); // A bit more margin
-            const nameBlockHeight = nameLines.length * 3.5; // Approx height for 9pt text with line spacing
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9); // Corresponds to ~12px in preview
+            const nameLines = doc.splitTextToSize(product.name, labelWidth - (margin * 2) - 2);
+            const nameBlockHeight = nameLines.length * 3.2; // Adjust line height for 9pt text
             doc.text(nameLines, centerX, currentY, { align: 'center' });
-            currentY += nameBlockHeight + 1; // Add padding
+            currentY += nameBlockHeight + 0.5; // Add a small padding
     
             // 4. Product ID & MRP at the bottom, positioned from the bottom up
             const bottomSectionHeight = 8; // Reserved space for MRP + ID in mm
             let bottomY = labelHeight - margin;
     
             // MRP
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(11); // ~14px
+            doc.setFont('helvetica', 'bold'); // jsPDF uses 'bold' for heavy weights.
+            doc.setFontSize(11); // Corresponds to ~14px in preview
             const mrpText = `MRP : ₹${product.salePrice.toLocaleString('en-IN')}`;
             doc.text(mrpText, centerX, bottomY, { align: 'center', baseline: 'bottom' });
             bottomY -= 4.5;
     
             // Product ID
-            doc.setFont('helvetica', 'bold'); // Match bold style in preview
-            doc.setFontSize(7); // ~9px
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(7); // Corresponds to ~9px in preview
             doc.text(product.id, centerX, bottomY, { align: 'center', baseline: 'bottom' });
             
-            // 3. Barcode - placed in the remaining space between product name and bottom section
+            // 3. Barcode - placed in the remaining space
             const barcodeTop = currentY;
             const barcodeBottom = labelHeight - margin - bottomSectionHeight;
             const availableHeightForBarcode = barcodeBottom - barcodeTop;
             
             if (availableHeightForBarcode > 4) { // Check for minimum space
                 const aspectRatio = canvas.width / canvas.height;
-                let barcodeHeight = availableHeightForBarcode;
+                const maxBarcodeHeight = 8; // Set a sensible max height in mm, this is the key fix
+    
+                // Determine barcode height: it's the smaller of maxBarcodeHeight or the available space (minus some padding)
+                let barcodeHeight = Math.min(maxBarcodeHeight, availableHeightForBarcode - 1);
                 let barcodeWidth = barcodeHeight * aspectRatio;
-                
-                // Ensure barcode doesn't exceed label width
-                const maxWidth = labelWidth - (margin * 4); // More horizontal margin for barcode
-                if (barcodeWidth > maxWidth) {
-                    barcodeWidth = maxWidth;
+    
+                // If the calculated width is too wide for the label, scale it down based on width
+                const maxBarcodeWidth = labelWidth - (margin * 4); // A bit more horizontal padding
+                if (barcodeWidth > maxBarcodeWidth) {
+                    barcodeWidth = maxBarcodeWidth;
                     barcodeHeight = barcodeWidth / aspectRatio;
                 }
     
+                // Center the barcode horizontally
                 const barcodeX = (labelWidth - barcodeWidth) / 2;
-                const barcodeY = barcodeTop + (availableHeightForBarcode - barcodeHeight) / 2; // Center vertically in available space
+                // Center the barcode in the available vertical space
+                const barcodeY = barcodeTop + (availableHeightForBarcode - barcodeHeight) / 2;
+                
                 doc.addImage(barcodeDataUrl, 'PNG', barcodeX, barcodeY, barcodeWidth, barcodeHeight);
             } else {
                 console.warn("Not enough space for barcode on the label.");
