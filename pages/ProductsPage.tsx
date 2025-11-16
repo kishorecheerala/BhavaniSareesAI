@@ -21,7 +21,6 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
     const isDirtyRef = useRef(false);
     const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
     const [printQuantity, setPrintQuantity] = useState('1');
-    const printButtonRef = useRef<HTMLDivElement>(null);
     
     useEffect(() => {
         if (state.selection && state.selection.page === 'PRODUCTS') {
@@ -65,30 +64,6 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
         setIsEditing(false);
     }, [selectedProduct, state.products]);
 
-    // Attach event listener to print button.
-    useEffect(() => {
-        const buttonElement = printButtonRef.current;
-
-        const handleMouseDown = (event: MouseEvent) => {
-            event.preventDefault();
-            event.stopPropagation();
-            // This handler's only job is to open the modal.
-            setIsPrintModalOpen(true);
-        };
-
-        if (buttonElement) {
-            buttonElement.addEventListener('mousedown', handleMouseDown);
-        }
-
-        // The cleanup function correctly uses the 'buttonElement' from its closure.
-        return () => {
-            if (buttonElement) {
-                buttonElement.removeEventListener('mousedown', handleMouseDown);
-            }
-        };
-    }, [selectedProduct]); // Rerun when the button appears/disappears
-
-    // Populate the modal with data once it's open.
     useEffect(() => {
         if (isPrintModalOpen && selectedProduct) {
             setPrintQuantity(selectedProduct.quantity.toString());
@@ -311,32 +286,34 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                     )}
                 </Card>
 
-                 <Card title="Stock Adjustment">
-                    <p className="text-sm text-gray-600 mb-2">Use this to correct the stock count after a physical inventory check.</p>
-                    <div className="flex flex-col sm:flex-row gap-2 items-end">
-                        <div className="w-full">
-                             <label className="block text-sm font-medium text-gray-700">New Quantity</label>
-                             <input type="number" value={newQuantity} onChange={e => setNewQuantity(e.target.value)} className="w-full p-2 border rounded" />
+                <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+                    <Card title="Stock Adjustment">
+                        <p className="text-sm text-gray-600 mb-2">Use this to correct the stock count after a physical inventory check.</p>
+                        <div className="flex flex-col sm:flex-row gap-2 items-end">
+                            <div className="w-full">
+                                 <label className="block text-sm font-medium text-gray-700">New Quantity</label>
+                                 <input type="number" value={newQuantity} onChange={e => setNewQuantity(e.target.value)} className="w-full p-2 border rounded" />
+                            </div>
+                            <Button 
+                                type="button"
+                                onClick={handleStockAdjustment} 
+                                variant="secondary"
+                                className="w-full sm:w-auto flex-shrink-0 !text-gray-700 !bg-white hover:!bg-gray-100 border border-gray-300 shadow-sm"
+                            >
+                                Save Adjustment
+                            </Button>
                         </div>
-                        <Button 
-                            onClick={handleStockAdjustment} 
-                            variant="secondary"
-                            className="w-full sm:w-auto flex-shrink-0 !text-gray-700 !bg-white hover:!bg-gray-100 border border-gray-300 shadow-sm"
-                        >
-                            Save Adjustment
-                        </Button>
-                    </div>
-                </Card>
+                    </Card>
 
-                <div className="mt-4">
-                    <div
-                        ref={printButtonRef}
-                        className="px-4 py-2 rounded-md font-semibold text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-sm flex items-center justify-center gap-2 transform hover:shadow-md hover:-translate-y-px active:shadow-sm active:translate-y-0 bg-primary hover:bg-teal-700 focus:ring-primary w-full cursor-pointer"
+                    <Button
+                        type="button"
+                        onClick={() => setIsPrintModalOpen(true)}
+                        className="w-full"
                     >
                         <Barcode className="w-5 h-5 mr-2" />
                         Print Barcode Label
-                    </div>
-                </div>
+                    </Button>
+                </form>
             </div>
         );
     }
