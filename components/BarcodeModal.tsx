@@ -11,6 +11,7 @@ interface BarcodeModalProps {
     id: string;
     name: string;
     salePrice: number;
+    quantity: number;
   };
   onClose: () => void;
   businessName: string;
@@ -22,7 +23,7 @@ export const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, product, onC
 
   useEffect(() => {
     if (isOpen && product) {
-        setNumberOfCopies(1); // Reset on open
+        setNumberOfCopies(product.quantity || 0); // Default to current stock
         handleGeneratePreview();
     }
   }, [isOpen, product]);
@@ -46,8 +47,9 @@ export const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, product, onC
 
   const generateLabelCanvas = (): HTMLCanvasElement => {
     const labelCanvas = document.createElement('canvas');
-    labelCanvas.width = 300; // High DPI for quality
-    labelCanvas.height = 150;
+    const dpiScale = 2; // Increase resolution for better print quality
+    labelCanvas.width = 300 * dpiScale; // 600px for a 2-inch label @ 300 DPI
+    labelCanvas.height = 150 * dpiScale; // 300px for a 1-inch label @ 300 DPI
 
     const ctx = labelCanvas.getContext('2d');
     if (!ctx) throw new Error('Failed to get canvas context');
@@ -57,37 +59,41 @@ export const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, product, onC
     ctx.fillRect(0, 0, labelCanvas.width, labelCanvas.height);
 
     // Add Business Name
-    ctx.font = 'bold 10px Arial';
+    ctx.font = `bold ${10 * dpiScale}px Arial`;
     ctx.fillStyle = '#000000';
     ctx.textAlign = 'center';
-    ctx.fillText(businessName, 150, 15);
+    ctx.fillText(businessName, 150 * dpiScale, 15 * dpiScale);
 
     // Generate barcode on temporary canvas
     const barcodeCanvas = document.createElement('canvas');
     JsBarcode(barcodeCanvas, product.id, {
       format: 'CODE128',
-      width: 2,
-      height: 80,
+      width: 2 * dpiScale,
+      height: 80 * dpiScale,
       displayValue: true,
-      fontSize: 14,
-      margin: 10,
+      fontSize: 14 * dpiScale,
+      margin: 10 * dpiScale,
     });
     // Draw barcode onto label canvas
-    ctx.drawImage(barcodeCanvas, 10, 25, 280, 70);
+    ctx.drawImage(barcodeCanvas, (labelCanvas.width - (280 * dpiScale))/2, 25 * dpiScale, 280 * dpiScale, 70 * dpiScale);
 
     // Add product name
-    ctx.font = 'bold 10px Arial';
+    ctx.font = `bold ${10 * dpiScale}px Arial`;
     const productText = product.name.substring(0, 25);
-    ctx.fillText(productText, 150, 115);
+    ctx.fillText(productText, 150 * dpiScale, 115 * dpiScale);
 
     // Add MRP
-    ctx.font = 'bold 12px Arial';
-    ctx.fillText(`MRP: ₹${product.salePrice.toLocaleString('en-IN')}`, 150, 135);
+    ctx.font = `bold ${12 * dpiScale}px Arial`;
+    ctx.fillText(`MRP: ₹${product.salePrice.toLocaleString('en-IN')}`, 150 * dpiScale, 135 * dpiScale);
 
     return labelCanvas;
   }
 
   const handleDownloadPDF = async () => {
+    if (numberOfCopies <= 0) {
+      alert("Please enter a number of copies greater than 0.");
+      return;
+    }
     try {
       const doc = new jsPDF({
         orientation: 'landscape', // Correct orientation for 2x1 label
@@ -121,6 +127,10 @@ export const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, product, onC
   };
 
   const handlePrint = () => {
+    if (numberOfCopies <= 0) {
+      alert("Please enter a number of copies greater than 0.");
+      return;
+    }
     try {
         const labelCanvas = generateLabelCanvas();
         const imageDataUrl = labelCanvas.toDataURL('image/png');
@@ -133,8 +143,8 @@ export const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, product, onC
         const printStyles = `
             @page { size: 2in 1in; margin: 0; }
             @media print {
-                html, body { width: 2in; height: 1in; margin: 0; padding: 0; }
-                .label { width: 2in; height: 1in; page-break-after: always; box-sizing: border-box; }
+                html, body { width: 2in; height: 1in; margin: 0; padding: 0; display: block; }
+                .label { width: 2in; height: 1in; page-break-after: always; box-sizing: border-box; display: block; }
             }
         `;
         
@@ -190,15 +200,33 @@ export const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, product, onC
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Number of copies</label>
-            <input
-              type="number"
-              min="1"
-              max="100"
-              value={numberOfCopies}
-              onChange={(e) => setNumberOfCopies(Math.max(1, parseInt(e.target.value) || 1))}
-              className="w-full p-2 border rounded text-center"
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Number of copies</label>
+            <div className="flex items-center justify-center gap-2">
+                <Button 
+                    onClick={() => setNumberOfCopies(prev => Math.max(0, prev - 1))}
+                    className="px-4 py-2 text-xl font-bold"
+                    variant="secondary"
+                    aria-label="Decrease quantity"
+                >
+                    -
+                </Button>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={numberOfCopies}
+                  onChange={(e) => setNumberOfCopies(Math.max(0, parseInt(e.target.value) || 0))}
+                  className="w-24 p-2 border rounded text-center text-lg"
+                />
+                <Button
+                    onClick={() => setNumberOfCopies(prev => Math.min(100, prev + 1))}
+                    className="px-4 py-2 text-xl font-bold"
+                    variant="secondary"
+                    aria-label="Increase quantity"
+                >
+                    +
+                </Button>
+            </div>
           </div>
 
           <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded">
