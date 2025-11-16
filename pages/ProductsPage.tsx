@@ -292,18 +292,22 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                              <label className="block text-sm font-medium text-gray-700">New Quantity</label>
                              <input type="number" value={newQuantity} onChange={e => setNewQuantity(e.target.value)} className="w-full p-2 border rounded" />
                         </div>
-                        <Button onClick={handleStockAdjustment} className="w-full sm:w-auto flex-shrink-0">
-                            <PackageCheck size={16} className="mr-2"/>
+                        <Button 
+                            onClick={handleStockAdjustment} 
+                            variant="secondary"
+                            className="w-full sm:w-auto flex-shrink-0 !text-gray-700 !bg-white hover:!bg-gray-100 border border-gray-300 shadow-sm"
+                        >
                             Save Adjustment
                         </Button>
                     </div>
-                </Card>
-                <div className="mt-4">
-                    <Button onClick={() => handleOpenPrintModal(selectedProduct)} className="w-full">
-                        <Barcode size={16} className="mr-2" />
+                    <Button 
+                        onClick={() => handleOpenPrintModal(selectedProduct)} 
+                        variant="secondary" 
+                        className="w-full mt-4 !bg-gray-200 !text-gray-700 hover:!bg-gray-300 font-normal"
+                    >
                         Print Barcode Label
                     </Button>
-                </div>
+                </Card>
             </div>
         );
     }
