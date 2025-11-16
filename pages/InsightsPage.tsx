@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { IndianRupee, TrendingUp, TrendingDown, Award, Lock } from 'lucide-react';
+import { IndianRupee, TrendingUp, TrendingDown, Award, Lock, BarChart } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import Card from '../components/Card';
 import PinModal from '../components/PinModal';
 import ConfirmationModal from '../components/ConfirmationModal';
-import { Page } from '../types';
+import { Page, Sale, SaleItem } from '../types';
 
 interface InsightsPageProps {
     setCurrentPage: (page: Page) => void;
@@ -20,13 +20,16 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
     const [profitFilterMonth, setProfitFilterMonth] = useState(new Date().getMonth());
     const [profitFilterYear, setProfitFilterYear] = useState(new Date().getFullYear());
 
+    const [chartYear, setChartYear] = useState(() => {
+        const now = new Date();
+        // If current month is Jan, Feb, or Mar (0, 1, 2), the financial year started last calendar year.
+        return now.getMonth() < 3 ? now.getFullYear() - 1 : now.getFullYear();
+    });
+
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
     useEffect(() => {
         if (!isDbLoaded) return;
-
-        // Always start in a locked state when the component is visited.
-        // The local `pinState` will be reset every time the user navigates away and comes back.
         if (state.pin) {
             setPinState('locked');
         } else {
@@ -54,7 +57,6 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
         setCurrentPage('DASHBOARD');
     };
 
-    // --- Profit Calculation ---
     const availableYearsForProfit = useMemo(() => {
         const years = new Set(state.sales.map(s => new Date(s.date).getFullYear()));
         const currentYear = new Date().getFullYear();
@@ -88,7 +90,42 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
         return `Profit for ${monthNames[profitFilterMonth]} ${profitFilterYear}`;
     }, [profitFilterMonth, profitFilterYear, monthNames]);
 
-    // --- Sales Trend Calculation ---
+    const availableYearsForChart = useMemo(() => {
+        if (!isDbLoaded) return [];
+        const years = new Set(state.sales.map(s => {
+            const d = new Date(s.date);
+            return d.getMonth() < 3 ? d.getFullYear() - 1 : d.getFullYear();
+        }));
+        const currentFY = new Date().getMonth() < 3 ? new Date().getFullYear() - 1 : new Date().getFullYear();
+        if (!years.has(currentFY)) years.add(currentFY);
+        // FIX: Explicitly type the sort parameters 'a' and 'b' as numbers to resolve a TypeScript type inference issue.
+        return Array.from(years).sort((a: number, b: number) => b - a);
+    }, [state.sales, isDbLoaded]);
+
+    const yearlySalesData = useMemo(() => {
+        if (!isDbLoaded) return { monthlySales: Array(12).fill(0), maxSale: 0, totalSales: 0 };
+
+        const financialYearStart = new Date(chartYear, 3, 1); // April 1st
+        const financialYearEnd = new Date(chartYear + 1, 3, 0); // March 31st
+
+        const monthlySales = Array(12).fill(0);
+
+        state.sales.forEach(sale => {
+            const saleDate = new Date(sale.date);
+            if (saleDate >= financialYearStart && saleDate <= financialYearEnd) {
+                const month = saleDate.getMonth(); // 0-11
+                // Map JS month to financial year month index (Apr=0, May=1, ..., Mar=11)
+                const financialMonthIndex = month >= 3 ? month - 3 : month + 9;
+                monthlySales[financialMonthIndex] += Number(sale.totalAmount);
+            }
+        });
+        
+        const maxSale = Math.max(...monthlySales);
+        const totalSales = monthlySales.reduce((sum, sale) => sum + sale, 0);
+
+        return { monthlySales, maxSale: maxSale > 0 ? maxSale : 1, totalSales }; // Avoid division by zero
+    }, [state.sales, chartYear, isDbLoaded]);
+
     const salesTrend = useMemo(() => {
         const now = new Date();
         const currentMonth = now.getMonth();
@@ -114,7 +151,6 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
         return { currentMonthSales, lastMonthSales, percentageChange };
     }, [state.sales]);
 
-    // --- Top Customers & Products ---
     const topCustomers = useMemo(() => {
         const customerTotals = state.sales.reduce((acc, sale) => {
             acc[sale.customerId] = (acc[sale.customerId] || 0) + Number(sale.totalAmount);
@@ -147,7 +183,6 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
             }));
     }, [state.sales, state.products]);
 
-    // --- Financial Summary ---
     const totalCustomerDues = useMemo(() => state.sales.reduce((sum, sale) => {
         const paid = (sale.payments || []).reduce((pSum, p) => pSum + Number(p.amount), 0);
         return sum + (Number(sale.totalAmount) - paid);
@@ -217,6 +252,42 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                 <p className="text-5xl md:text-6xl font-extrabold tracking-tight text-center text-amber-900">
                     ₹{filteredProfit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
+            </Card>
+
+            <Card title={
+                <div className="flex items-center gap-2">
+                    <BarChart size={20} />
+                    <span>Sales for Financial Year {chartYear}-{String(chartYear + 1).slice(2)}</span>
+                </div>
+            } className="bg-gradient-to-br from-indigo-50 to-purple-100 border-indigo-500">
+                <div className="flex justify-end mb-4">
+                    <select value={chartYear} onChange={(e) => setChartYear(parseInt(e.target.value))} className="p-2 rounded-lg custom-select">
+                        {availableYearsForChart.map(year => (
+                            <option key={year} value={year}>{year}-{String(year + 1).slice(2)}</option>
+                        ))}
+                    </select>
+                </div>
+                <div className="w-full">
+                    <div className="flex justify-end text-sm text-gray-600">
+                        Total Sales: <span className="font-bold ml-2">₹{yearlySalesData.totalSales.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="flex items-end justify-around h-64 mt-4 p-2 bg-white/50 rounded-lg border border-gray-200">
+                        {yearlySalesData.monthlySales.map((sale, index) => {
+                            const heightPercentage = (sale / yearlySalesData.maxSale) * 100;
+                            const monthLabels = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'];
+                            return (
+                                <div key={index} className="flex flex-col items-center w-full h-full justify-end">
+                                    <div
+                                        className="w-4/5 bg-indigo-400 hover:bg-indigo-600 rounded-t-md transition-all duration-300 ease-in-out"
+                                        style={{ height: `${heightPercentage}%` }}
+                                        title={`${monthLabels[index]}: ₹${sale.toLocaleString('en-IN')}`}
+                                    />
+                                    <span className="text-xs mt-1 text-gray-700">{monthLabels[index]}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
             </Card>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
