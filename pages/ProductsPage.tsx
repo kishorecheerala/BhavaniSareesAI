@@ -214,16 +214,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
         `;
         
         iframe.onload = () => {
-            const printWindow = iframe.contentWindow;
-            if (!printWindow) {
-                if (document.body.contains(iframe)) {
-                    document.body.removeChild(iframe);
-                }
-                showToast('Error creating print view.', 'info');
-                return;
-            }
-
-            const iframeDoc = printWindow.document;
+            const iframeDoc = iframe.contentWindow!.document;
             for (let i = 0; i < quantity; i++) {
                 const barcodeElement = iframeDoc.getElementById(`barcode-${i}`);
                 if (barcodeElement) {
@@ -237,45 +228,24 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                     }
                 }
             }
-            
-            let printJobStarted = false;
-
-            const handleCleanup = () => {
-                // Run cleanup only once
-                if (document.body.contains(iframe)) {
-                    document.body.removeChild(iframe);
-                    setIsPrintModalOpen(false);
-                }
-            };
-            
-            const mediaQueryList = printWindow.matchMedia('print');
-            
-            const mqlListener = (mql: MediaQueryListEvent) => {
-                // This event fires when the print dialog opens (mql.matches becomes true)
-                // and when it closes (mql.matches becomes false).
-                // We want to clean up when it closes.
-                if (!mql.matches && printJobStarted) {
-                    handleCleanup();
-                    mediaQueryList.removeEventListener('change', mqlListener); // Clean up listener
-                }
-            };
-            mediaQueryList.addEventListener('change', mqlListener);
-            
-            // Fallback for browsers that might not fire the change event reliably on cancel,
-            // or for older browsers that don't support it.
-            printWindow.onafterprint = handleCleanup;
-            
-            // Give a moment for barcodes to render
+    
+            // Give the browser a moment to render the SVGs before printing
             setTimeout(() => {
-                printWindow.focus();
-                printJobStarted = true;
-                printWindow.print();
+                iframe.contentWindow!.focus();
+                iframe.contentWindow!.print();
+                // Clean up after a short delay
+                setTimeout(() => {
+                    if (document.body.contains(iframe)) {
+                      document.body.removeChild(iframe);
+                    }
+                    setIsPrintModalOpen(false);
+                }, 500);
             }, 250);
         };
 
+        // Setting srcdoc will trigger the onload event
         iframe.srcdoc = fullHtml;
     };
-
 
     const filteredProducts = state.products.filter(p =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
