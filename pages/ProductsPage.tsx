@@ -47,7 +47,7 @@ const PrintModal: React.FC<{
                                 <div style={{ fontSize: '8px', fontWeight: 'bold', marginBottom: '1px' }}>Bhavani Sarees</div>
                                 <div style={{ fontSize: '9px', margin: '1px 0', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '1.8in' }}>{product.name}</div>
                                 <svg ref={barcodeRef} style={{ height: '20px', width: '100%' }}></svg>
-                                <div style={{ fontSize: '10px', fontWeight: 'bold', marginTop: '1px' }}>MRP: ₹${product.salePrice.toLocaleString('en-IN')}</div>
+                                <div style={{ fontSize: '10px', fontWeight: 'bold', marginTop: '1px' }}>MRP: ₹{product.salePrice.toLocaleString('en-IN')}</div>
                             </div>
                         </div>
                     </div>
@@ -86,7 +86,6 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
     const isDirtyRef = useRef(false);
     const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
     const [printQuantity, setPrintQuantity] = useState('1');
-    const printButtonRef = useRef<HTMLButtonElement>(null);
     
     useEffect(() => {
         if (state.selection && state.selection.page === 'PRODUCTS') {
@@ -136,24 +135,6 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
         }
     }, [isPrintModalOpen, selectedProduct]);
     
-    useEffect(() => {
-        const button = printButtonRef.current;
-        if (!button) return;
-
-        const handleMouseDown = (event: MouseEvent) => {
-            event.preventDefault();
-            event.stopPropagation();
-            setIsPrintModalOpen(true);
-        };
-
-        button.addEventListener('mousedown', handleMouseDown);
-
-        return () => {
-            button.removeEventListener('mousedown', handleMouseDown);
-        };
-    }, [selectedProduct]); // Rerun when a product is selected to ensure the button ref is attached
-
-
     const handleUpdateProduct = () => {
         if (editedProduct) {
              if (window.confirm('Are you sure you want to update this product\'s details?')) {
@@ -191,8 +172,6 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
         iframe.style.border = '0';
         document.body.appendChild(iframe);
         
-        const iframeDoc = iframe.contentWindow!.document;
-
         let labelsHtml = '';
         for (let i = 0; i < quantity; i++) {
             labelsHtml += `
@@ -205,8 +184,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
             `;
         }
 
-        iframeDoc.open();
-        iframeDoc.write(`
+        const fullHtml = `
             <html><head><title>Print Labels</title>
             <style>
                 @page { size: 2in 1in; margin: 0; }
@@ -227,28 +205,39 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                 svg { height: 20px; width: 100%; }
             </style>
             </head><body>${labelsHtml}</body></html>
-        `);
-        iframeDoc.close();
-
-        for (let i = 0; i < quantity; i++) {
-            const barcodeElement = iframeDoc.getElementById(`barcode-${i}`);
-            if (barcodeElement) {
-                try {
-                    JsBarcode(barcodeElement, product.id, {
-                        format: "CODE128", displayValue: true, fontSize: 10,
-                        height: 20, margin: 0
-                    });
-                } catch (e) {
-                    console.error('Error rendering barcode in iframe:', e);
+        `;
+        
+        iframe.onload = () => {
+            const iframeDoc = iframe.contentWindow!.document;
+            for (let i = 0; i < quantity; i++) {
+                const barcodeElement = iframeDoc.getElementById(`barcode-${i}`);
+                if (barcodeElement) {
+                    try {
+                        JsBarcode(barcodeElement, product.id, {
+                            format: "CODE128", displayValue: true, fontSize: 10,
+                            height: 20, margin: 0
+                        });
+                    } catch (e) {
+                        console.error('Error rendering barcode in iframe:', e);
+                    }
                 }
             }
-        }
-        
-        iframe.contentWindow!.focus();
-        setTimeout(() => {
-            iframe.contentWindow!.print();
-            document.body.removeChild(iframe);
-        }, 500);
+    
+            // Give the browser a moment to render the SVGs before printing
+            setTimeout(() => {
+                iframe.contentWindow!.focus();
+                iframe.contentWindow!.print();
+                // Clean up after a short delay
+                setTimeout(() => {
+                    if (document.body.contains(iframe)) {
+                      document.body.removeChild(iframe);
+                    }
+                }, 500);
+            }, 250);
+        };
+
+        // Setting srcdoc will trigger the onload event
+        iframe.srcdoc = fullHtml;
 
         setIsPrintModalOpen(false);
     };
@@ -271,7 +260,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                     isOpen={isPrintModalOpen}
                     onClose={() => setIsPrintModalOpen(false)}
                     product={selectedProduct}
-                    onPrint={handlePrint}
+                    onPrint={(quantity) => handlePrint(selectedProduct, quantity)}
                     quantity={printQuantity}
                     setQuantity={setPrintQuantity}
                 />
@@ -343,7 +332,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                 </Card>
 
                 <Button
-                    ref={printButtonRef}
+                    onClick={() => setIsPrintModalOpen(true)}
                     type="button"
                     className="w-full"
                 >
