@@ -205,7 +205,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                 format: "CODE128",
                 displayValue: false,
                 height: 40,
-                width: 1.5,
+                width: 2, // Bolder lines
                 margin: 0,
             });
         } catch (e) {
@@ -220,68 +220,67 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                 doc.addPage();
             }
     
-            const margin = 1.5;
+            const margin = 1; 
             const centerX = labelWidth / 2;
-            let currentY = margin;
+            let currentY = margin + 1.5;
     
-            // --- Top-down elements ---
-    
-            // 1. Business Name
+            // --- Top elements ---
             const businessName = state.profile?.name || 'Your Business';
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(7);
-            doc.text(businessName, centerX, currentY, { align: 'center', baseline: 'top' });
-            currentY += doc.getTextDimensions(businessName).h + 0.5; // Add 0.5mm padding
-    
-            // 2. Product Name
-            doc.setFont('helvetica', 'bold');
             doc.setFontSize(9);
-            const nameLines = doc.splitTextToSize(product.name, labelWidth - (margin * 2));
+            doc.text(businessName, centerX, currentY, { align: 'center', baseline: 'top' });
+            currentY += doc.getTextDimensions(businessName).h + 0.5;
+    
+            doc.setFontSize(12);
+            const nameLines = doc.splitTextToSize(product.name, labelWidth - (margin * 4)); // more horizontal margin for text
             const nameDimensions = doc.getTextDimensions(nameLines);
             doc.text(nameLines, centerX, currentY, { align: 'center', baseline: 'top' });
-            currentY += nameDimensions.h + 0.5; // Add 0.5mm padding
+            currentY += nameDimensions.h;
     
-            // --- Bottom-up elements ---
-            let bottomY = labelHeight - margin;
-            
-            // 4a. MRP
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(11);
+            // --- Bottom elements (from bottom up) ---
+            let bottomY = labelHeight - (margin + 1.5);
+
+            doc.setFontSize(14);
             const mrpText = `MRP : ₹${product.salePrice.toLocaleString('en-IN')}`;
             const mrpDimensions = doc.getTextDimensions(mrpText);
             doc.text(mrpText, centerX, bottomY, { align: 'center', baseline: 'bottom' });
             bottomY -= mrpDimensions.h;
-    
-            // 4b. Product ID
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(7);
+
+            doc.setFontSize(9);
             const productIdText = product.id;
             const productIdDimensions = doc.getTextDimensions(productIdText);
+            bottomY -= 0.5; // gap
             doc.text(productIdText, centerX, bottomY, { align: 'center', baseline: 'bottom' });
-    
             const bottomBlockTop = bottomY - productIdDimensions.h;
-    
-            // 3. Barcode - placed in the remaining middle space
-            const barcodeTop = currentY;
-            const availableHeightForBarcode = bottomBlockTop - barcodeTop;
+
+            // --- Barcode in the middle ---
+            const barcodeTop = currentY + 0.5; 
+            const availableHeightForBarcode = bottomBlockTop - barcodeTop - 0.5; 
             
-            if (availableHeightForBarcode > 3) { // Minimum 3mm space
+            if (availableHeightForBarcode > 3) {
                 const aspectRatio = canvas.width / canvas.height;
-                let barcodeHeight = availableHeightForBarcode - 1; // Use available space with 1mm total padding
+                let barcodeHeight = availableHeightForBarcode;
                 let barcodeWidth = barcodeHeight * aspectRatio;
                 
-                const maxBarcodeWidth = labelWidth - (margin * 4);
+                const maxBarcodeWidth = labelWidth - (margin * 6); // even more margin for barcode
                 if (barcodeWidth > maxBarcodeWidth) {
                     barcodeWidth = maxBarcodeWidth;
                     barcodeHeight = barcodeWidth / aspectRatio;
                 }
     
                 const barcodeX = (labelWidth - barcodeWidth) / 2;
-                const barcodeY = barcodeTop + (availableHeightForBarcode - barcodeHeight) / 2; // Center vertically
+                const barcodeY = barcodeTop + (availableHeightForBarcode - barcodeHeight) / 2;
                 
                 doc.addImage(barcodeDataUrl, 'PNG', barcodeX, barcodeY, barcodeWidth, barcodeHeight);
             } else {
-                console.warn("Not enough space for barcode on the label.");
+                 // Fallback if space is tight, just draw barcode with fixed size
+                 const barcodeHeight = 6;
+                 const aspectRatio = canvas.width / canvas.height;
+                 const barcodeWidth = barcodeHeight * aspectRatio;
+                 const barcodeX = (labelWidth - barcodeWidth) / 2;
+                 const barcodeY = (labelHeight - barcodeHeight) / 2;
+                 doc.addImage(barcodeDataUrl, 'PNG', barcodeX, barcodeY, barcodeWidth, barcodeHeight);
+                 console.warn("Not enough space for barcode on the label, using fallback size.");
             }
         }
     
