@@ -4,6 +4,7 @@ import { useAppContext } from '../context/AppContext';
 import { Product } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
+import jsPDF from 'jspdf';
 
 declare var JsBarcode: any;
 
@@ -11,14 +12,14 @@ interface ProductsPageProps {
   setIsDirty: (isDirty: boolean) => void;
 }
 
-const PrintModal: React.FC<{
+const DownloadLabelsModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
-    onPrint: (quantity: number) => void;
+    onDownload: (quantity: number) => void;
     product: Product;
     quantity: string;
     setQuantity: (q: string) => void;
-}> = ({ isOpen, onClose, onPrint, product, quantity, setQuantity }) => {
+}> = ({ isOpen, onClose, onDownload, product, quantity, setQuantity }) => {
     const barcodeRef = useRef<SVGSVGElement>(null);
 
     useEffect(() => {
@@ -38,7 +39,7 @@ const PrintModal: React.FC<{
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
-            <Card title="Print Barcode Labels" className="w-full max-w-sm animate-scale-in">
+            <Card title="Download Barcode Labels" className="w-full max-w-sm animate-scale-in">
                 <div className="space-y-4">
                     <div>
                         <h4 className="text-sm font-semibold mb-2">Label Preview:</h4>
@@ -65,14 +66,14 @@ const PrintModal: React.FC<{
                     <div className="p-3 bg-amber-50 border-l-4 border-amber-400 text-amber-800 flex items-start gap-3">
                         <AlertTriangle className="w-6 h-6 text-amber-500 flex-shrink-0" />
                         <div>
-                            <h5 className="font-bold">Important Printer Settings</h5>
+                            <h5 className="font-bold">Important Print Settings</h5>
                             <p className="text-xs mt-1">
-                                In the print dialog, you MUST select your TSC printer and set the <strong>Paper Size</strong> to <strong>2x1 inch</strong>. It may default to 'A4' or 'Letter'.
+                                When printing the downloaded PDF, ensure your printer settings use <strong>'Actual Size'</strong> and the <strong>Paper Size</strong> is set to <strong>2x1 inch</strong>.
                             </p>
                         </div>
                     </div>
                     <div className="flex gap-2">
-                       <Button onClick={() => onPrint(parseInt(quantity, 10) || 1)} className="w-full">Print</Button>
+                       <Button onClick={() => onDownload(parseInt(quantity, 10) || 1)} className="w-full">Download PDF</Button>
                        <Button onClick={onClose} variant="secondary" className="w-full">Cancel</Button>
                     </div>
                 </div>
@@ -90,7 +91,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
     const [editedProduct, setEditedProduct] = useState<Product | null>(null);
     const [newQuantity, setNewQuantity] = useState<string>('');
     const isDirtyRef = useRef(false);
-    const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+    const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
     const [printQuantity, setPrintQuantity] = useState('1');
     
     useEffect(() => {
@@ -136,10 +137,10 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
     }, [selectedProduct?.id, state.products]); // Depend on ID to avoid loop
 
     useEffect(() => {
-        if (isPrintModalOpen && selectedProduct) {
+        if (isDownloadModalOpen && selectedProduct) {
             setPrintQuantity(selectedProduct.quantity.toString());
         }
-    }, [isPrintModalOpen, selectedProduct]);
+    }, [isDownloadModalOpen, selectedProduct]);
     
     const handleUpdateProduct = () => {
         if (editedProduct) {
@@ -170,77 +171,64 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
         }
     };
 
-    const handlePrint = (product: Product, quantity: number) => {
-        setIsPrintModalOpen(false);
-
-        let labelsHtml = '';
-        for (let i = 0; i < quantity; i++) {
-            labelsHtml += `
-                <div class="label">
-                    <div class="business-name">Bhavani Sarees</div>
-                    <div class="product-name">${product.name}</div>
-                    <svg id="barcode-${i}"></svg>
-                    <div class="price">MRP: ₹${product.salePrice.toLocaleString('en-IN')}</div>
-                </div>
-            `;
-        }
+    const handleDownloadPdf = async (product: Product, quantity: number) => {
+        setIsDownloadModalOpen(false);
     
-        const fullHtml = `
-            <html><head><title>Print Labels - ${product.name}</title>
-            <style>
-                @page { size: 2in 1in; margin: 0; }
-                body { margin: 0; padding: 0; font-family: sans-serif; }
-                .label {
-                    width: 1.9in; height: 0.9in;
-                    padding: 0.02in;
-                    text-align: center;
-                    display: flex; flex-direction: column;
-                    justify-content: center; align-items: center;
-                    box-sizing: border-box;
-                    page-break-after: always;
-                    overflow: hidden;
-                }
-                .business-name { font-size: 8px; font-weight: bold; margin-bottom: 1px; }
-                .product-name { font-size: 9px; margin: 1px 0; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 1.8in; }
-                .price { font-size: 10px; font-weight: bold; margin-top: 1px; }
-                svg { height: 20px; width: 100%; }
-            </style>
-            </head><body>${labelsHtml}</body></html>
-        `;
+        // Label dimensions in mm (2in x 1in)
+        const labelWidth = 50.8;
+        const labelHeight = 25.4;
     
-        const printWindow = window.open('', '_blank', 'height=500,width=400');
+        const doc = new jsPDF({
+            orientation: 'landscape',
+            unit: 'mm',
+            format: [labelWidth, labelHeight]
+        });
     
-        if (!printWindow) {
-            alert('Please allow pop-ups for this website to print labels.');
+        // Create an off-screen canvas to render the barcode
+        const canvas = document.createElement('canvas');
+        try {
+            JsBarcode(canvas, product.id, {
+                format: "CODE128",
+                displayValue: true,
+                fontSize: 10,
+                height: 20,
+                margin: 0,
+                width: 1.5,
+            });
+        } catch (e) {
+            console.error("JsBarcode error", e);
+            showToast("Failed to generate barcode.", 'info');
             return;
         }
-    
-        printWindow.document.write(fullHtml);
-        printWindow.document.close();
+        const barcodeDataUrl = canvas.toDataURL('image/png');
     
         for (let i = 0; i < quantity; i++) {
-            const barcodeElement = printWindow.document.getElementById(`barcode-${i}`);
-            if (barcodeElement) {
-                try {
-                    JsBarcode(barcodeElement, product.id, {
-                        format: "CODE128", displayValue: true, fontSize: 10,
-                        height: 20, margin: 0
-                    });
-                } catch (e) {
-                    console.error('Error rendering barcode in new window:', e);
-                }
+            if (i > 0) {
+                doc.addPage();
             }
+    
+            const centerX = labelWidth / 2;
+    
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Bhavani Sarees', centerX, 4, { align: 'center' });
+            
+            doc.setFontSize(9);
+            const productNameLines = doc.splitTextToSize(product.name, labelWidth - 4);
+            doc.text(productNameLines, centerX, 8, { align: 'center' });
+    
+            const barcodeWidth = 40;
+            const barcodeHeight = 8;
+            const barcodeX = (labelWidth - barcodeWidth) / 2;
+            const barcodeY = 12; 
+            doc.addImage(barcodeDataUrl, 'PNG', barcodeX, barcodeY, barcodeWidth, barcodeHeight);
+            
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.text(`MRP: ₹${product.salePrice.toLocaleString('en-IN')}`, centerX, 23, { align: 'center' });
         }
     
-        setTimeout(() => {
-            printWindow.focus();
-            printWindow.print();
-            printWindow.onafterprint = () => {
-                setTimeout(() => {
-                    printWindow.close();
-                }, 500);
-            };
-        }, 250);
+        doc.save(`${product.id}-labels.pdf`);
     };
 
     const filteredProducts = state.products.filter(p =>
@@ -257,11 +245,11 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
 
         return (
             <div className="space-y-4">
-                <PrintModal
-                    isOpen={isPrintModalOpen}
-                    onClose={() => setIsPrintModalOpen(false)}
+                <DownloadLabelsModal
+                    isOpen={isDownloadModalOpen}
+                    onClose={() => setIsDownloadModalOpen(false)}
                     product={selectedProduct}
-                    onPrint={(quantity) => handlePrint(selectedProduct, quantity)}
+                    onDownload={(quantity) => handleDownloadPdf(selectedProduct, quantity)}
                     quantity={printQuantity}
                     setQuantity={setPrintQuantity}
                 />
@@ -333,12 +321,12 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                 </Card>
 
                 <Button
-                    onClick={() => setIsPrintModalOpen(true)}
+                    onClick={() => setIsDownloadModalOpen(true)}
                     type="button"
                     className="w-full"
                 >
                     <Barcode className="w-5 h-5 mr-2" />
-                    Print Barcode Label
+                    Download Barcode PDF
                 </Button>
             </div>
         );
