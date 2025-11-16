@@ -6,6 +6,7 @@ import Button from './Button';
 import { Html5Qrcode } from 'html5-qrcode';
 import DeleteButton from './DeleteButton';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
+import QuantityInputModal from './QuantityInputModal';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -92,7 +93,7 @@ const ProductSearchModal: React.FC<{
             <input type="text" placeholder="Search products..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full p-2 border rounded-lg mb-4" autoFocus/>
             <div className="max-h-80 overflow-y-auto space-y-2">
                 {products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase())).map(p => (
-                <div key={p.id} onClick={() => onSelect(p)} className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-purple-100">
+                <div key={p.id} onClick={() => onSelect(p)} className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-teal-50">
                     <p className="font-semibold">{p.name}</p>
                     <p className="text-sm text-gray-500">Code: {p.id} | Stock: {p.quantity}</p>
                 </div>
@@ -247,6 +248,8 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
     const [isScanning, setIsScanning] = useState(false);
     const [scannedProductId, setScannedProductId] = useState('');
     const [importStatus, setImportStatus] = useState<{ type: 'info' | 'success' | 'error', message: string } | null>(null);
+    const [quantityModalState, setQuantityModalState] = useState<{ isOpen: boolean, product: Product | null }>({ isOpen: false, product: null });
+
 
     // New memos for searchable dropdown
     const filteredSuppliers = useMemo(() => 
@@ -259,11 +262,18 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
     const selectedSupplier = useMemo(() => supplierId ? suppliers.find(s => s.id === supplierId) : null, [supplierId, suppliers]);
 
     const handleSelectProduct = (product: Product) => {
-        const quantityStr = prompt(`Enter quantity for ${product.name}:`, '1');
-        if (!quantityStr) return;
-        
-        const quantity = parseInt(quantityStr, 10);
-        if(isNaN(quantity) || quantity <= 0) return alert('Please enter a valid quantity.');
+        setIsSelectingProduct(false); // Close the product search modal
+        setQuantityModalState({ isOpen: true, product: product });
+    };
+
+    const handleSetQuantity = (quantity: number) => {
+        const product = quantityModalState.product;
+        if (!product) return;
+
+        if(isNaN(quantity) || quantity <= 0) {
+            alert('Please enter a valid quantity.');
+            return;
+        }
 
         const existingItemIndex = items.findIndex(item => item.productId === product.id);
 
@@ -283,8 +293,9 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
             setItems([...items, newItem]);
         }
         
-        setIsSelectingProduct(false);
+        setQuantityModalState({ isOpen: false, product: null });
     };
+
 
     const handleItemChange = (productId: string, field: keyof PurchaseItem, value: string) => {
         const numericFields = ['quantity', 'price', 'saleValue', 'gstPercent'];
@@ -520,6 +531,12 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
             />
             {isScanning && <QRScannerModal onClose={() => setIsScanning(false)} onScanned={handleProductScanned} />}
             <ProductSearchModal isOpen={isSelectingProduct} onClose={() => setIsSelectingProduct(false)} onSelect={handleSelectProduct} products={products} />
+            <QuantityInputModal
+                isOpen={quantityModalState.isOpen}
+                onClose={() => setQuantityModalState({ isOpen: false, product: null })}
+                onSubmit={handleSetQuantity}
+                product={quantityModalState.product}
+            />
             <NewProductModal
                 isOpen={isAddingProduct}
                 onClose={() => setIsAddingProduct(false)}
@@ -530,7 +547,7 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
                 mode={mode}
             />
 
-            <Button onClick={onBack} variant="secondary" className="bg-purple-200 text-primary hover:bg-purple-300">&larr; Back</Button>
+            <Button onClick={onBack} variant="secondary" className="bg-teal-200 text-primary hover:bg-teal-300">&larr; Back</Button>
             <Card title={title}>
                  <div className="space-y-4">
                     <div>
@@ -616,13 +633,13 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
                     <Button onClick={() => setIsAddingProduct(true)}><Plus size={16} className="mr-2"/> Add New Product</Button>
                     <Button onClick={() => setIsSelectingProduct(true)} variant="secondary"><Search size={16} className="mr-2"/> Select Existing</Button>
                     <Button onClick={() => setIsScanning(true)} variant="secondary"><QrCode size={16} className="mr-2"/> Scan Product</Button>
-                    <label htmlFor="csv-purchase-import" className="px-4 py-2 rounded-md font-semibold text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-sm flex items-center justify-center gap-2 transform hover:scale-[1.02] active:scale-[0.98] bg-secondary hover:bg-purple-600 focus:ring-secondary cursor-pointer">
+                    <label htmlFor="csv-purchase-import" className="px-4 py-2 rounded-md font-semibold text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-sm flex items-center justify-center gap-2 transform hover:shadow-md hover:-translate-y-px active:shadow-sm active:translate-y-0 bg-secondary hover:bg-teal-500 focus:ring-secondary cursor-pointer">
                         <Upload size={16} className="mr-2"/> Import from CSV
                     </label>
                 </div>
                 <div className="text-center text-xs text-gray-500 -mt-2 mb-4">
                     <span>CSV format issues? </span>
-                    <a href="#" onClick={handleDownloadTemplate} className="font-semibold text-primary underline hover:text-purple-800">
+                    <a href="#" onClick={handleDownloadTemplate} className="font-semibold text-primary underline hover:text-teal-700">
                         Download sample template
                     </a>
                 </div>
@@ -692,7 +709,7 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
                         <span>+ ₹{totalGstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
                 </div>
-                <div className="p-4 bg-purple-50 rounded-lg text-center border-t">
+                <div className="p-4 bg-teal-50 rounded-lg text-center border-t">
                     <p className="text-sm font-semibold text-gray-600">Grand Total</p>
                     <p className="text-4xl font-bold text-primary">₹{totalPurchaseAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                 </div>
