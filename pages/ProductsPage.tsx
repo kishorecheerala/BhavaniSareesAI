@@ -26,8 +26,12 @@ const DownloadLabelsModal: React.FC<{
         if (isOpen && product && barcodeRef.current) {
             try {
                 JsBarcode(barcodeRef.current, product.id, {
-                    format: "CODE128", displayValue: true, fontSize: 10,
-                    height: 20, margin: 0
+                    format: "CODE128",
+                    displayValue: true,
+                    fontSize: 14,
+                    height: 30,
+                    width: 1.5,
+                    margin: 0,
                 });
             } catch (e) {
                 console.error("JsBarcode render error:", e);
@@ -44,11 +48,11 @@ const DownloadLabelsModal: React.FC<{
                     <div>
                         <h4 className="text-sm font-semibold mb-2">Label Preview:</h4>
                         <div className="border rounded-md p-2 flex justify-center bg-white">
-                            <div style={{ width: '1.9in', height: '0.9in', fontFamily: 'sans-serif', boxSizing: 'border-box', padding: '0.02in' }} className="text-center flex flex-col justify-center items-center border border-dashed">
-                                <div style={{ fontSize: '8px', fontWeight: 'bold', marginBottom: '1px' }}>Bhavani Sarees</div>
-                                <div style={{ fontSize: '9px', margin: '1px 0', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '1.8in' }}>{product.name}</div>
-                                <svg ref={barcodeRef} style={{ height: '20px', width: '100%' }}></svg>
-                                <div style={{ fontSize: '10px', fontWeight: 'bold', marginTop: '1px' }}>MRP: ₹{product.salePrice.toLocaleString('en-IN')}</div>
+                            <div style={{ width: '1.9in', height: '0.9in', fontFamily: 'sans-serif', boxSizing: 'border-box', padding: '2px' }} className="text-center flex flex-col justify-around items-center border border-dashed bg-white">
+                                <div style={{ fontSize: '10px', fontWeight: 'bold' }}>Bhavani Sarees</div>
+                                <div style={{ fontSize: '14px', fontWeight: 'bold', lineHeight: '1.1', maxWidth: '1.8in' }}>{product.name}</div>
+                                <svg ref={barcodeRef} style={{ height: '30px', width: '90%' }}></svg>
+                                <div style={{ fontSize: '14px', fontWeight: 'bold' }}>MRP : {product.salePrice.toLocaleString('en-IN')}</div>
                             </div>
                         </div>
                     </div>
@@ -174,9 +178,8 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
     const handleDownloadPdf = async (product: Product, quantity: number) => {
         setIsDownloadModalOpen(false);
     
-        // Label dimensions in mm (2in x 1in)
-        const labelWidth = 50.8;
-        const labelHeight = 25.4;
+        const labelWidth = 50.8; // 2 inches in mm
+        const labelHeight = 25.4; // 1 inch in mm
     
         const doc = new jsPDF({
             orientation: 'landscape',
@@ -184,14 +187,13 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
             format: [labelWidth, labelHeight]
         });
     
-        // Create an off-screen canvas to render the barcode
         const canvas = document.createElement('canvas');
         try {
             JsBarcode(canvas, product.id, {
                 format: "CODE128",
                 displayValue: true,
-                fontSize: 10,
-                height: 20,
+                fontSize: 16,
+                height: 30, // A reasonable height for barcode bars
                 margin: 0,
                 width: 1.5,
             });
@@ -209,23 +211,30 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
     
             const centerX = labelWidth / 2;
     
-            doc.setFontSize(8);
+            // 1. Bhavani Sarees - Top, smaller font
+            doc.setFontSize(10);
             doc.setFont('helvetica', 'bold');
             doc.text('Bhavani Sarees', centerX, 4, { align: 'center' });
             
-            doc.setFontSize(9);
-            const productNameLines = doc.splitTextToSize(product.name, labelWidth - 4);
-            doc.text(productNameLines, centerX, 8, { align: 'center' });
+            // 2. Product Name - Below brand, larger font
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            const productNameLines = doc.splitTextToSize(product.name, labelWidth - 8);
+            const nameY = productNameLines.length > 1 ? 7.5 : 8.5; // Adjust Y pos to center if name wraps
+            doc.text(productNameLines, centerX, nameY, { align: 'center' });
     
-            const barcodeWidth = 40;
-            const barcodeHeight = 8;
+            // 3. Barcode - Positioned to leave space for MRP at the bottom
+            const barcodeWidth = 44;
+            // Calculate height to maintain aspect ratio, preventing distortion
+            const barcodeHeight = barcodeWidth * (canvas.height / canvas.width); 
             const barcodeX = (labelWidth - barcodeWidth) / 2;
-            const barcodeY = 12; 
+            const barcodeY = 13;
             doc.addImage(barcodeDataUrl, 'PNG', barcodeX, barcodeY, barcodeWidth, barcodeHeight);
             
-            doc.setFontSize(10);
+            // 4. MRP - Bottom, larger font
+            doc.setFontSize(14);
             doc.setFont('helvetica', 'bold');
-            doc.text(`MRP: ₹${product.salePrice.toLocaleString('en-IN')}`, centerX, 23, { align: 'center' });
+            doc.text(`MRP : ${product.salePrice.toLocaleString('en-IN')}`, centerX, 23, { align: 'center' });
         }
     
         doc.save(`${product.id}-labels.pdf`);
