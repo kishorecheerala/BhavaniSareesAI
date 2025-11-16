@@ -45,26 +45,33 @@ export const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, product, onC
     JsBarcode(barcodeCanvas, product.id, {
       format: 'CODE128',
       width: 2 * dpiScale,
-      height: 60 * dpiScale,
-      displayValue: true,
-      fontSize: 16 * dpiScale,
-      margin: 10 * dpiScale,
+      height: 50 * dpiScale,
+      displayValue: false, // We will render text manually
+      margin: 0,
     });
     
-    // Draw barcode onto the main label canvas, centered, without distortion
+    // Draw barcode onto the main label canvas, centered
     const barcodeX = (labelCanvas.width - barcodeCanvas.width) / 2;
-    ctx.drawImage(barcodeCanvas, barcodeX, 30 * dpiScale);
+    const barcodeY = 30 * dpiScale;
+    ctx.drawImage(barcodeCanvas, barcodeX, barcodeY);
+
+    // Starting Y for text, below the barcode
+    let textY = barcodeY + barcodeCanvas.height + (16 * dpiScale);
 
     // Add product name
-    const productNameY = (30 + 60 + 20) * dpiScale;
     ctx.font = `bold ${12 * dpiScale}px Arial`;
     const productText = product.name.substring(0, 30);
-    ctx.fillText(productText, labelCanvas.width / 2, productNameY);
+    ctx.fillText(productText, labelCanvas.width / 2, textY);
+    textY += 16 * dpiScale; // Move to next line
+
+    // Add product ID
+    ctx.font = `normal ${12 * dpiScale}px Arial`;
+    ctx.fillText(product.id, labelCanvas.width / 2, textY);
+    textY += 18 * dpiScale; // Move to next line with a bit more space
 
     // Add MRP
-    const mrpY = (30 + 60 + 40) * dpiScale;
     ctx.font = `bold ${14 * dpiScale}px Arial`;
-    ctx.fillText(`MRP: ₹${product.salePrice.toLocaleString('en-IN')}`, labelCanvas.width / 2, mrpY);
+    ctx.fillText(`MRP: ₹${product.salePrice.toLocaleString('en-IN')}`, labelCanvas.width / 2, textY);
 
     return labelCanvas;
   }
@@ -93,7 +100,7 @@ export const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, product, onC
             previewCtx.drawImage(fullLabelCanvas, 0, 0, labelPreviewCanvasRef.current.width, labelPreviewCanvasRef.current.height);
         }
     }
-  }, [isOpen, product, businessName]);
+  }, [isOpen, product, businessName, numberOfCopies]); // Re-render preview if copies change (though not used in preview)
 
 
   const handleDownloadPDF = async () => {
