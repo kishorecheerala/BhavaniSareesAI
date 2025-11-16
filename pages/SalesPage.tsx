@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Plus, Trash2, Printer, Search, X, IndianRupee, QrCode, Save, Edit } from 'lucide-react';
+import { Plus, Trash2, Share2, Search, X, IndianRupee, QrCode, Save, Edit } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Sale, SaleItem, Customer, Product, Payment } from '../types';
 import Card from '../components/Card';
@@ -426,7 +426,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     }, [newCustomer, state.customers, dispatch, showToast]);
 
 
-    const generateAndPrintThermalReceipt = async (sale: Sale, customer: Customer) => {
+    const generateAndShareInvoice = async (sale: Sale, customer: Customer) => {
         let qrCodeBase64: string | null = null;
         try {
             const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(sale.id)}&size=50x50&margin=0`;
@@ -558,9 +558,18 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, finalY + 5] });
         renderContentOnDoc(doc);
         
-        doc.autoPrint();
-        const pdfUrl = doc.output('bloburl');
-        window.open(pdfUrl, '_blank');
+        const pdfBlob = doc.output('blob');
+        const pdfFile = new File([pdfBlob], `Receipt-${sale.id}.pdf`, { type: 'application/pdf' });
+        const businessName = state.profile?.name || 'Your Business';
+        
+        if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
+          await navigator.share({
+            title: `${businessName} - Receipt ${sale.id}`,
+            files: [pdfFile],
+          });
+        } else {
+          doc.save(`Receipt-${sale.id}.pdf`);
+        }
     };
 
     const handleSubmitSale = async () => {
@@ -604,7 +613,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                 dispatch({ type: 'UPDATE_PRODUCT_STOCK', payload: { productId: item.productId, change: -Number(item.quantity) } });
             });
             showToast('Sale created successfully!');
-            await generateAndPrintThermalReceipt(newSale, customer);
+            await generateAndShareInvoice(newSale, customer);
 
         } else if (mode === 'edit' && saleToEdit) {
             const existingPayments = saleToEdit.payments || [];
@@ -723,7 +732,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                                 </button>
 
                                 {isCustomerDropdownOpen && (
-                                    <div className="absolute top-full left-0 w-full mt-1 bg-gray-800 text-white rounded-md shadow-lg z-10 animate-fade-in-fast">
+                                    <div className="absolute top-full left-0 w-full mt-1 bg-gray-800 text-white rounded-md shadow-lg z-30 animate-fade-in-fast">
                                         <div className="p-2 border-b border-gray-700">
                                             <input
                                                 type="text"
@@ -904,8 +913,8 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             <div className="space-y-2">
                 {canCreateSale ? (
                     <Button onClick={handleSubmitSale} variant="secondary" className="w-full">
-                        <Printer className="w-4 h-4 mr-2"/>
-                        Create Sale & Print
+                        <Share2 className="w-4 h-4 mr-2"/>
+                        Create Sale & Share Invoice
                     </Button>
                 ) : canUpdateSale ? (
                     <Button onClick={handleSubmitSale} className="w-full">

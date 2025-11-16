@@ -268,7 +268,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         setPaymentDetails({ amount: '', method: 'CASH', date: getLocalDateString(), reference: '' });
     };
 
-    const handlePrintThermalReceipt = async (sale: Sale) => {
+    const handleDownloadThermalReceipt = async (sale: Sale) => {
         if (!selectedCustomer) return;
 
         let qrCodeBase64: string | null = null;
@@ -404,9 +404,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, finalY + 5] });
         renderContentOnDoc(doc);
         
-        doc.autoPrint();
-        const pdfUrl = doc.output('bloburl');
-        window.open(pdfUrl, '_blank');
+        doc.save(`${sale.id}.pdf`);
     };
 
     const generateA4InvoicePdf = async (sale: Sale, customer: Customer) => {
@@ -524,18 +522,126 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
 
     const handleShareInvoice = async (sale: Sale) => {
         if (!selectedCustomer) return;
-        const doc = await generateA4InvoicePdf(sale, selectedCustomer);
+        
+        // Generate thermal receipt for sharing
+        let qrCodeBase64: string | null = null;
+        try {
+            const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(sale.id)}&size=50x50&margin=0`;
+            qrCodeBase64 = await fetchImageAsBase64(qrCodeUrl);
+        } catch (error) {
+            console.error("Failed to fetch QR code", error);
+        }
+
+        const renderContentOnDoc = (doc: jsPDF) => {
+            const customer = selectedCustomer;
+            const subTotal = Number(sale.totalAmount) + Number(sale.discount);
+            const paidAmountOnSale = sale.payments.reduce((sum, p) => sum + Number(p.amount), 0);
+            const dueAmountOnSale = Number(sale.totalAmount) - paidAmountOnSale;
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const centerX = pageWidth / 2;
+            const margin = 5;
+            const maxLineWidth = pageWidth - margin * 2;
+            let y = 10;
+            doc.setFont('times', 'italic');
+            doc.setFontSize(12);
+            doc.text('Om Namo Venkatesaya', centerX, y, { align: 'center' });
+            y += 7;
+            doc.setFont('times', 'bold');
+            doc.setFontSize(16);
+            doc.setTextColor('#0d9488');
+            doc.text(state.profile?.name || 'Business Manager', centerX, y, { align: 'center' });
+            y += 7;
+            doc.setDrawColor('#cccccc');
+            doc.line(margin, y, pageWidth - margin, y);
+            y += 6;
+            doc.setFont('Helvetica', 'normal');
+            doc.setFontSize(8);
+            const invoiceTextTopY = y - 3;
+            doc.text(`Invoice: ${sale.id}`, margin, y);
+            y += 4;
+            doc.text(`Date: ${new Date(sale.date).toLocaleString()}`, margin, y);
+            if (qrCodeBase64) {
+                const qrSize = 15;
+                doc.addImage(qrCodeBase64, 'PNG', pageWidth - margin - qrSize, invoiceTextTopY, qrSize, qrSize);
+                const qrBottom = invoiceTextTopY + qrSize;
+                if (qrBottom > y) y = qrBottom;
+            }
+            y += 5;
+            doc.setFont('Helvetica', 'bold');
+            doc.text('Billed To:', margin, y);
+            y += 4;
+            doc.setFont('Helvetica', 'normal');
+            doc.text(customer.name, margin, y);
+            y += 4;
+            const addressLines = doc.splitTextToSize(customer.address, maxLineWidth);
+            doc.text(addressLines, margin, y);
+            y += (addressLines.length * 4) + 2;
+            doc.setDrawColor('#000000');
+            doc.line(margin, y, pageWidth - margin, y);
+            y += 5;
+            doc.setFont('Helvetica', 'bold');
+            doc.text('Purchase Details', centerX, y, { align: 'center' });
+            y += 5;
+            doc.line(margin, y, pageWidth - margin, y);
+            y += 5;
+            doc.text('Item', margin, y);
+            doc.text('Total', pageWidth - margin, y, { align: 'right' });
+            y += 2;
+            doc.setDrawColor('#cccccc');
+            doc.line(margin, y, pageWidth - margin, y);
+            y += 5;
+            doc.setFont('Helvetica', 'normal');
+            sale.items.forEach(item => {
+                const itemTotal = Number(item.price) * Number(item.quantity);
+                doc.setFontSize(9);
+                const splitName = doc.splitTextToSize(item.productName, maxLineWidth - 20);
+                doc.text(splitName, margin, y);
+                doc.text(`Rs. ${itemTotal.toLocaleString('en-IN')}`, pageWidth - margin, y, { align: 'right' });
+                y += (splitName.length * 4);
+                doc.setFontSize(7);
+                doc.setTextColor('#666666');
+                doc.text(`(x${item.quantity} @ Rs. ${Number(item.price).toLocaleString('en-IN')})`, margin, y);
+                y += 6;
+                doc.setTextColor('#000000');
+            });
+            y -= 2;
+            doc.setDrawColor('#cccccc');
+            doc.line(margin, y, pageWidth - margin, y);
+            y += 5;
+            const totals = [
+                { label: 'Subtotal', value: subTotal },
+                { label: 'GST', value: Number(sale.gstAmount) },
+                { label: 'Discount', value: -Number(sale.discount) },
+                { label: 'Total', value: Number(sale.totalAmount), bold: true },
+                { label: 'Paid', value: paidAmountOnSale },
+                { label: 'Due', value: dueAmountOnSale, bold: true },
+            ];
+            const totalsX = pageWidth - margin;
+            totals.forEach(({ label, value, bold = false }) => {
+                doc.setFont('Helvetica', bold ? 'bold' : 'normal');
+                doc.setFontSize(bold ? 10 : 8);
+                doc.text(label, totalsX - 25, y, { align: 'right' });
+                doc.text(`Rs. ${value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, y, { align: 'right' });
+                y += (bold ? 5 : 4);
+            });
+            return y;
+        };
+        const dummyDoc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, 500] });
+        const finalY = renderContentOnDoc(dummyDoc);
+        const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, finalY + 5] });
+        renderContentOnDoc(doc);
+        
         const pdfBlob = doc.output('blob');
-        const pdfFile = new File([pdfBlob], `Invoice-${sale.id}.pdf`, { type: 'application/pdf' });
+        const pdfFile = new File([pdfBlob], `Receipt-${sale.id}.pdf`, { type: 'application/pdf' });
         const businessName = state.profile?.name || 'Invoice';
 
         if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
             await navigator.share({
-                title: `${businessName} - Invoice ${sale.id}`,
+                title: `${businessName} - Receipt ${sale.id}`,
                 files: [pdfFile],
             });
         } else {
-            doc.save(`Invoice-${sale.id}.pdf`);
+            doc.save(`Receipt-${sale.id}.pdf`);
         }
     };
 
@@ -745,7 +851,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                                                         {actionMenuSaleId === sale.id && (
                                                             <div className="absolute top-full right-0 mt-1 w-48 bg-white rounded-md shadow-lg border text-text z-10 animate-scale-in origin-top-right">
                                                                 <button onClick={() => { handlePrintA4Invoice(sale); setActionMenuSaleId(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100">Print (A4)</button>
-                                                                <button onClick={() => { handlePrintThermalReceipt(sale); setActionMenuSaleId(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100">Print Receipt</button>
+                                                                <button onClick={() => { handleDownloadThermalReceipt(sale); setActionMenuSaleId(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100">Download Receipt</button>
                                                                 <button onClick={() => { handleShareInvoice(sale); setActionMenuSaleId(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100">Share Invoice</button>
                                                             </div>
                                                         )}
