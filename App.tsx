@@ -129,6 +129,14 @@ const MainApp: React.FC = () => {
 
   const lastBackupDate = state.app_metadata.find(m => m.id === 'lastBackup')?.date;
 
+  useEffect(() => {
+    if (state.profile?.name) {
+      document.title = `${state.profile.name} - Manager`;
+    } else {
+      document.title = 'Business Manager';
+    }
+  }, [state.profile?.name]);
+
   const handleInstallClick = async () => {
     if (!installPromptEvent) {
       return;
@@ -386,7 +394,7 @@ const MainApp: React.FC = () => {
               <Search className="w-6 h-6" />
             </button>
           </div>
-          <h1 className="text-xl font-bold text-center">Bhavani Sarees</h1>
+          <h1 className="text-xl font-bold text-center truncate px-2">{state.profile?.name || 'Business Manager'}</h1>
           <div className="flex items-center gap-2">
              <div className="relative" ref={quickAddRef}>
                 <button onClick={() => setIsQuickAddOpen(prev => !prev)} className="p-1 rounded-full hover:bg-white/20 transition-colors" aria-label="Open quick add menu">

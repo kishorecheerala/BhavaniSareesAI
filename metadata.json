@@ -1,5 +1,5 @@
 {
-  "name": "Bhavani Sarees - Business Manager",
+  "name": "Business Manager",
   "description": "A comprehensive sales, purchase, and customer management application for a saree business. Track dues, manage stock, and generate reports, all from your device.",
   "requestFramePermissions": [
     "camera"

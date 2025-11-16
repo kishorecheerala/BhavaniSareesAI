@@ -296,7 +296,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             doc.setFont('times', 'bold');
             doc.setFontSize(16);
             doc.setTextColor('#0d9488'); // Primary Color
-            doc.text('Bhavani Sarees', centerX, y, { align: 'center' });
+            doc.text(state.profile?.name || 'Business Manager', centerX, y, { align: 'center' });
             y += 7;
 
             doc.setDrawColor('#cccccc');
@@ -478,10 +478,11 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
 
         const pdfBlob = doc.output('blob');
         const pdfFile = new File([pdfBlob], `Dues-Summary-${selectedCustomer.id}.pdf`, { type: 'application/pdf' });
+        const businessName = state.profile?.name || 'Dues Summary';
 
         if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
           await navigator.share({
-            title: `Bhavani Sarees - Dues Summary for ${selectedCustomer.name}`,
+            title: `${businessName} - Dues for ${selectedCustomer.name}`,
             files: [pdfFile],
           });
         } else {

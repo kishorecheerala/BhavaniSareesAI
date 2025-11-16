@@ -1,6 +1,6 @@
-# Bhavani Sarees - Business Manager
+# Business Manager
 
-A comprehensive, offline-first Progressive Web App (PWA) designed to streamline sales, purchase, and customer management for a small saree business. This application empowers users to track dues, manage stock, and generate reports directly from their device, without needing a constant internet connection.
+A comprehensive, offline-first Progressive Web App (PWA) designed to streamline sales, purchase, and customer management for a small business. This application empowers users to track dues, manage stock, and generate reports directly from their device, without needing a constant internet connection.
 
 ## ✨ Key Features
 

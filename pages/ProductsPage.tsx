@@ -19,7 +19,8 @@ const DownloadLabelsModal: React.FC<{
     product: Product;
     quantity: string;
     setQuantity: (q: string) => void;
-}> = ({ isOpen, onClose, onDownload, product, quantity, setQuantity }) => {
+    businessName: string;
+}> = ({ isOpen, onClose, onDownload, product, quantity, setQuantity, businessName }) => {
     const barcodeRef = useRef<SVGSVGElement>(null);
 
     useEffect(() => {
@@ -49,7 +50,7 @@ const DownloadLabelsModal: React.FC<{
                         <h4 className="text-sm font-semibold mb-2">Label Preview:</h4>
                         <div className="border rounded-md p-2 flex justify-center bg-white">
                             <div style={{ width: '2in', height: '1in', fontFamily: 'sans-serif', boxSizing: 'border-box' }} className="text-center flex flex-col justify-between items-center p-1 border border-dashed bg-white">
-                                <div style={{ fontSize: '10px', fontWeight: 'bold' }}>Bhavani Sarees</div>
+                                <div style={{ fontSize: '10px', fontWeight: 'bold' }}>{businessName}</div>
                                 <div style={{ fontSize: '13px', fontWeight: 'bold', lineHeight: '1.1' }}>{product.name}</div>
                                 <svg ref={barcodeRef} style={{ height: '30px', width: '90%' }}></svg>
                                 <div className="flex flex-col items-center" style={{lineHeight: '1.2'}}>
@@ -217,7 +218,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
             // 1. Brand Name (Top)
             doc.setFontSize(8);
             doc.setFont('helvetica', 'bold');
-            doc.text('Bhavani Sarees', centerX, currentY, { align: 'center' });
+            doc.text(state.profile?.name || 'Your Business', centerX, currentY, { align: 'center' });
             currentY += 3.5;
     
             // 2. Product Name
@@ -292,6 +293,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                     onDownload={(quantity) => handleDownloadPdf(selectedProduct, quantity)}
                     quantity={printQuantity}
                     setQuantity={setPrintQuantity}
+                    businessName={state.profile?.name || 'Your Business'}
                 />
                 <Button onClick={() => setSelectedProduct(null)}>&larr; Back to Products List</Button>
                 

@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Plus, Trash2, Share2, Search, X, IndianRupee, QrCode, Save, Edit } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
@@ -456,7 +453,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
           doc.setFont('times', 'bold');
           doc.setFontSize(16);
           doc.setTextColor('#0d9488'); // Primary Color
-          doc.text('Bhavani Sarees', centerX, y, { align: 'center' });
+          doc.text(state.profile?.name || 'Your Business', centerX, y, { align: 'center' });
           y += 7;
 
           doc.setDrawColor('#cccccc');
@@ -569,8 +566,9 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         const pdfBlob = doc.output('blob');
         const pdfFile = new File([pdfBlob], `${sale.id}.pdf`, { type: 'application/pdf' });
         const dueAmountOnSale = Number(sale.totalAmount) - paidAmountOnSale;
+        const businessName = state.profile?.name || 'Your Business';
         
-        const whatsAppText = `Thank you for your purchase from Bhavani Sarees!\n\n*Invoice Summary:*\nInvoice ID: ${sale.id}\nDate: ${new Date(sale.date).toLocaleString()}\n\n*Items:*\n${sale.items.map(i => `- ${i.productName} (x${i.quantity}) - Rs. ${(Number(i.price) * Number(i.quantity)).toLocaleString('en-IN')}`).join('\n')}\n\nSubtotal: Rs. ${calculations.subTotal.toLocaleString('en-IN')}\nGST: Rs. ${calculations.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\nDiscount: Rs. ${calculations.discountAmount.toLocaleString('en-IN')}\n*Total: Rs. ${Number(sale.totalAmount).toLocaleString('en-IN')}*\nPaid: Rs. ${paidAmountOnSale.toLocaleString('en-IN')}\nDue: Rs. ${dueAmountOnSale.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\nHave a blessed day!`;
+        const whatsAppText = `Thank you for your purchase from ${businessName}!\n\n*Invoice Summary:*\nInvoice ID: ${sale.id}\nDate: ${new Date(sale.date).toLocaleString()}\n\n*Items:*\n${sale.items.map(i => `- ${i.productName} (x${i.quantity}) - Rs. ${(Number(i.price) * Number(i.quantity)).toLocaleString('en-IN')}`).join('\n')}\n\nSubtotal: Rs. ${calculations.subTotal.toLocaleString('en-IN')}\nGST: Rs. ${calculations.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\nDiscount: Rs. ${calculations.discountAmount.toLocaleString('en-IN')}\n*Total: Rs. ${Number(sale.totalAmount).toLocaleString('en-IN')}*\nPaid: Rs. ${paidAmountOnSale.toLocaleString('en-IN')}\nDue: Rs. ${dueAmountOnSale.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\nHave a blessed day!`;
         
         if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
           try {
@@ -582,7 +580,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             console.warn('Could not copy text to clipboard:', err);
           }
           await navigator.share({
-            title: `Bhavani Sarees Invoice ${sale.id}`,
+            title: `${businessName} Invoice ${sale.id}`,
             text: whatsAppText,
             files: [pdfFile],
           });
