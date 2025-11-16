@@ -268,7 +268,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         setPaymentDetails({ amount: '', method: 'CASH', date: getLocalDateString(), reference: '' });
     };
 
-    const handleDownloadThermalReceipt = async (sale: Sale) => {
+    const handlePrintThermalReceipt = async (sale: Sale) => {
         if (!selectedCustomer) return;
 
         let qrCodeBase64: string | null = null;
@@ -404,7 +404,9 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, finalY + 5] });
         renderContentOnDoc(doc);
         
-        doc.save(`${sale.id}.pdf`);
+        doc.autoPrint();
+        const pdfUrl = doc.output('bloburl');
+        window.open(pdfUrl, '_blank');
     };
 
     const generateA4InvoicePdf = async (sale: Sale, customer: Customer) => {
@@ -743,7 +745,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                                                         {actionMenuSaleId === sale.id && (
                                                             <div className="absolute top-full right-0 mt-1 w-48 bg-white rounded-md shadow-lg border text-text z-10 animate-scale-in origin-top-right">
                                                                 <button onClick={() => { handlePrintA4Invoice(sale); setActionMenuSaleId(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100">Print (A4)</button>
-                                                                <button onClick={() => { handleDownloadThermalReceipt(sale); setActionMenuSaleId(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100">Download Receipt</button>
+                                                                <button onClick={() => { handlePrintThermalReceipt(sale); setActionMenuSaleId(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100">Print Receipt</button>
                                                                 <button onClick={() => { handleShareInvoice(sale); setActionMenuSaleId(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100">Share Invoice</button>
                                                             </div>
                                                         )}
