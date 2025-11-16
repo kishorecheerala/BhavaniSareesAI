@@ -232,14 +232,13 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                     if (document.body.contains(iframe)) {
                       document.body.removeChild(iframe);
                     }
+                    setIsPrintModalOpen(false);
                 }, 500);
             }, 250);
         };
 
         // Setting srcdoc will trigger the onload event
         iframe.srcdoc = fullHtml;
-
-        setIsPrintModalOpen(false);
     };
 
     const filteredProducts = state.products.filter(p =>
