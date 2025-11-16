@@ -177,7 +177,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
         iframe.style.height = '0';
         iframe.style.border = '0';
         document.body.appendChild(iframe);
-        
+    
         let labelsHtml = '';
         for (let i = 0; i < quantity; i++) {
             labelsHtml += `
@@ -189,7 +189,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                 </div>
             `;
         }
-
+    
         const fullHtml = `
             <html><head><title>Print Labels</title>
             <style>
@@ -212,9 +212,15 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
             </style>
             </head><body>${labelsHtml}</body></html>
         `;
-        
+    
         iframe.onload = () => {
-            const iframeDoc = iframe.contentWindow!.document;
+            const printWindow = iframe.contentWindow;
+            if (!printWindow) {
+                if (document.body.contains(iframe)) document.body.removeChild(iframe);
+                return;
+            }
+    
+            const iframeDoc = printWindow.document;
             for (let i = 0; i < quantity; i++) {
                 const barcodeElement = iframeDoc.getElementById(`barcode-${i}`);
                 if (barcodeElement) {
@@ -228,22 +234,47 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                     }
                 }
             }
+            
+            let printInProgress = true;
     
-            // Give the browser a moment to render the SVGs before printing
-            setTimeout(() => {
-                iframe.contentWindow!.focus();
-                iframe.contentWindow!.print();
-                // Clean up after a short delay
+            const cleanup = () => {
+                if (!printInProgress) return;
+                printInProgress = false;
+    
                 setTimeout(() => {
                     if (document.body.contains(iframe)) {
-                      document.body.removeChild(iframe);
+                        document.body.removeChild(iframe);
                     }
                     setIsPrintModalOpen(false);
-                }, 500);
-            }, 250);
+                }, 100);
+            };
+    
+            printWindow.onafterprint = cleanup;
+    
+            const mediaQueryList = printWindow.matchMedia('print');
+            const mqlListener = (mql: MediaQueryListEvent) => {
+                if (!mql.matches) {
+                    cleanup();
+                    if (mediaQueryList.removeEventListener) {
+                        mediaQueryList.removeEventListener('change', mqlListener);
+                    } else {
+                        mediaQueryList.removeListener(mqlListener);
+                    }
+                }
+            };
+            
+            if (mediaQueryList.addEventListener) {
+                mediaQueryList.addEventListener('change', mqlListener);
+            } else {
+                mediaQueryList.addListener(mqlListener);
+            }
+            
+            setTimeout(() => {
+                printWindow.focus();
+                printWindow.print();
+            }, 100);
         };
-
-        // Setting srcdoc will trigger the onload event
+    
         iframe.srcdoc = fullHtml;
     };
 
