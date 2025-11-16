@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Plus, Trash2, Share2, Search, X, IndianRupee, QrCode, Save, Edit } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
@@ -9,6 +10,7 @@ import Button from '../components/Button';
 import jsPDF from 'jspdf';
 import { Html5Qrcode } from 'html5-qrcode';
 import DeleteButton from '../components/DeleteButton';
+import { useOnClickOutside } from '../hooks/useOnClickOutside';
 
 
 const getLocalDateString = (date = new Date()) => {
@@ -212,6 +214,16 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     const [newCustomer, setNewCustomer] = useState(newCustomerInitialState);
     const isDirtyRef = useRef(false);
 
+    const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
+    const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+    const customerDropdownRef = useRef<HTMLDivElement>(null);
+    
+    useOnClickOutside(customerDropdownRef, () => {
+        if (isCustomerDropdownOpen) {
+            setIsCustomerDropdownOpen(false);
+        }
+    });
+
     // Effect to handle switching to edit mode from another page
     useEffect(() => {
         if (state.selection?.page === 'SALES' && state.selection.action === 'edit') {
@@ -349,6 +361,13 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     }, [items, discount, state.products]);
 
     const selectedCustomer = useMemo(() => customerId ? state.customers.find(c => c.id === customerId) : null, [customerId, state.customers]);
+
+    const filteredCustomers = useMemo(() => 
+        state.customers.filter(c => 
+            c.name.toLowerCase().includes(customerSearchTerm.toLowerCase()) || 
+            c.area.toLowerCase().includes(customerSearchTerm.toLowerCase())
+        ).sort((a,b) => a.name.localeCompare(b.name)),
+    [state.customers, customerSearchTerm]);
 
     const customerTotalDue = useMemo(() => {
         if (!customerId) return null;
@@ -722,34 +741,71 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
-                        {!selectedCustomer ? (
-                            <div className="flex gap-2 items-center">
-                                <select 
-                                    value={customerId} 
-                                    onChange={e => setCustomerId(e.target.value)} 
-                                    className="w-full p-2 border rounded custom-select"
-                                    disabled={mode === 'edit'}
+                        <div className="flex gap-2 items-center">
+                            <div className="relative w-full" ref={customerDropdownRef}>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsCustomerDropdownOpen(prev => !prev)}
+                                    className="w-full p-2 border rounded bg-white text-left custom-select"
+                                    disabled={mode === 'edit' || (mode === 'add' && items.length > 0)}
+                                    aria-haspopup="listbox"
+                                    aria-expanded={isCustomerDropdownOpen}
                                 >
-                                    <option value="">Select a Customer</option>
-                                    {state.customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.area}</option>)}
-                                </select>
-                                {mode === 'add' && (
-                                    <Button onClick={() => setIsAddingCustomer(true)} variant="secondary" className="flex-shrink-0">
-                                        <Plus size={16}/> New Customer
-                                    </Button>
+                                    {selectedCustomer ? `${selectedCustomer.name} - ${selectedCustomer.area}` : 'Select a Customer'}
+                                </button>
+
+                                {isCustomerDropdownOpen && (
+                                    <div className="absolute top-full left-0 w-full mt-1 bg-gray-800 text-white rounded-md shadow-lg z-10 animate-fade-in-fast">
+                                        <div className="p-2 border-b border-gray-700">
+                                            <input
+                                                type="text"
+                                                placeholder="Search by name or area..."
+                                                value={customerSearchTerm}
+                                                onChange={e => setCustomerSearchTerm(e.target.value)}
+                                                className="w-full p-2 bg-gray-700 border border-gray-600 rounded text-white"
+                                                autoFocus
+                                            />
+                                        </div>
+                                        <ul className="max-h-60 overflow-y-auto" role="listbox">
+                                            <li
+                                                key="select-customer-placeholder"
+                                                onClick={() => {
+                                                    setCustomerId('');
+                                                    setIsCustomerDropdownOpen(false);
+                                                    setCustomerSearchTerm('');
+                                                }}
+                                                className="px-4 py-2 hover:bg-gray-700 cursor-pointer text-gray-400"
+                                                role="option"
+                                            >
+                                                Select a Customer
+                                            </li>
+                                            {filteredCustomers.map(c => (
+                                                <li
+                                                    key={c.id}
+                                                    onClick={() => {
+                                                        setCustomerId(c.id);
+                                                        setIsCustomerDropdownOpen(false);
+                                                        setCustomerSearchTerm('');
+                                                    }}
+                                                    className="px-4 py-2 hover:bg-gray-700 cursor-pointer border-t border-gray-600"
+                                                    role="option"
+                                                >
+                                                    {c.name} - {c.area}
+                                                </li>
+                                            ))}
+                                            {filteredCustomers.length === 0 && (
+                                                <li className="px-4 py-2 text-gray-400">No customers found.</li>
+                                            )}
+                                        </ul>
+                                    </div>
                                 )}
                             </div>
-                        ) : (
-                             <div className="p-3 border rounded bg-gray-50 flex justify-between items-center">
-                                <div>
-                                    <p className="font-semibold text-gray-800">{selectedCustomer.name}</p>
-                                    <p className="text-sm text-gray-500">{selectedCustomer.area}</p>
-                                </div>
-                                {mode === 'add' && items.length === 0 && (
-                                        <button onClick={() => setCustomerId('')} className="text-sm text-blue-600 hover:underline font-semibold">Change</button>
-                                )}
-                            </div>
-                        )}
+                            {mode === 'add' && (
+                                <Button onClick={() => setIsAddingCustomer(true)} variant="secondary" className="flex-shrink-0">
+                                    <Plus size={16}/> New Customer
+                                </Button>
+                            )}
+                        </div>
                     </div>
                     
                     <div>

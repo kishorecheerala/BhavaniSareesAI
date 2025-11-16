@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Plus, Upload, IndianRupee, Search, QrCode, Info, CheckCircle, XCircle, X } from 'lucide-react';
 import { Supplier, Product, PurchaseItem, Purchase } from '../types';
 import Card from './Card';
 import Button from './Button';
 import { Html5Qrcode } from 'html5-qrcode';
 import DeleteButton from './DeleteButton';
+import { useOnClickOutside } from '../hooks/useOnClickOutside';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -204,6 +205,17 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
 
     const isDirtyRef = useRef(false);
 
+    // New states for searchable dropdown
+    const [isSupplierDropdownOpen, setIsSupplierDropdownOpen] = useState(false);
+    const [supplierSearchTerm, setSupplierSearchTerm] = useState('');
+    const supplierDropdownRef = useRef<HTMLDivElement>(null);
+    
+    useOnClickOutside(supplierDropdownRef, () => {
+        if (isSupplierDropdownOpen) {
+            setIsSupplierDropdownOpen(false);
+        }
+    });
+
     useEffect(() => {
         if (mode === 'edit' && initialData) {
             setSupplierId(initialData.supplierId);
@@ -235,6 +247,16 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
     const [isScanning, setIsScanning] = useState(false);
     const [scannedProductId, setScannedProductId] = useState('');
     const [importStatus, setImportStatus] = useState<{ type: 'info' | 'success' | 'error', message: string } | null>(null);
+
+    // New memos for searchable dropdown
+    const filteredSuppliers = useMemo(() => 
+        suppliers.filter(s => 
+            s.name.toLowerCase().includes(supplierSearchTerm.toLowerCase()) || 
+            s.location.toLowerCase().includes(supplierSearchTerm.toLowerCase())
+        ).sort((a,b) => a.name.localeCompare(b.name)),
+    [suppliers, supplierSearchTerm]);
+
+    const selectedSupplier = useMemo(() => supplierId ? suppliers.find(s => s.id === supplierId) : null, [supplierId, suppliers]);
 
     const handleSelectProduct = (product: Product) => {
         const quantityStr = prompt(`Enter quantity for ${product.name}:`, '1');
@@ -514,11 +536,65 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Supplier</label>
                         <div className="flex gap-2 items-center mt-1">
-                            <select value={supplierId} onChange={e => setSupplierId(e.target.value)} className="w-full p-2 border rounded custom-select" disabled={mode === 'edit'}>
-                                <option value="">Select a Supplier</option>
-                                {suppliers.map(s => <option key={s.id} value={s.id}>{s.name} - {s.location}</option>)}
-                            </select>
-                             {mode === 'add' && (
+                            <div className="relative w-full" ref={supplierDropdownRef}>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsSupplierDropdownOpen(prev => !prev)}
+                                    className="w-full p-2 border rounded bg-white text-left custom-select"
+                                    disabled={mode === 'edit'}
+                                    aria-haspopup="listbox"
+                                    aria-expanded={isSupplierDropdownOpen}
+                                >
+                                    {selectedSupplier ? `${selectedSupplier.name} - ${selectedSupplier.location}` : 'Select a Supplier'}
+                                </button>
+
+                                {isSupplierDropdownOpen && (
+                                    <div className="absolute top-full left-0 w-full mt-1 bg-gray-800 text-white rounded-md shadow-lg z-10 animate-fade-in-fast">
+                                        <div className="p-2 border-b border-gray-700">
+                                            <input
+                                                type="text"
+                                                placeholder="Search by name or location..."
+                                                value={supplierSearchTerm}
+                                                onChange={e => setSupplierSearchTerm(e.target.value)}
+                                                className="w-full p-2 bg-gray-700 border border-gray-600 rounded text-white"
+                                                autoFocus
+                                            />
+                                        </div>
+                                        <ul className="max-h-60 overflow-y-auto" role="listbox">
+                                            <li
+                                                key="select-supplier-placeholder"
+                                                onClick={() => {
+                                                    setSupplierId('');
+                                                    setIsSupplierDropdownOpen(false);
+                                                    setSupplierSearchTerm('');
+                                                }}
+                                                className="px-4 py-2 hover:bg-gray-700 cursor-pointer text-gray-400"
+                                                role="option"
+                                            >
+                                                Select a Supplier
+                                            </li>
+                                            {filteredSuppliers.map(s => (
+                                                <li
+                                                    key={s.id}
+                                                    onClick={() => {
+                                                        setSupplierId(s.id);
+                                                        setIsSupplierDropdownOpen(false);
+                                                        setSupplierSearchTerm('');
+                                                    }}
+                                                    className="px-4 py-2 hover:bg-gray-700 cursor-pointer border-t border-gray-600"
+                                                    role="option"
+                                                >
+                                                    {s.name} - {s.location}
+                                                </li>
+                                            ))}
+                                            {filteredSuppliers.length === 0 && (
+                                                <li className="px-4 py-2 text-gray-400">No suppliers found.</li>
+                                            )}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
+                            {mode === 'add' && (
                                 <Button onClick={() => setIsAddingSupplier(true)} variant="secondary" className="flex-shrink-0">
                                     <Plus size={16}/> New
                                 </Button>
