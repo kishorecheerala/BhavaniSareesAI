@@ -306,9 +306,19 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                     <div
                         role="button"
                         tabIndex={0}
-                        onClick={() => handleOpenPrintModal(selectedProduct)}
+                        onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleOpenPrintModal(selectedProduct);
+                        }}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                        }}
                         onKeyDown={(e) => {
                             if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                e.stopPropagation();
                                 handleOpenPrintModal(selectedProduct);
                             }
                         }}
