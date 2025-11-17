@@ -193,8 +193,8 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                 index + 1,
                 item.productName,
                 item.quantity,
-                `₹${Number(item.price).toLocaleString('en-IN')}`,
-                `₹${(Number(item.quantity) * Number(item.price)).toLocaleString('en-IN')}`
+                `Rs. ${Number(item.price).toLocaleString('en-IN')}`,
+                `Rs. ${(Number(item.quantity) * Number(item.price)).toLocaleString('en-IN')}`
             ]),
             theme: 'grid',
             headStyles: { fillColor: [13, 148, 136] },
@@ -205,7 +205,7 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
         doc.text('Total Return Value:', 140, currentY, { align: 'right' });
-        doc.text(`₹${Number(newReturn.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 196, currentY, { align: 'right' });
+        doc.text(`Rs. ${Number(newReturn.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 196, currentY, { align: 'right' });
         
         if (newReturn.notes) {
             currentY += 15;

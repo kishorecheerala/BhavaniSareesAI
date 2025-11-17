@@ -145,7 +145,8 @@ const MainApp: React.FC = () => {
       return;
     }
     installPromptEvent.prompt();
-    await installPromptEvent.userChoice;
+    const { outcome } = await installPromptEvent.userChoice;
+    console.log(`User response to the install prompt: ${outcome}`);
     dispatch({ type: 'SET_INSTALL_PROMPT_EVENT', payload: null });
   };
 

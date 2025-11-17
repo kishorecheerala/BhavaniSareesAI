@@ -82,6 +82,7 @@ const BatchBarcodeModal: React.FC<BatchBarcodeModalProps> = ({ isOpen, purchaseI
         }));
     };
 
+    // FIX: Explicitly type the accumulator and value in the reduce function to prevent a type inference issue.
     const totalLabels = useMemo(() => Object.values(quantities).reduce((sum: number, qty: number) => sum + (qty || 0), 0), [quantities]);
 
     const handleDownloadPDF = async () => {
@@ -145,7 +146,7 @@ const BatchBarcodeModal: React.FC<BatchBarcodeModalProps> = ({ isOpen, purchaseI
                     labelsHtml += `<div class="label"><img src="${imageDataUrl}" style="width: 100%; height: 100%;" /></div>`;
                 }
             }
-
+            
             const printStyles = `
                 @page { size: 2in 1in; margin: 0; }
                 @media print {
@@ -191,51 +192,46 @@ const BatchBarcodeModal: React.FC<BatchBarcodeModalProps> = ({ isOpen, purchaseI
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
-          <Card className="w-full max-w-lg animate-scale-in">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold">Print Barcode Labels for Purchase</h2>
-              <button onClick={onClose} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors"><X size={20} /></button>
-            </div>
-    
-            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
-                <p className="text-sm text-gray-600">Adjust the number of labels to print for each item from this purchase. The default is the quantity purchased.</p>
-                {purchaseItems.map(item => (
-                    <div key={item.productId} className="grid grid-cols-3 gap-2 items-center p-2 bg-gray-50 rounded-lg">
-                        <div className="col-span-2">
-                            <p className="font-semibold text-sm">{item.productName}</p>
-                            <p className="text-xs text-gray-500">ID: {item.productId}</p>
+            <Card className="w-full max-w-lg animate-scale-in">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-bold">Print Barcode Labels for Purchase</h2>
+                    <button onClick={onClose} className="p-2 rounded-full text-gray-500 hover:bg-gray-100"><X size={20} /></button>
+                </div>
+
+                <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                    {purchaseItems.map(item => (
+                        <div key={item.productId} className="grid grid-cols-3 gap-2 items-center p-2 bg-gray-50 rounded-lg">
+                            <div className="col-span-2">
+                                <p className="font-semibold text-sm">{item.productName}</p>
+                                <p className="text-xs text-gray-500">{item.productId}</p>
+                            </div>
+                            <input
+                                type="number"
+                                value={quantities[item.productId] || 0}
+                                onChange={e => handleQuantityChange(item.productId, parseInt(e.target.value))}
+                                className="w-full p-2 border rounded text-center"
+                            />
                         </div>
-                        <input
-                          type="number"
-                          min="0"
-                          value={quantities[item.productId] || 0}
-                          onChange={(e) => handleQuantityChange(item.productId, parseInt(e.target.value) || 0)}
-                          className="w-full p-1 border rounded text-center"
-                        />
+                    ))}
+                </div>
+                
+                <div className="mt-4 pt-4 border-t">
+                    <p className="text-center font-bold mb-4">Total Labels to Print: {totalLabels}</p>
+                    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded mb-4">
+                        <p className="text-xs font-semibold text-yellow-800 mb-1">Print Settings</p>
+                        <p className="text-xs text-yellow-700">
+                        Ensure printer settings use <strong>Actual Size</strong> and <strong>Paper Size: 2x1 inch</strong> (50.8x25.4mm).
+                        </p>
                     </div>
-                ))}
-            </div>
-    
-            <div className="mt-6 space-y-3">
-              <div className="text-center font-semibold">
-                Total Labels to Print: {totalLabels}
-              </div>
-              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded">
-                <p className="text-xs font-semibold text-yellow-800 mb-1">Important Print Settings</p>
-                <p className="text-xs text-yellow-700">
-                  When printing, ensure printer settings use <strong>Actual Size</strong> and <strong>Paper Size: 2x1 inch</strong> (50.8x25.4mm).
-                </p>
-              </div>
-    
-              <div className="grid grid-cols-2 gap-2">
-                <Button onClick={handlePrint} className="w-full"><Printer size={16} className="mr-2" /> Print All</Button>
-                <Button onClick={handleDownloadPDF} className="w-full"><Download size={16} className="mr-2" /> Download PDF</Button>
-              </div>
-              <Button onClick={onClose} variant="secondary" className="w-full">Close</Button>
-            </div>
-          </Card>
+                    <div className="grid grid-cols-2 gap-2">
+                        <Button onClick={handlePrint} className="w-full"><Printer size={16} className="mr-2" /> Print</Button>
+                        <Button onClick={handleDownloadPDF} className="w-full"><Download size={16} className="mr-2" /> Download PDF</Button>
+                    </div>
+                    <Button onClick={onClose} variant="secondary" className="w-full mt-2">Skip / Close</Button>
+                </div>
+            </Card>
         </div>
-      );
+    );
 };
 
 export default BatchBarcodeModal;
