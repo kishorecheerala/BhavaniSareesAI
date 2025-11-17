@@ -239,10 +239,28 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
              )}
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-primary">Products & Inventory</h1>
-                 <Button onClick={toggleSelectMode}>
-                    {isSelectMode ? <X size={16} className="mr-2"/> : <QrCode size={16} className="mr-2"/>}
-                    {isSelectMode ? 'Cancel' : 'Bulk QR Print'}
-                </Button>
+                <div className="flex items-center gap-2">
+                    {isSelectMode ? (
+                        <>
+                            <Button 
+                                onClick={() => setIsBatchBarcodeModalOpen(true)} 
+                                disabled={selectedProductIds.length === 0}
+                            >
+                                <Printer size={16} className="mr-2" />
+                                Print Labels ({selectedProductIds.length})
+                            </Button>
+                            <Button onClick={toggleSelectMode} variant="secondary">
+                                <X size={16} className="mr-2"/>
+                                Cancel
+                            </Button>
+                        </>
+                    ) : (
+                        <Button onClick={toggleSelectMode}>
+                            <QrCode size={16} className="mr-2"/>
+                            Bulk QR Print
+                        </Button>
+                    )}
+                </div>
             </div>
             
             <div className="relative">
@@ -288,20 +306,6 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                 {filteredProducts.length === 0 && <p className="text-gray-500 md:col-span-2 text-center">No products found.</p>}
             </div>
 
-            {isSelectMode && selectedProductIds.length > 0 && (
-                <div className="fixed bottom-20 right-1/2 translate-x-1/2 md:bottom-4 z-40 flex justify-center animate-slide-up-fade">
-                    <div className="bg-white dark:bg-slate-800 shadow-2xl rounded-full p-2 flex items-center gap-2 border dark:border-slate-700">
-                        <span className="font-semibold text-sm px-3">{selectedProductIds.length} selected</span>
-                        <Button onClick={() => setIsBatchBarcodeModalOpen(true)}>
-                            <Printer size={16} className="mr-2" />
-                            Labels
-                        </Button>
-                        <button onClick={toggleSelectMode} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300">
-                            <X size={20} />
-                        </button>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
