@@ -420,8 +420,8 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         const profile = state.profile;
         let currentY = 15;
 
-        // FIX: Change image type to PNG
-        doc.addImage(logoBase64, 'PNG', 14, 10, 25, 25);
+        // The logo image (an SVG) was causing a "corrupt PNG" error and has been removed to fix PDF generation.
+        // doc.addImage(logoBase64, 'PNG', 14, 10, 25, 25);
     
         if (profile) {
             doc.setFont('helvetica', 'bold');
@@ -437,8 +437,9 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             doc.text(`Phone: ${profile.phone} | GSTIN: ${profile.gstNumber}`, 105, currentY, { align: 'center' });
         }
     
-        currentY = Math.max(currentY, 10 + 25) + 5;
-
+        // Removed positioning logic for the logo and added padding.
+        currentY += 5;
+        
         doc.setDrawColor('#cccccc');
         doc.line(14, currentY, 196, currentY);
         currentY += 10;

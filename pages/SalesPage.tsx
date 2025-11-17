@@ -9,7 +9,6 @@ import autoTable from 'jspdf-autotable';
 import { Html5Qrcode } from 'html5-qrcode';
 import DeleteButton from '../components/DeleteButton';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
-import { logoBase64 } from '../utils/logo';
 import Dropdown, { DropdownOption } from '../components/Dropdown';
 
 
@@ -430,116 +429,120 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
 
     const generateAndSharePDF = async (sale: Sale, customer: Customer, paidAmountOnSale: number) => {
       try {
-        const doc = new jsPDF();
-        const profile = state.profile;
-        let currentY = 15;
-
-        // FIX: Change image format to PNG
-        doc.addImage(logoBase64, 'PNG', 14, 10, 25, 25);
-
-        if (profile) {
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(24);
-            doc.setTextColor('#0d9488');
-            doc.text(profile.name, 105, currentY, { align: 'center' });
-            currentY += 8;
-            doc.setFontSize(10);
-            doc.setTextColor('#333333');
-            const addressLines = doc.splitTextToSize(profile.address, 180);
-            doc.text(addressLines, 105, currentY, { align: 'center' });
-            currentY += (addressLines.length * 5);
-            doc.text(`Phone: ${profile.phone} | GSTIN: ${profile.gstNumber}`, 105, currentY, { align: 'center' });
+        let qrCodeBase64: string | null = null;
+        try {
+            const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(sale.id)}&size=50x50&margin=0`;
+            qrCodeBase64 = await fetchImageAsBase64(qrCodeUrl);
+        } catch (error) {
+            console.error("Failed to fetch QR code", error);
         }
-        
-        currentY = Math.max(currentY, 10 + 25) + 5;
 
-        doc.setDrawColor('#cccccc');
-        doc.line(14, currentY, 196, currentY);
-        currentY += 10;
-        
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text('TAX INVOICE', 105, currentY, { align: 'center' });
-        currentY += 10;
-        
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Billed To:', 14, currentY);
-        doc.text('Invoice Details:', 120, currentY);
-        currentY += 5;
+        const renderContentOnDoc = (doc: jsPDF) => {
+            const subTotal = Number(sale.totalAmount) + Number(sale.discount);
+            const totalPaidForSale = (sale.payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+            const dueAmountOnSale = Number(sale.totalAmount) - totalPaidForSale;
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const centerX = pageWidth / 2;
+            const margin = 5;
+            const maxLineWidth = pageWidth - margin * 2;
+            let y = 10;
 
-        doc.setFont('helvetica', 'normal');
-        doc.text(customer.name, 14, currentY);
-        doc.text(`Invoice ID: ${sale.id}`, 120, currentY);
-        currentY += 5;
+            doc.setFont('times', 'italic');
+            doc.setFontSize(12);
+            doc.text('Om Namo Venkatesaya', centerX, y, { align: 'center' });
+            y += 7;
+            doc.setFont('times', 'bold');
+            doc.setFontSize(20);
+            doc.setTextColor('#0d9488');
+            doc.text(state.profile?.name || 'Business Manager', centerX, y, { align: 'center' });
+            y += 7;
+            doc.setDrawColor('#cccccc');
+            doc.line(margin, y, pageWidth - margin, y);
+            y += 6;
+            doc.setFont('Helvetica', 'normal');
+            doc.setFontSize(8);
+            const invoiceTextTopY = y - 3;
+            doc.text(`Invoice: ${sale.id}`, margin, y);
+            y += 4;
+            doc.text(`Date: ${new Date(sale.date).toLocaleString()}`, margin, y);
+            if (qrCodeBase64) {
+                const qrSize = 15;
+                doc.addImage(qrCodeBase64, 'PNG', pageWidth - margin - qrSize, invoiceTextTopY, qrSize, qrSize);
+                const qrBottom = invoiceTextTopY + qrSize;
+                if (qrBottom > y) y = qrBottom;
+            }
+            y += 5;
+            doc.setFont('Helvetica', 'bold');
+            doc.text('Billed To:', margin, y);
+            y += 4;
+            doc.setFont('Helvetica', 'normal');
+            doc.text(customer.name, margin, y);
+            y += 4;
+            const addressLines = doc.splitTextToSize(customer.address, maxLineWidth);
+            doc.text(addressLines, margin, y);
+            y += (addressLines.length * 4) + 2;
+            doc.setDrawColor('#000000');
+            doc.line(margin, y, pageWidth - margin, y);
+            y += 5;
+            doc.setFont('Helvetica', 'bold');
+            doc.text('Purchase Details', centerX, y, { align: 'center' });
+            y += 5;
+            doc.line(margin, y, pageWidth - margin, y);
+            y += 5;
+            doc.text('Item', margin, y);
+            doc.text('Total', pageWidth - margin, y, { align: 'right' });
+            y += 2;
+            doc.setDrawColor('#cccccc');
+            doc.line(margin, y, pageWidth - margin, y);
+            y += 5;
+            doc.setFont('Helvetica', 'normal');
+            sale.items.forEach(item => {
+                const itemTotal = Number(item.price) * Number(item.quantity);
+                doc.setFontSize(9);
+                const splitName = doc.splitTextToSize(item.productName, maxLineWidth - 20);
+                doc.text(splitName, margin, y);
+                doc.text(`Rs. ${itemTotal.toLocaleString('en-IN')}`, pageWidth - margin, y, { align: 'right' });
+                y += (splitName.length * 4);
+                doc.setFontSize(7);
+                doc.setTextColor('#666666');
+                doc.text(`(x${item.quantity} @ Rs. ${Number(item.price).toLocaleString('en-IN')})`, margin, y);
+                y += 6;
+                doc.setTextColor('#000000');
+            });
+            y -= 2;
+            doc.setDrawColor('#cccccc');
+            doc.line(margin, y, pageWidth - margin, y);
+            y += 5;
+            const totals = [
+                { label: 'Subtotal', value: subTotal },
+                { label: 'GST', value: Number(sale.gstAmount) },
+                { label: 'Discount', value: -Number(sale.discount) },
+                { label: 'Total', value: Number(sale.totalAmount), bold: true },
+                { label: 'Paid', value: totalPaidForSale },
+                { label: 'Due', value: dueAmountOnSale, bold: true },
+            ];
+            const totalsX = pageWidth - margin;
+            totals.forEach(({ label, value, bold = false }) => {
+                doc.setFont('Helvetica', bold ? 'bold' : 'normal');
+                doc.setFontSize(bold ? 10 : 8);
+                doc.text(label, totalsX - 25, y, { align: 'right' });
+                doc.text(`Rs. ${value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, y, { align: 'right' });
+                y += (bold ? 5 : 4);
+            });
+            return y;
+        };
+        const dummyDoc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, 500] });
+        const finalY = renderContentOnDoc(dummyDoc);
+        const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, finalY + 5] });
+        renderContentOnDoc(doc);
         
-        const customerAddressLines = doc.splitTextToSize(customer.address, 80);
-        doc.text(customerAddressLines, 14, currentY);
-        doc.text(`Date: ${new Date(sale.date).toLocaleString()}`, 120, currentY);
-        currentY += (customerAddressLines.length * 5) + 5;
+        const pdfBlob = doc.output('blob');
+        const pdfFile = new File([pdfBlob], `Receipt-${sale.id}.pdf`, { type: 'application/pdf' });
+        const businessName = state.profile?.name || 'Your Business';
         
-        autoTable(doc, {
-            startY: currentY,
-            head: [['#', 'Item Description', 'Qty', 'Rate', 'Amount']],
-            body: sale.items.map((item, index) => [
-                index + 1,
-                item.productName,
-                item.quantity,
-                `Rs. ${Number(item.price).toLocaleString('en-IN')}`,
-                `Rs. ${(Number(item.quantity) * Number(item.price)).toLocaleString('en-IN')}`
-            ]),
-            theme: 'grid',
-            headStyles: { fillColor: [13, 148, 136] },
-            columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } }
-        });
-        
-        currentY = (doc as any).lastAutoTable.finalY + 10;
-        
-        // FIX: Calculate values from the `sale` object, not stale component state. This also fixes the scope issue.
         const subTotal = sale.items.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
         const dueAmountOnSale = Number(sale.totalAmount) - paidAmountOnSale;
         
-        const totalsX = 196;
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text('Subtotal:', totalsX - 30, currentY, { align: 'right' });
-        doc.text(`Rs. ${subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
-        currentY += 7;
-
-        doc.text('Discount:', totalsX - 30, currentY, { align: 'right' });
-        doc.text(`- Rs. ${Number(sale.discount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
-        currentY += 7;
-
-        doc.text('GST Included:', totalsX - 30, currentY, { align: 'right' });
-        doc.text(`Rs. ${Number(sale.gstAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
-        currentY += 7;
-        
-        doc.setFont('helvetica', 'bold');
-        doc.text('Grand Total:', totalsX - 30, currentY, { align: 'right' });
-        doc.text(`Rs. ${Number(sale.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
-        currentY += 7;
-
-        doc.setFont('helvetica', 'normal');
-        doc.text('Paid:', totalsX - 30, currentY, { align: 'right' });
-        doc.text(`Rs. ${paidAmountOnSale.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
-        currentY += 7;
-
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(dueAmountOnSale > 0.01 ? '#dc2626' : '#16a34a');
-        doc.text('Amount Due:', totalsX - 30, currentY, { align: 'right' });
-        doc.text(`Rs. ${dueAmountOnSale.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
-        
-        currentY = doc.internal.pageSize.height - 20;
-        doc.setFontSize(10);
-        doc.setTextColor('#888888');
-        doc.text('Thank you for your business!', 105, currentY, { align: 'center' });
-        
-        const pdfBlob = doc.output('blob');
-        const pdfFile = new File([pdfBlob], `Invoice-${sale.id}.pdf`, { type: 'application/pdf' });
-        const businessName = state.profile?.name || 'Your Business';
-        
-        // FIX: Use locally scoped variables for whatsAppText instead of calculations from component state to ensure data consistency.
         const whatsAppText = `Thank you for your purchase from ${businessName}!\n\n*Invoice Summary:*\nInvoice ID: ${sale.id}\nDate: ${new Date(sale.date).toLocaleString()}\n\n*Items:*\n${sale.items.map(i => `- ${i.productName} (x${i.quantity}) - Rs. ${(Number(i.price) * Number(i.quantity)).toLocaleString('en-IN')}`).join('\n')}\n\nSubtotal: Rs. ${subTotal.toLocaleString('en-IN')}\nGST: Rs. ${Number(sale.gstAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}\nDiscount: Rs. ${Number(sale.discount).toLocaleString('en-IN')}\n*Total: Rs. ${Number(sale.totalAmount).toLocaleString('en-IN')}*\nPaid: Rs. ${paidAmountOnSale.toLocaleString('en-IN')}\nDue: Rs. ${dueAmountOnSale.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\nHave a blessed day!`;
         
         if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
@@ -552,12 +555,12 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             console.warn('Could not copy text to clipboard:', err);
           }
           await navigator.share({
-            title: `${businessName} Invoice ${sale.id}`,
+            title: `${businessName} Receipt ${sale.id}`,
             text: whatsAppText,
             files: [pdfFile],
           });
         } else {
-          doc.save(`Invoice-${sale.id}.pdf`);
+          doc.save(`Receipt-${sale.id}.pdf`);
         }
       } catch (error) {
         console.error("PDF generation or sharing failed:", error);
