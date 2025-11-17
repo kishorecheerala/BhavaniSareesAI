@@ -711,7 +711,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
                         <div className="flex gap-2 items-center">
-                            <div className="relative w-full z-20" ref={customerDropdownRef}>
+                            <div className="relative w-full z-30" ref={customerDropdownRef}>
                                 <button
                                     type="button"
                                     onClick={() => setIsCustomerDropdownOpen(prev => !prev)}
@@ -724,14 +724,14 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                                 </button>
 
                                 {isCustomerDropdownOpen && (
-                                    <div className="absolute top-full left-0 w-full mt-1 bg-gray-800 text-white rounded-md shadow-lg z-10 animate-fade-in-fast">
-                                        <div className="p-2 border-b border-gray-700">
+                                    <div className="absolute top-full left-0 w-full mt-1 bg-white text-text rounded-md shadow-lg border border-gray-200 z-10 animate-fade-in-fast">
+                                        <div className="p-2 border-b border-gray-200">
                                             <input
                                                 type="text"
                                                 placeholder="Search by name or area..."
                                                 value={customerSearchTerm}
                                                 onChange={e => setCustomerSearchTerm(e.target.value)}
-                                                className="w-full p-2 bg-gray-700 border border-gray-600 rounded text-white"
+                                                className="w-full p-2 border border-gray-300 rounded"
                                                 autoFocus
                                             />
                                         </div>
@@ -743,7 +743,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                                                     setIsCustomerDropdownOpen(false);
                                                     setCustomerSearchTerm('');
                                                 }}
-                                                className="px-4 py-2 hover:bg-gray-700 cursor-pointer text-gray-400"
+                                                className="px-4 py-2 hover:bg-teal-50 cursor-pointer text-gray-500"
                                                 role="option"
                                             >
                                                 Select a Customer
@@ -756,7 +756,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                                                         setIsCustomerDropdownOpen(false);
                                                         setCustomerSearchTerm('');
                                                     }}
-                                                    className="px-4 py-2 hover:bg-gray-700 cursor-pointer border-t border-gray-600"
+                                                    className="px-4 py-2 hover:bg-teal-50 cursor-pointer border-t border-gray-100"
                                                     role="option"
                                                 >
                                                     {c.name} - {c.area}
