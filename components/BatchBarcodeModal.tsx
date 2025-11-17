@@ -205,7 +205,7 @@ const BatchBarcodeModal: React.FC<BatchBarcodeModalProps> = ({ isOpen, purchaseI
                             <input
                                 type="number"
                                 value={quantities[item.productId] || 0}
-                                onChange={e => handleQuantityChange(item.productId, parseInt(e.target.value))}
+                                onChange={e => handleQuantityChange(item.productId, parseInt(e.target.value, 10) || 0)}
                                 className="w-full p-2 border rounded text-center"
                             />
                         </div>
