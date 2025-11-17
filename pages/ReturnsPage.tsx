@@ -288,6 +288,9 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
     const amountPaid = selectedInvoice ? (selectedInvoice.payments || []).reduce((sum, p) => sum + Number(p.amount), 0) : 0;
     const currentDue = invoiceTotal - amountPaid;
 
+    const customerReturns = state.returns.filter(r => r.type === 'CUSTOMER');
+    const supplierReturns = state.returns.filter(r => r.type === 'SUPPLIER');
+
     return (
         <div className="space-y-6">
             <h1 className="text-2xl font-bold text-primary flex items-center gap-3">
@@ -391,19 +394,17 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                 </div>
             </Card>
 
-             <Card title="Recent Returns">
+            <Card title="Recent Customer Returns">
                 <div className="space-y-3">
-                    {state.returns.length > 0 ? (
-                        state.returns.slice().reverse().map(ret => {
-                            const party = ret.type === 'CUSTOMER'
-                                ? state.customers.find(c => c.id === ret.partyId)
-                                : state.suppliers.find(s => s.id === ret.partyId);
+                    {customerReturns.length > 0 ? (
+                        customerReturns.slice().reverse().map(ret => {
+                            const party = state.customers.find(c => c.id === ret.partyId);
                             
                             return (
                                 <div key={ret.id} className="p-3 bg-gray-50 rounded-lg border">
                                     <div className="flex justify-between items-start">
                                         <div>
-                                            <p className="font-semibold">{party?.name || 'Unknown'} <span className="text-xs font-normal text-gray-500">({ret.type})</span></p>
+                                            <p className="font-semibold">{party?.name || 'Unknown'}</p>
                                             <p className="text-xs text-gray-500">Return ID: {ret.id}</p>
                                         </div>
                                         <div className="text-right">
@@ -444,7 +445,63 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                             );
                         })
                     ) : (
-                        <p className="text-gray-500 text-center">No returns have been processed yet.</p>
+                        <p className="text-gray-500 text-center">No customer returns have been processed yet.</p>
+                    )}
+                </div>
+            </Card>
+
+            <Card title="Recent Supplier Returns">
+                <div className="space-y-3">
+                    {supplierReturns.length > 0 ? (
+                        supplierReturns.slice().reverse().map(ret => {
+                            const party = state.suppliers.find(s => s.id === ret.partyId);
+                            
+                            return (
+                                <div key={ret.id} className="p-3 bg-gray-50 rounded-lg border">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="font-semibold">{party?.name || 'Unknown'}</p>
+                                            <p className="text-xs text-gray-500">Return ID: {ret.id}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-semibold text-primary">₹{Number(ret.amount).toLocaleString('en-IN')}</p>
+                                            <p className="text-xs text-gray-500">{new Date(ret.returnDate).toLocaleDateString()}</p>
+                                        </div>
+                                    </div>
+                                    <div className="mt-2 pt-2 border-t flex justify-between items-center">
+                                        <ul className="text-sm list-disc list-inside text-gray-600">
+                                            {ret.items.map((item, idx) => (
+                                                <li key={idx}>{item.productName} (x{item.quantity})</li>
+                                            ))}
+                                        </ul>
+                                        <Button onClick={() => {
+                                            if (isDirtyRef.current && !window.confirm("You have unsaved changes. Are you sure you want to discard them and edit this return?")) return;
+                                            resetForm();
+                                            // Trigger edit mode by setting state
+                                            setMode('edit');
+                                            setReturnToEditId(ret.id);
+                                            setReturnType(ret.type);
+                                            setPartyId(ret.partyId);
+                                            setReferenceId(ret.referenceId);
+                                            setReturnAmount(ret.amount.toString());
+                                            setReturnDate(getLocalDateString(new Date(ret.returnDate)));
+                                            setReason(ret.reason || '');
+                                            setNotes(ret.notes || '');
+                                            const itemsToEdit = ret.items.reduce((acc, item) => {
+                                                acc[item.productId] = item.quantity;
+                                                return acc;
+                                            }, {} as { [productId: string]: number });
+                                            setReturnedItems(itemsToEdit);
+                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                        }} variant="secondary" className="p-2 h-auto">
+                                            <Edit size={16} />
+                                        </Button>
+                                    </div>
+                                </div>
+                            );
+                        })
+                    ) : (
+                        <p className="text-gray-500 text-center">No supplier returns have been processed yet.</p>
                     )}
                 </div>
             </Card>
