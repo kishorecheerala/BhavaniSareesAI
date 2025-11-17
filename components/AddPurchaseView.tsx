@@ -385,6 +385,12 @@ export const PurchaseForm: React.FC<PurchaseFormProps> = ({
 
     onSubmit(purchaseData);
   };
+
+  const paymentMethodOptions = [
+    { value: 'CASH', label: 'Cash' },
+    { value: 'UPI', label: 'UPI' },
+    { value: 'CHEQUE', label: 'Cheque' }
+  ];
   
   return (
     <div className="space-y-4">
@@ -462,11 +468,11 @@ export const PurchaseForm: React.FC<PurchaseFormProps> = ({
                 {mode === 'add' && (
                     <div className="grid grid-cols-2 gap-4">
                         <input type="number" value={amountPaid} onChange={e => setAmountPaid(e.target.value)} placeholder="Amount Paid Now" className="w-full p-2 border rounded" />
-                        <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as any)} className="w-full p-2 border rounded custom-select">
-                            <option value="CASH">Cash</option>
-                            <option value="UPI">UPI</option>
-                            <option value="CHEQUE">Cheque</option>
-                        </select>
+                        <Dropdown
+                            options={paymentMethodOptions}
+                            value={paymentMethod}
+                            onChange={(val) => setPaymentMethod(val as any)}
+                        />
                     </div>
                 )}
             </div>

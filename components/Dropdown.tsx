@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, ReactNode, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { ChevronDown, Search } from 'lucide-react';
-import { useOnClickOutside } from '../hooks/useOnClickOutside';
 
 export interface DropdownOption {
   value: string;
@@ -34,11 +33,30 @@ const Dropdown: React.FC<DropdownProps> = ({
   const portalRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
 
-  useOnClickOutside(portalRef, (event) => {
-    if (isOpen && triggerRef.current && !triggerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-    }
-  });
+  // Replaced useOnClickOutside with a self-contained useEffect to handle outside clicks robustly
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+        if (
+            triggerRef.current && !triggerRef.current.contains(event.target as Node) &&
+            portalRef.current && !portalRef.current.contains(event.target as Node)
+        ) {
+            setIsOpen(false);
+        }
+    };
+    
+    // Add listener on next tick to prevent the event that opened the dropdown from closing it.
+    setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('touchstart', handleClickOutside);
+    }, 0);
+
+    return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     const handleResizeOrScroll = () => {
@@ -120,7 +138,7 @@ const Dropdown: React.FC<DropdownProps> = ({
         </div>
       )}
       <ul className="overflow-y-auto" role="listbox">
-        {placeholder && (
+        {placeholder && !searchable && ( // Don't show main placeholder if searchable, search input has it
              <li
                 onClick={() => {
                     onChange('');

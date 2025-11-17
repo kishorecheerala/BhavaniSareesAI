@@ -18,8 +18,8 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
     const [pinState, setPinState] = useState<PinState>('checking');
     const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
-    const [profitFilterMonth, setProfitFilterMonth] = useState<string>(String(new Date().getMonth()));
-    const [profitFilterYear, setProfitFilterYear] = useState<string>(String(new Date().getFullYear()));
+    const [profitFilterMonth, setProfitFilterMonth] = useState<string>("-1");
+    const [profitFilterYear, setProfitFilterYear] = useState<string>("-1");
 
     const [chartYear, setChartYear] = useState<string>(() => {
         const now = new Date();
