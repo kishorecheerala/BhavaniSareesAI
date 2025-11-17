@@ -85,16 +85,15 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ setCurrentPage }) => {
     const generateDuesPDF = () => {
         if (customerDues.length === 0) return alert("No customer dues data to export.");
         const doc = new jsPDF();
-        // FIX: Removed logo from internal report.
         doc.text('Customer Dues Report', 14, 22);
         autoTable(doc, {
             startY: 40,
-            head: [['Customer Name', 'Area', 'Last Paid Date', 'Due Amount (Rs.)']],
+            head: [['Customer Name', 'Area', 'Last Paid Date', 'Due Amount (₹)']],
             body: customerDues.map(c => [ c.name, c.area, c.lastPaidDate || 'N/A', c.dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 }) ]),
             theme: 'grid', headStyles: { fillColor: [13, 148, 136] }, columnStyles: { 3: { halign: 'right' } }
         });
         const finalY = (doc as any).lastAutoTable.finalY + 10;
-        doc.text(`Total Due: Rs. ${totalDuesFiltered.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 196, finalY, { align: 'right' });
+        doc.text(`Total Due: ₹${totalDuesFiltered.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 196, finalY, { align: 'right' });
         doc.save('customer-dues-report.pdf');
     };
 
@@ -132,7 +131,6 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ setCurrentPage }) => {
     const generateCustomerSummaryPDF = () => {
         if (customerAccountSummary.length === 0) return alert("No customer account data to export.");
         const doc = new jsPDF();
-        // FIX: Removed logo from internal report.
         doc.text('Customer Account Summary Report', 14, 22);
         autoTable(doc, {
             startY: 40,
@@ -210,7 +208,6 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ setCurrentPage }) => {
     const generateSupplierDuesPDF = () => {
         if (supplierDues.length === 0) return alert("No supplier dues data to export.");
         const doc = new jsPDF();
-        // FIX: Removed logo from internal report.
         doc.text('Supplier Dues Report', 14, 22);
         autoTable(doc, {
             startY: 40,
@@ -241,7 +238,6 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ setCurrentPage }) => {
     const generateSupplierSummaryPDF = () => {
         if (supplierAccountSummary.length === 0) return alert("No supplier account data to export.");
         const doc = new jsPDF();
-        // FIX: Removed logo from internal report.
         doc.text('Supplier Account Summary Report', 14, 22);
         autoTable(doc, {
             startY: 40,

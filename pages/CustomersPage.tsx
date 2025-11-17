@@ -9,7 +9,6 @@ import DeleteButton from '../components/DeleteButton';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
-// FIX: Add missing import for logoBase64
 import { logoBase64 } from '../utils/logo';
 
 const getLocalDateString = (date = new Date()) => {
@@ -291,7 +290,6 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             const centerX = pageWidth / 2;
             const margin = 5;
             const maxLineWidth = pageWidth - margin * 2;
-            // FIX: Removed logo from thermal receipt to match sample image and improve layout.
             let y = 10;
 
             doc.setFont('times', 'italic');
@@ -365,11 +363,11 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                 doc.setFontSize(9);
                 const splitName = doc.splitTextToSize(item.productName, maxLineWidth - 20);
                 doc.text(splitName, margin, y);
-                doc.text(`Rs. ${itemTotal.toLocaleString('en-IN')}`, pageWidth - margin, y, { align: 'right' });
+                doc.text(`₹${itemTotal.toLocaleString('en-IN')}`, pageWidth - margin, y, { align: 'right' });
                 y += (splitName.length * 4);
                 doc.setFontSize(7);
                 doc.setTextColor('#666666');
-                doc.text(`(x${item.quantity} @ Rs. ${Number(item.price).toLocaleString('en-IN')})`, margin, y);
+                doc.text(`(x${item.quantity} @ ₹${Number(item.price).toLocaleString('en-IN')})`, margin, y);
                 y += 6;
                 doc.setTextColor('#000000');
             });
@@ -393,7 +391,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                 doc.setFont('Helvetica', bold ? 'bold' : 'normal');
                 doc.setFontSize(bold ? 10 : 8);
                 doc.text(label, totalsX - 25, y, { align: 'right' });
-                doc.text(`Rs. ${value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, y, { align: 'right' });
+                doc.text(`₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, y, { align: 'right' });
                 y += (bold ? 5 : 4);
             });
           
@@ -414,7 +412,6 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         const profile = state.profile;
         let currentY = 15;
 
-        // FIX: Change image type to PNG
         doc.addImage(logoBase64, 'PNG', 14, 10, 25, 25);
     
         if (profile) {
@@ -466,8 +463,8 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                 index + 1,
                 item.productName,
                 item.quantity,
-                `Rs. ${Number(item.price).toLocaleString('en-IN')}`,
-                `Rs. ${(Number(item.quantity) * Number(item.price)).toLocaleString('en-IN')}`
+                `₹${Number(item.price).toLocaleString('en-IN')}`,
+                `₹${(Number(item.quantity) * Number(item.price)).toLocaleString('en-IN')}`
             ]),
             theme: 'grid',
             headStyles: { fillColor: [13, 148, 136] },
@@ -483,32 +480,32 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
         doc.text('Subtotal:', totalsX - 30, currentY, { align: 'right' });
-        doc.text(`Rs. ${subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
+        doc.text(`₹${subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
         currentY += 7;
     
         doc.text('Discount:', totalsX - 30, currentY, { align: 'right' });
-        doc.text(`- Rs. ${Number(sale.discount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
+        doc.text(`- ₹${Number(sale.discount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
         currentY += 7;
     
         doc.text('GST Included:', totalsX - 30, currentY, { align: 'right' });
-        doc.text(`Rs. ${Number(sale.gstAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
+        doc.text(`₹${Number(sale.gstAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
         currentY += 7;
         
         doc.setFont('helvetica', 'bold');
         doc.text('Grand Total:', totalsX - 30, currentY, { align: 'right' });
-        doc.text(`Rs. ${Number(sale.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
+        doc.text(`₹${Number(sale.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
         currentY += 7;
     
         doc.setFont('helvetica', 'normal');
         doc.text('Paid:', totalsX - 30, currentY, { align: 'right' });
-        doc.text(`Rs. ${paidAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
+        doc.text(`₹${paidAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
         currentY += 7;
     
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(dueAmount > 0.01 ? '#dc2626' : '#16a34a');
         doc.text('Amount Due:', totalsX - 30, currentY, { align: 'right' });
-        doc.text(`Rs. ${dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
+        doc.text(`₹${dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
         
         currentY = doc.internal.pageSize.height - 20;
         doc.setFontSize(10);
@@ -529,126 +526,18 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
     const handleShareInvoice = async (sale: Sale) => {
         if (!selectedCustomer) return;
         
-        let qrCodeBase64: string | null = null;
-        try {
-            const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(sale.id)}&size=50x50&margin=0`;
-            qrCodeBase64 = await fetchImageAsBase64(qrCodeUrl);
-        } catch (error) {
-            console.error("Failed to fetch QR code", error);
-        }
-
-        const renderContentOnDoc = (doc: jsPDF) => {
-            const customer = selectedCustomer;
-            const subTotal = Number(sale.totalAmount) + Number(sale.discount);
-            const paidAmountOnSale = sale.payments.reduce((sum, p) => sum + Number(p.amount), 0);
-            const dueAmountOnSale = Number(sale.totalAmount) - paidAmountOnSale;
-            const pageWidth = doc.internal.pageSize.getWidth();
-            const centerX = pageWidth / 2;
-            const margin = 5;
-            const maxLineWidth = pageWidth - margin * 2;
-            // FIX: Removed logo from thermal receipt to match sample image and improve layout.
-            let y = 10;
-
-            doc.setFont('times', 'italic');
-            doc.setFontSize(12);
-            doc.text('Om Namo Venkatesaya', centerX, y, { align: 'center' });
-            y += 7;
-            doc.setFont('times', 'bold');
-            doc.setFontSize(16);
-            doc.setTextColor('#0d9488');
-            doc.text(state.profile?.name || 'Business Manager', centerX, y, { align: 'center' });
-            y += 7;
-            doc.setDrawColor('#cccccc');
-            doc.line(margin, y, pageWidth - margin, y);
-            y += 6;
-            doc.setFont('Helvetica', 'normal');
-            doc.setFontSize(8);
-            const invoiceTextTopY = y - 3;
-            doc.text(`Invoice: ${sale.id}`, margin, y);
-            y += 4;
-            doc.text(`Date: ${new Date(sale.date).toLocaleString()}`, margin, y);
-            if (qrCodeBase64) {
-                const qrSize = 15;
-                doc.addImage(qrCodeBase64, 'PNG', pageWidth - margin - qrSize, invoiceTextTopY, qrSize, qrSize);
-                const qrBottom = invoiceTextTopY + qrSize;
-                if (qrBottom > y) y = qrBottom;
-            }
-            y += 5;
-            doc.setFont('Helvetica', 'bold');
-            doc.text('Billed To:', margin, y);
-            y += 4;
-            doc.setFont('Helvetica', 'normal');
-            doc.text(customer.name, margin, y);
-            y += 4;
-            const addressLines = doc.splitTextToSize(customer.address, maxLineWidth);
-            doc.text(addressLines, margin, y);
-            y += (addressLines.length * 4) + 2;
-            doc.setDrawColor('#000000');
-            doc.line(margin, y, pageWidth - margin, y);
-            y += 5;
-            doc.setFont('Helvetica', 'bold');
-            doc.text('Purchase Details', centerX, y, { align: 'center' });
-            y += 5;
-            doc.line(margin, y, pageWidth - margin, y);
-            y += 5;
-            doc.text('Item', margin, y);
-            doc.text('Total', pageWidth - margin, y, { align: 'right' });
-            y += 2;
-            doc.setDrawColor('#cccccc');
-            doc.line(margin, y, pageWidth - margin, y);
-            y += 5;
-            doc.setFont('Helvetica', 'normal');
-            sale.items.forEach(item => {
-                const itemTotal = Number(item.price) * Number(item.quantity);
-                doc.setFontSize(9);
-                const splitName = doc.splitTextToSize(item.productName, maxLineWidth - 20);
-                doc.text(splitName, margin, y);
-                doc.text(`Rs. ${itemTotal.toLocaleString('en-IN')}`, pageWidth - margin, y, { align: 'right' });
-                y += (splitName.length * 4);
-                doc.setFontSize(7);
-                doc.setTextColor('#666666');
-                doc.text(`(x${item.quantity} @ Rs. ${Number(item.price).toLocaleString('en-IN')})`, margin, y);
-                y += 6;
-                doc.setTextColor('#000000');
-            });
-            y -= 2;
-            doc.setDrawColor('#cccccc');
-            doc.line(margin, y, pageWidth - margin, y);
-            y += 5;
-            const totals = [
-                { label: 'Subtotal', value: subTotal },
-                { label: 'GST', value: Number(sale.gstAmount) },
-                { label: 'Discount', value: -Number(sale.discount) },
-                { label: 'Total', value: Number(sale.totalAmount), bold: true },
-                { label: 'Paid', value: paidAmountOnSale },
-                { label: 'Due', value: dueAmountOnSale, bold: true },
-            ];
-            const totalsX = pageWidth - margin;
-            totals.forEach(({ label, value, bold = false }) => {
-                doc.setFont('Helvetica', bold ? 'bold' : 'normal');
-                doc.setFontSize(bold ? 10 : 8);
-                doc.text(label, totalsX - 25, y, { align: 'right' });
-                doc.text(`Rs. ${value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, y, { align: 'right' });
-                y += (bold ? 5 : 4);
-            });
-            return y;
-        };
-        const dummyDoc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, 500] });
-        const finalY = renderContentOnDoc(dummyDoc);
-        const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, finalY + 5] });
-        renderContentOnDoc(doc);
-        
+        const doc = await generateA4InvoicePdf(sale, selectedCustomer);
         const pdfBlob = doc.output('blob');
-        const pdfFile = new File([pdfBlob], `Receipt-${sale.id}.pdf`, { type: 'application/pdf' });
+        const pdfFile = new File([pdfBlob], `Invoice-${sale.id}.pdf`, { type: 'application/pdf' });
         const businessName = state.profile?.name || 'Invoice';
 
         if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
             await navigator.share({
-                title: `${businessName} - Receipt ${sale.id}`,
+                title: `${businessName} - Invoice ${sale.id}`,
                 files: [pdfFile],
             });
         } else {
-            doc.save(`Receipt-${sale.id}.pdf`);
+            doc.save(`Invoice-${sale.id}.pdf`);
         }
     };
 
@@ -708,9 +597,9 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                 return [
                     sale.id,
                     new Date(sale.date).toLocaleDateString(),
-                    `Rs. ${Number(sale.totalAmount).toLocaleString('en-IN')}`,
-                    `Rs. ${paid.toLocaleString('en-IN')}`,
-                    `Rs. ${due.toLocaleString('en-IN')}`
+                    `₹${Number(sale.totalAmount).toLocaleString('en-IN')}`,
+                    `₹${paid.toLocaleString('en-IN')}`,
+                    `₹${due.toLocaleString('en-IN')}`
                 ];
             }),
             theme: 'grid',
@@ -723,7 +612,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         doc.setFont('helvetica', 'bold');
         doc.setTextColor('#0d9488');
         doc.text(
-            `Total Outstanding Due: Rs. ${totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+            `Total Outstanding Due: ₹${totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
             196, currentY, { align: 'right' }
         );
 

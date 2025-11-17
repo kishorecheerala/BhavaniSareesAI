@@ -14,7 +14,6 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('Service Worker: Caching app shell');
         return cache.addAll(APP_SHELL_URLS);
       })
       .then(() => {
@@ -32,7 +31,6 @@ self.addEventListener('activate', event => {
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheWhitelist.indexOf(cacheName) === -1) {
-            console.log('Service Worker: Deleting old cache', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -76,7 +74,6 @@ self.addEventListener('fetch', event => {
           
           return networkResponse;
         }).catch(error => {
-          console.error('Service Worker: Fetch failed; user is likely offline.', event.request.url, error);
           // You could return a fallback offline page or image here if you had one.
         });
       })

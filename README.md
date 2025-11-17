@@ -21,7 +21,7 @@ A comprehensive, offline-first Progressive Web App (PWA) designed to streamline 
 - **Frontend:** React, TypeScript
 - **Styling:** Tailwind CSS
 - **State Management:** React Context API with `useReducer` for centralized and predictable state logic.
-- **Local Storage:** Browser `localStorage` for all data persistence, enabling offline functionality.
+- **Data Persistence:** **IndexedDB** (via the `idb` library) for robust, asynchronous, and large-scale offline data persistence.
 - **PWA Capabilities:** Service Workers (`sw.js`) for caching and offline access, along with a `manifest.json`.
 - **Icons:** [Lucide React](https://lucide.dev/) for clean and consistent icons.
 - **PDF Generation:** [jsPDF](https://github.com/parallax/jsPDF) & [jspdf-autotable](https://github.com/simonbengtsson/jsPDF-AutoTable)
@@ -54,7 +54,7 @@ The project is organized into a modular and scalable structure:
 
 ### Data Persistence
 
-The application is architected to be fully client-side. All data—customers, sales, products, etc.—is stored in the browser's `localStorage` as a single JSON object. This approach ensures that the app is fast and works perfectly offline.
+The application is architected to be fully client-side. All data—customers, sales, products, etc.—is stored in the browser's **IndexedDB**. This is a powerful, asynchronous browser database that allows the app to be fast, handle large amounts of data, and work perfectly offline.
 
 **⚠️ Important:** Because data is stored only on the user's device, the **Backup & Restore** feature is critical. Users should be encouraged to back up their data regularly.
 

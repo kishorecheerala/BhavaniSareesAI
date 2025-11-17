@@ -265,7 +265,6 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
 
         const doc = new jsPDF();
         
-        // FIX: Removed logo from non-customer-facing document.
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(20);
         doc.text('DEBIT NOTE', 105, 20, { align: 'center' });
@@ -318,8 +317,8 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
                 index + 1,
                 item.productName,
                 item.quantity,
-                `Rs. ${Number(item.price).toLocaleString('en-IN')}`,
-                `Rs. ${(Number(item.quantity) * Number(item.price)).toLocaleString('en-IN')}`
+                `₹${Number(item.price).toLocaleString('en-IN')}`,
+                `₹${(Number(item.quantity) * Number(item.price)).toLocaleString('en-IN')}`
             ]),
             theme: 'grid',
             headStyles: { fillColor: [13, 148, 136] },
@@ -330,7 +329,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
         doc.text('Total Return Value:', 140, currentY, { align: 'right' });
-        doc.text(`Rs. ${Number(newReturn.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 196, currentY, { align: 'right' });
+        doc.text(`₹${Number(newReturn.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 196, currentY, { align: 'right' });
         
         if (newReturn.notes) {
             currentY += 15;
