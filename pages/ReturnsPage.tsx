@@ -84,8 +84,19 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
         setReturnToEditId(null);
     };
 
-    const partyList = useMemo(() => {
-        return returnType === 'CUSTOMER' ? state.customers : state.suppliers;
+    const partyOptions = useMemo(() => {
+        if (returnType === 'CUSTOMER') {
+            return state.customers.map((c: Customer) => ({
+                value: c.id,
+                label: `${c.name} - ${c.area}`,
+                searchText: `${c.name} ${c.area}`
+            }));
+        }
+        return state.suppliers.map((s: Supplier) => ({
+            value: s.id,
+            label: `${s.name} - ${s.location}`,
+            searchText: `${s.name} ${s.location}`
+        }));
     }, [returnType, state.customers, state.suppliers]);
 
     const invoiceList = useMemo(() => {
@@ -299,12 +310,12 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                     <div>
                         <label className="block text-sm font-medium">{returnType === 'CUSTOMER' ? 'Customer' : 'Supplier'}</label>
                         <Dropdown 
-                            options={partyList.map(p => ({ value: p.id, label: p.name }))}
+                            options={partyOptions}
                             value={partyId}
                             onChange={(val) => { setPartyId(val); setReferenceId(''); setReturnedItems({}); }}
                             placeholder={`Select ${returnType.toLowerCase()}`}
                             searchable={true}
-                            searchPlaceholder={`Search ${returnType.toLowerCase()}s...`}
+                            searchPlaceholder={`Search by name or ${returnType === 'CUSTOMER' ? 'area' : 'location'}...`}
                         />
                     </div>
 
