@@ -1,7 +1,9 @@
+
+
+
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { Customer, Supplier, Product, Sale, Purchase, Return, Notification, ProfileData, AppMetadata } from '../types';
 import { AppState } from '../context/AppContext';
-import jsPDF from 'jspdf';
 
 const DB_NAME = 'bhavani-sarees-db';
 const DB_VERSION = 4; // Bump version for schema change
@@ -101,39 +103,3 @@ export async function importData(data: Omit<AppState, 'toast' | 'selection' | 'p
     
     await tx.done;
 }
-
-// --- File Saving Utilities ---
-
-export type FolderType = 'Sales' | 'Purchases' | 'Reports' | 'Backups' | 'Barcodes' | 'Debit Notes';
-
-export const saveFile = (
-    content: Blob | string,
-    fileName: string,
-    folder: FolderType,
-    businessName: string,
-    mimeType: string = 'application/octet-stream'
-) => {
-    const prefixedFileName = `${businessName} - ${folder} - ${fileName}`;
-    const blob = typeof content === 'string' 
-        ? new Blob([content], { type: mimeType }) 
-        : content;
-
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = prefixedFileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-};
-
-export const savePdf = (
-    doc: jsPDF,
-    fileName: string,
-    folder: FolderType,
-    businessName: string
-) => {
-    const prefixedFileName = `${businessName} - ${folder} - ${fileName}`;
-    doc.save(prefixedFileName);
-};

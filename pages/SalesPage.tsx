@@ -493,6 +493,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         
         currentY = (doc as any).lastAutoTable.finalY + 10;
         
+        // FIX: Define dueAmountOnSale before it is used.
         const dueAmountOnSale = Number(sale.totalAmount) - paidAmountOnSale;
         
         const totalsX = 196;

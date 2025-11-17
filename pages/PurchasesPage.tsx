@@ -11,7 +11,6 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import BatchBarcodeModal from '../components/BatchBarcodeModal';
 import { logoBase64 } from '../utils/logo';
-import { savePdf } from '../utils/db';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -76,7 +75,6 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
     const [searchTerm, setSearchTerm] = useState('');
     const [purchaseToEdit, setPurchaseToEdit] = useState<Purchase | null>(null);
     const [activePurchaseId, setActivePurchaseId] = useState<string | null>(null);
-    const businessName = state.profile?.name || 'Business Manager';
 
     // State for 'add_supplier' view
     const [newSupplier, setNewSupplier] = useState({ id: '', name: '', phone: '', location: '', gstNumber: '', reference: '', account1: '', account2: '', upi: '' });
@@ -351,7 +349,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
         currentY += 5;
         doc.text('Authorised Signatory', 163, currentY, { align: 'center' });
 
-        savePdf(doc, `DebitNote-${newReturn.id}.pdf`, 'Debit Notes', businessName);
+        doc.save(`DebitNote-${newReturn.id}.pdf`);
     };
 
     const renderContent = () => {
