@@ -29,7 +29,7 @@ const Toast = () => {
 
     const isSuccess = state.toast.type === 'success';
 
-    const containerClasses = "fixed top-5 inset-x-0 flex justify-center z-[200]";
+    const containerClasses = "fixed top-5 inset-x-0 flex justify-center z-[60]";
 
     const toastClasses = isSuccess
         ? "bg-green-600 text-white px-4 py-2 rounded-full shadow-lg animate-fade-in-out"
@@ -79,7 +79,7 @@ const QuickAddMenu: React.FC<{
 
     return (
         <div 
-          className="absolute top-full right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-lg shadow-2xl border border-gray-200 dark:border-slate-700 text-text dark:text-slate-200 animate-scale-in origin-top-right z-[150]"
+          className="absolute top-full right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-lg shadow-2xl border border-gray-200 dark:border-slate-700 text-text dark:text-slate-200 animate-scale-in origin-top-right z-40"
           role="dialog"
           aria-label="Quick Add Menu"
         >
@@ -409,7 +409,7 @@ const MainApp: React.FC = () => {
       >
           You have unsaved changes that will be lost. Are you sure you want to leave this page?
       </ConfirmationModal>
-      <header className="bg-primary text-white shadow-md p-4 flex items-center justify-between">
+      <header className="bg-primary text-white shadow-md p-4 flex items-center justify-between relative z-30">
           <div className="flex items-center gap-2">
             <div className="relative" ref={menuRef}>
               <button onClick={() => setIsMenuOpen(prev => !prev)} className="p-1 rounded-full hover:bg-white/20 transition-colors" aria-label="Open menu">
@@ -496,7 +496,7 @@ const MainApp: React.FC = () => {
         </div>
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-primary shadow-lg z-50">
+      <nav className="fixed bottom-0 left-0 right-0 bg-primary shadow-lg z-30">
         {/* Desktop nav */}
         <div className="hidden md:flex justify-around max-w-2xl mx-auto">
             {allNavItems.map(item => <NavItem key={item.page} page={item.page} label={item.label} icon={item.icon} onClick={() => setCurrentPage(item.page)} isActive={currentPage === item.page} />)}
@@ -519,7 +519,7 @@ const MainApp: React.FC = () => {
                 </button>
 
                 {isMoreMenuOpen && (
-                    <div className="absolute bottom-full right-0 mb-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-xl border dark:border-slate-700 text-text dark:text-slate-200 z-10 animate-slide-up-fade">
+                    <div className="absolute bottom-full right-0 mb-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-xl border dark:border-slate-700 text-text dark:text-slate-200 z-40 animate-slide-up-fade">
                         {moreNavItems.map(item => (
                             <button 
                                 key={item.page} 

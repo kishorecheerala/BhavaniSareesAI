@@ -14,7 +14,7 @@ const MenuPanel: React.FC<MenuPanelProps> = ({ isOpen, onClose, onProfileClick, 
 
     return (
         <div 
-          className="absolute top-full left-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-lg shadow-2xl border border-gray-200 dark:border-slate-700 text-text dark:text-slate-200 animate-scale-in origin-top-left z-[150]"
+          className="absolute top-full left-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-lg shadow-2xl border border-gray-200 dark:border-slate-700 text-text dark:text-slate-200 animate-scale-in origin-top-left z-40"
           role="dialog"
           aria-label="Main Menu"
         >

@@ -63,7 +63,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, onClose
 
     return (
         <div 
-          className="absolute top-full right-0 mt-2 w-80 max-h-[70vh] flex flex-col bg-white dark:bg-slate-800 rounded-lg shadow-2xl border border-gray-200 dark:border-slate-700 text-text dark:text-slate-200 animate-scale-in origin-top-right z-[150]"
+          className="absolute top-full right-0 mt-2 w-80 max-h-[70vh] flex flex-col bg-white dark:bg-slate-800 rounded-lg shadow-2xl border border-gray-200 dark:border-slate-700 text-text dark:text-slate-200 animate-scale-in origin-top-right z-40"
           role="dialog"
           aria-label="Notifications Panel"
         >
