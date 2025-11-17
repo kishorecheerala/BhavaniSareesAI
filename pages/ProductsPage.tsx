@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Search, Edit, Save, X, Package, IndianRupee, Percent, PackageCheck, Barcode, AlertTriangle, Printer, Check } from 'lucide-react';
+import { Search, Edit, Save, X, Package, IndianRupee, Percent, PackageCheck, Barcode, AlertTriangle, Printer, QrCode } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Product, PurchaseItem } from '../types';
 import Card from '../components/Card';
@@ -234,13 +234,14 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                     onClose={() => setIsBatchBarcodeModalOpen(false)}
                     purchaseItems={selectedProductsForModal}
                     businessName={state.profile?.name || 'Your Business'}
+                    title="Print Barcode Labels"
                 />
              )}
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-primary">Products & Inventory</h1>
                  <Button onClick={toggleSelectMode}>
-                    {isSelectMode ? <X size={16} className="mr-2"/> : <Check size={16} className="mr-2"/>}
-                    {isSelectMode ? 'Cancel' : 'Select'}
+                    {isSelectMode ? <X size={16} className="mr-2"/> : <QrCode size={16} className="mr-2"/>}
+                    {isSelectMode ? 'Cancel' : 'Bulk QR Print'}
                 </Button>
             </div>
             

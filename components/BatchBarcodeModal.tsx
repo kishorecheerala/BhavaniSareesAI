@@ -11,6 +11,7 @@ interface BatchBarcodeModalProps {
   purchaseItems: PurchaseItem[];
   onClose: () => void;
   businessName: string;
+  title?: string;
 }
 
 const generateLabelCanvas = (product: { id: string, name: string, salePrice: number }, businessName: string): HTMLCanvasElement => {
@@ -60,7 +61,7 @@ const generateLabelCanvas = (product: { id: string, name: string, salePrice: num
     return labelCanvas;
 };
 
-const BatchBarcodeModal: React.FC<BatchBarcodeModalProps> = ({ isOpen, purchaseItems, onClose, businessName }) => {
+const BatchBarcodeModal: React.FC<BatchBarcodeModalProps> = ({ isOpen, purchaseItems, onClose, businessName, title }) => {
     const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
 
     useEffect(() => {
@@ -194,7 +195,7 @@ const BatchBarcodeModal: React.FC<BatchBarcodeModalProps> = ({ isOpen, purchaseI
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
             <Card className="w-full max-w-lg animate-scale-in">
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-lg font-bold">Print Barcode Labels for Purchase</h2>
+                    <h2 className="text-lg font-bold">{title || "Print Barcode Labels for Purchase"}</h2>
                     <button onClick={onClose} className="p-2 rounded-full text-gray-500 hover:bg-gray-100"><X size={20} /></button>
                 </div>
 
