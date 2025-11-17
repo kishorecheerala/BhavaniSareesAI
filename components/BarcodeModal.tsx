@@ -133,7 +133,6 @@ export const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, product, onC
 
       const filename = `${product.id}-labels-${numberOfCopies}.pdf`;
       doc.save(filename);
-      onClose();
     } catch (error) {
       console.error('PDF generation failed:', error);
       alert('Failed to generate PDF. Please try again.');
@@ -180,21 +179,18 @@ export const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, product, onC
                     iframe.contentWindow.print();
                 }
                 // After print dialog is closed (or even if it's non-blocking),
-                // wait a moment before cleaning up and closing the modal.
+                // wait a moment before cleaning up.
                 setTimeout(() => {
                     document.body.removeChild(iframe);
-                    onClose();
                 }, 500);
             };
         } else {
              // Fallback if doc is not available
              document.body.removeChild(iframe);
-             onClose();
         }
     } catch (error) {
         console.error('Printing failed:', error);
         alert('Failed to print labels. Please try again.');
-        onClose();
     }
   };
 

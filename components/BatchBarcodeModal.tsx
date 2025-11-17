@@ -121,7 +121,6 @@ const BatchBarcodeModal: React.FC<BatchBarcodeModalProps> = ({ isOpen, purchaseI
             }
 
             doc.save(`purchase-labels.pdf`);
-            onClose();
         } catch (error) {
             console.error('PDF generation failed:', error);
             alert('Failed to generate PDF. Please try again.');
@@ -175,17 +174,14 @@ const BatchBarcodeModal: React.FC<BatchBarcodeModalProps> = ({ isOpen, purchaseI
                     }
                     setTimeout(() => {
                         document.body.removeChild(iframe);
-                        onClose();
                     }, 500);
                 };
             } else {
                  document.body.removeChild(iframe);
-                 onClose();
             }
         } catch (error) {
             console.error('Printing failed:', error);
             alert('Failed to print labels. Please try again.');
-            onClose();
         }
     };
 
