@@ -5,7 +5,6 @@ import Card from './Card';
 import Button from './Button';
 import { Html5Qrcode } from 'html5-qrcode';
 import DeleteButton from './DeleteButton';
-import { useOnClickOutside } from '../hooks/useOnClickOutside';
 import QuantityInputModal from './QuantityInputModal';
 import Dropdown, { DropdownOption } from './Dropdown';
 

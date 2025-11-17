@@ -8,7 +8,6 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Html5Qrcode } from 'html5-qrcode';
 import DeleteButton from '../components/DeleteButton';
-import { useOnClickOutside } from '../hooks/useOnClickOutside';
 import { logoBase64 } from '../utils/logo';
 import Dropdown, { DropdownOption } from '../components/Dropdown';
 
@@ -349,8 +348,6 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
 
         return { subTotal, discountAmount, gstAmount: roundedGstAmount, totalAmount };
     }, [items, discount, state.products]);
-
-    const selectedCustomer = useMemo(() => customerId ? state.customers.find(c => c.id === customerId) : null, [customerId, state.customers]);
 
     const customerOptions = useMemo((): DropdownOption[] => 
         state.customers

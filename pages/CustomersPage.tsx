@@ -9,7 +9,6 @@ import DeleteButton from '../components/DeleteButton';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
-// FIX: Add missing import for logoBase64
 import { logoBase64 } from '../utils/logo';
 import Dropdown from '../components/Dropdown';
 
