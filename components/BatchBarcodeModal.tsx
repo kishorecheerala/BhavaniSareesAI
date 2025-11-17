@@ -62,29 +62,30 @@ const generateLabelCanvas = (product: { id: string, name: string, salePrice: num
 };
 
 const BatchBarcodeModal: React.FC<BatchBarcodeModalProps> = ({ isOpen, purchaseItems, onClose, businessName, title }) => {
-    const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
+    const [quantities, setQuantities] = useState<{ [key: string]: string }>({});
 
     useEffect(() => {
         if (isOpen && purchaseItems.length > 0) {
             const initialQuantities = purchaseItems.reduce((acc, item) => {
-                acc[item.productId] = item.quantity;
+                acc[item.productId] = String(item.quantity);
                 return acc;
-            }, {} as { [key: string]: number });
+            }, {} as { [key: string]: string });
             setQuantities(initialQuantities);
         } else if (!isOpen) {
             setQuantities({});
         }
     }, [isOpen, purchaseItems]);
 
-    const handleQuantityChange = (productId: string, value: number) => {
-        setQuantities(prev => ({
-            ...prev,
-            [productId]: Math.max(0, value)
-        }));
+    const handleQuantityChange = (productId: string, value: string) => {
+        const num = parseInt(value, 10);
+        if (value === "") {
+            setQuantities(prev => ({ ...prev, [productId]: "" }));
+        } else if (!isNaN(num) && num >= 0) {
+            setQuantities(prev => ({ ...prev, [productId]: String(num) }));
+        }
     };
 
-    // FIX: Explicitly type the accumulator and value in the reduce function to prevent a type inference issue.
-    const totalLabels = useMemo(() => Object.values(quantities).reduce((sum: number, qty: number) => sum + (qty || 0), 0), [quantities]);
+    const totalLabels = useMemo(() => Object.values(quantities).reduce((sum: number, qty: string) => sum + (parseInt(qty, 10) || 0), 0), [quantities]);
 
     const handleDownloadPDF = async () => {
         if (totalLabels <= 0) {
@@ -102,7 +103,7 @@ const BatchBarcodeModal: React.FC<BatchBarcodeModalProps> = ({ isOpen, purchaseI
             let isFirstPage = true;
 
             for (const item of purchaseItems) {
-                const count = quantities[item.productId] || 0;
+                const count = parseInt(quantities[item.productId], 10) || 0;
                 if (count <= 0) continue;
 
                 const productInfo = { id: item.productId, name: item.productName, salePrice: item.saleValue };
@@ -135,7 +136,7 @@ const BatchBarcodeModal: React.FC<BatchBarcodeModalProps> = ({ isOpen, purchaseI
         try {
             let labelsHtml = '';
             for (const item of purchaseItems) {
-                const count = quantities[item.productId] || 0;
+                const count = parseInt(quantities[item.productId], 10) || 0;
                 if (count <= 0) continue;
 
                 const productInfo = { id: item.productId, name: item.productName, salePrice: item.saleValue };
@@ -204,8 +205,8 @@ const BatchBarcodeModal: React.FC<BatchBarcodeModalProps> = ({ isOpen, purchaseI
                             </div>
                             <input
                                 type="number"
-                                value={quantities[item.productId] || 0}
-                                onChange={e => handleQuantityChange(item.productId, parseInt(e.target.value, 10) || 0)}
+                                value={quantities[item.productId] || ''}
+                                onChange={e => handleQuantityChange(item.productId, e.target.value)}
                                 className="w-full p-2 border rounded text-center"
                             />
                         </div>
