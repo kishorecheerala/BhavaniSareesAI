@@ -303,6 +303,8 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                             value={partyId}
                             onChange={(val) => { setPartyId(val); setReferenceId(''); setReturnedItems({}); }}
                             placeholder={`Select ${returnType.toLowerCase()}`}
+                            searchable={true}
+                            searchPlaceholder={`Search ${returnType.toLowerCase()}s...`}
                         />
                     </div>
 
@@ -314,6 +316,8 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                                 value={referenceId}
                                 onChange={(val) => { setReferenceId(val); setReturnedItems({}); }}
                                 placeholder="Select invoice"
+                                searchable={true}
+                                searchPlaceholder="Search invoices..."
                             />
                         </div>
                     )}
