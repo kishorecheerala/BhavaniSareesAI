@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Search, Edit, Save, X, Package, IndianRupee, Percent, PackageCheck, Barcode, AlertTriangle, Printer } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Search, Edit, Save, X, Package, IndianRupee, Percent, PackageCheck, Barcode, AlertTriangle, Printer, Check } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
-import { Product } from '../types';
+import { Product, PurchaseItem } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { BarcodeModal } from '../components/BarcodeModal';
+import BatchBarcodeModal from '../components/BatchBarcodeModal';
 
 interface ProductsPageProps {
   setIsDirty: (isDirty: boolean) => void;
@@ -19,6 +20,11 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
     const [newQuantity, setNewQuantity] = useState<string>('');
     const isDirtyRef = useRef(false);
     const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
+    
+    // State for multi-select
+    const [isSelectMode, setIsSelectMode] = useState(false);
+    const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+    const [isBatchBarcodeModalOpen, setIsBatchBarcodeModalOpen] = useState(false);
     
     useEffect(() => {
         if (state.selection && state.selection.page === 'PRODUCTS') {
@@ -35,13 +41,15 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
         if (selectedProduct) {
             const quantityChanged = newQuantity !== '' && parseInt(newQuantity, 10) !== selectedProduct.quantity;
             formIsDirty = isEditing || quantityChanged;
+        } else if (isSelectMode) {
+            formIsDirty = selectedProductIds.length > 0;
         }
         
         if (formIsDirty !== isDirtyRef.current) {
             isDirtyRef.current = formIsDirty;
             setIsDirty(formIsDirty);
         }
-    }, [selectedProduct, isEditing, newQuantity, editedProduct, setIsDirty]);
+    }, [selectedProduct, isEditing, newQuantity, editedProduct, setIsDirty, isSelectMode, selectedProductIds]);
 
     // On unmount, we must always clean up.
     useEffect(() => {
@@ -62,6 +70,23 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
         setIsEditing(false);
     }, [selectedProduct?.id, state.products]); // Depend on ID to avoid loop
     
+    const toggleSelectMode = () => {
+        setIsSelectMode(!isSelectMode);
+        setSelectedProductIds([]); // Reset selections when toggling
+    };
+
+    const handleProductClick = (product: Product) => {
+        if (isSelectMode) {
+            setSelectedProductIds(prev => 
+                prev.includes(product.id)
+                    ? prev.filter(id => id !== product.id)
+                    : [...prev, product.id]
+            );
+        } else {
+            setSelectedProduct(product);
+        }
+    };
+
     const handleUpdateProduct = () => {
         if (editedProduct) {
              if (window.confirm('Are you sure you want to update this product\'s details?')) {
@@ -94,6 +119,20 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
     const filteredProducts = state.products.filter(p =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.id.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const selectedProductsForModal = useMemo((): PurchaseItem[] =>
+        state.products
+            .filter(p => selectedProductIds.includes(p.id))
+            .map(p => ({
+                productId: p.id,
+                productName: p.name,
+                quantity: p.quantity,
+                price: p.purchasePrice,
+                saleValue: p.salePrice,
+                gstPercent: p.gstPercent,
+            })),
+        [selectedProductIds, state.products]
     );
 
     if (selectedProduct && editedProduct) {
@@ -189,7 +228,21 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
 
     return (
         <div className="space-y-4">
-            <h1 className="text-2xl font-bold text-primary">Products & Inventory</h1>
+             {isBatchBarcodeModalOpen && (
+                <BatchBarcodeModal
+                    isOpen={isBatchBarcodeModalOpen}
+                    onClose={() => setIsBatchBarcodeModalOpen(false)}
+                    purchaseItems={selectedProductsForModal}
+                    businessName={state.profile?.name || 'Your Business'}
+                />
+             )}
+            <div className="flex justify-between items-center">
+                <h1 className="text-2xl font-bold text-primary">Products & Inventory</h1>
+                 <Button onClick={toggleSelectMode}>
+                    {isSelectMode ? <X size={16} className="mr-2"/> : <Check size={16} className="mr-2"/>}
+                    {isSelectMode ? 'Cancel' : 'Select'}
+                </Button>
+            </div>
             
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
@@ -199,22 +252,55 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full p-2 pl-10 border rounded-lg"
+                    disabled={isSelectMode}
                 />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredProducts.map(product => (
-                    <Card key={product.id} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setSelectedProduct(product)}>
-                         <p className="font-bold text-lg text-primary">{product.name}</p>
-                         <p className="text-sm text-gray-500 mb-2">Code: {product.id}</p>
-                         <div className="flex justify-between text-sm">
-                             <span className="font-semibold text-gray-700">Stock: <span className="text-blue-600 font-bold text-base">{product.quantity}</span></span>
-                             <span className="font-semibold text-gray-700">Price: <span className="text-green-600 font-bold text-base">₹{product.salePrice.toLocaleString('en-IN')}</span></span>
-                         </div>
-                    </Card>
-                ))}
+                {filteredProducts.map(product => {
+                    const isSelected = selectedProductIds.includes(product.id);
+                    return (
+                        <Card 
+                            key={product.id} 
+                            className={`relative cursor-pointer transition-all duration-200 ${isSelected ? 'ring-2 ring-primary shadow-xl scale-[1.02]' : 'hover:shadow-lg'}`} 
+                            onClick={() => handleProductClick(product)}
+                        >
+                            {isSelectMode && (
+                                <div className="absolute top-2 right-2 z-10 p-1 bg-white/50 dark:bg-slate-900/50 rounded-full pointer-events-none">
+                                    <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        readOnly
+                                        className="h-5 w-5 rounded-full text-primary focus:ring-0 focus:ring-offset-0 border-gray-400 dark:bg-slate-600 dark:border-slate-500"
+                                    />
+                                </div>
+                            )}
+                            <p className="font-bold text-lg text-primary">{product.name}</p>
+                            <p className="text-sm text-gray-500 mb-2">Code: {product.id}</p>
+                            <div className="flex justify-between text-sm">
+                                <span className="font-semibold text-gray-700">Stock: <span className="text-blue-600 font-bold text-base">{product.quantity}</span></span>
+                                <span className="font-semibold text-gray-700">Price: <span className="text-green-600 font-bold text-base">₹{product.salePrice.toLocaleString('en-IN')}</span></span>
+                            </div>
+                        </Card>
+                    )
+                })}
                 {filteredProducts.length === 0 && <p className="text-gray-500 md:col-span-2 text-center">No products found.</p>}
             </div>
+
+            {isSelectMode && selectedProductIds.length > 0 && (
+                <div className="fixed bottom-20 right-1/2 translate-x-1/2 md:bottom-4 z-40 flex justify-center animate-slide-up-fade">
+                    <div className="bg-white dark:bg-slate-800 shadow-2xl rounded-full p-2 flex items-center gap-2 border dark:border-slate-700">
+                        <span className="font-semibold text-sm px-3">{selectedProductIds.length} selected</span>
+                        <Button onClick={() => setIsBatchBarcodeModalOpen(true)}>
+                            <Printer size={16} className="mr-2" />
+                            Labels
+                        </Button>
+                        <button onClick={toggleSelectMode} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300">
+                            <X size={20} />
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
