@@ -5,6 +5,7 @@ import Card from '../components/Card';
 import PinModal from '../components/PinModal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { Page, Sale, SaleItem } from '../types';
+import Dropdown from '../components/Dropdown';
 
 interface InsightsPageProps {
     setCurrentPage: (page: Page) => void;
@@ -17,13 +18,13 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
     const [pinState, setPinState] = useState<PinState>('checking');
     const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
-    const [profitFilterMonth, setProfitFilterMonth] = useState(new Date().getMonth());
-    const [profitFilterYear, setProfitFilterYear] = useState(new Date().getFullYear());
+    const [profitFilterMonth, setProfitFilterMonth] = useState<string>(String(new Date().getMonth()));
+    const [profitFilterYear, setProfitFilterYear] = useState<string>(String(new Date().getFullYear()));
 
-    const [chartYear, setChartYear] = useState(() => {
+    const [chartYear, setChartYear] = useState<string>(() => {
         const now = new Date();
         // If current month is Jan, Feb, or Mar (0, 1, 2), the financial year started last calendar year.
-        return now.getMonth() < 3 ? now.getFullYear() - 1 : now.getFullYear();
+        return String(now.getMonth() < 3 ? now.getFullYear() - 1 : now.getFullYear());
     });
 
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -66,11 +67,14 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
 
     const filteredProfit = useMemo(() => {
         if (!isDbLoaded) return 0;
+        const year = parseInt(profitFilterYear);
+        const month = parseInt(profitFilterMonth);
+
         let relevantSales = state.sales.filter(sale => {
             const saleDate = new Date(sale.date);
-            if (profitFilterYear === -1) return true; // All time
-            if (profitFilterMonth === -1) return saleDate.getFullYear() === profitFilterYear; // Specific year
-            return saleDate.getFullYear() === profitFilterYear && saleDate.getMonth() === profitFilterMonth; // Specific month and year
+            if (year === -1) return true; // All time
+            if (month === -1) return saleDate.getFullYear() === year; // Specific year
+            return saleDate.getFullYear() === year && saleDate.getMonth() === month; // Specific month and year
         });
         
         let totalProfit = 0;
@@ -85,9 +89,11 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
     }, [state.sales, state.products, isDbLoaded, profitFilterMonth, profitFilterYear]);
     
     const profitCardTitle = useMemo(() => {
-        if (profitFilterYear === -1) return "Estimated All-Time Profit";
-        if (profitFilterMonth === -1) return `Estimated Profit for ${profitFilterYear}`;
-        return `Profit for ${monthNames[profitFilterMonth]} ${profitFilterYear}`;
+        const year = parseInt(profitFilterYear);
+        const month = parseInt(profitFilterMonth);
+        if (year === -1) return "Estimated All-Time Profit";
+        if (month === -1) return `Estimated Profit for ${year}`;
+        return `Profit for ${monthNames[month]} ${year}`;
     }, [profitFilterMonth, profitFilterYear, monthNames]);
 
     const availableYearsForChart = useMemo(() => {
@@ -105,8 +111,9 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
     const yearlySalesData = useMemo(() => {
         if (!isDbLoaded) return { monthlySales: Array(12).fill(0), maxSale: 0, totalSales: 0 };
 
-        const financialYearStart = new Date(chartYear, 3, 1); // April 1st
-        const financialYearEnd = new Date(chartYear + 1, 3, 0); // March 31st
+        const year = parseInt(chartYear);
+        const financialYearStart = new Date(year, 3, 1); // April 1st
+        const financialYearEnd = new Date(year + 1, 3, 0); // March 31st
 
         const monthlySales = Array(12).fill(0);
 
@@ -240,14 +247,17 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
 
             <Card title={profitCardTitle} className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-500">
                 <div className="flex flex-col sm:flex-row gap-2 mb-4">
-                    <select value={profitFilterMonth} onChange={(e) => setProfitFilterMonth(parseInt(e.target.value))} className="w-full p-2 rounded-lg custom-select disabled:opacity-50" disabled={profitFilterYear === -1}>
-                        <option value={-1}>All Months</option>
-                        {monthNames.map((month, index) => <option key={month} value={index}>{month}</option>)}
-                    </select>
-                    <select value={profitFilterYear} onChange={(e) => { const newYear = parseInt(e.target.value); setProfitFilterYear(newYear); if (newYear === -1) setProfitFilterMonth(-1); }} className="w-full p-2 rounded-lg custom-select">
-                        <option value={-1}>All Time</option>
-                        {availableYearsForProfit.map(year => <option key={year} value={year}>{year}</option>)}
-                    </select>
+                     <Dropdown 
+                        options={[{value: "-1", label: 'All Months'}, ...monthNames.map((month, index) => ({ value: String(index), label: month }))]}
+                        value={profitFilterMonth}
+                        onChange={setProfitFilterMonth}
+                        disabled={profitFilterYear === "-1"}
+                    />
+                    <Dropdown
+                        options={[{value: "-1", label: 'All Time'}, ...availableYearsForProfit.map(year => ({ value: String(year), label: String(year) }))]}
+                        value={profitFilterYear}
+                        onChange={(val) => { setProfitFilterYear(val); if (val === "-1") setProfitFilterMonth("-1"); }}
+                    />
                 </div>
                 <p className="text-5xl md:text-6xl font-extrabold tracking-tight text-center text-amber-900">
                     ₹{filteredProfit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -257,15 +267,15 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
             <Card title={
                 <div className="flex items-center gap-2">
                     <BarChart size={20} />
-                    <span>Sales for Financial Year {chartYear}-{String(chartYear + 1).slice(2)}</span>
+                    <span>Sales for Financial Year {chartYear}-{String(parseInt(chartYear) + 1).slice(2)}</span>
                 </div>
             } className="bg-gradient-to-br from-indigo-50 to-purple-100 border-indigo-500">
                 <div className="flex justify-end mb-4">
-                    <select value={chartYear} onChange={(e) => setChartYear(parseInt(e.target.value))} className="p-2 rounded-lg custom-select">
-                        {availableYearsForChart.map(year => (
-                            <option key={year} value={year}>{year}-{String(year + 1).slice(2)}</option>
-                        ))}
-                    </select>
+                    <Dropdown
+                        options={availableYearsForChart.map(year => ({ value: String(year), label: `${year}-${String(year + 1).slice(2)}`}))}
+                        value={chartYear}
+                        onChange={setChartYear}
+                    />
                 </div>
                 <div className="w-full">
                     <div className="flex justify-end text-sm text-gray-600">

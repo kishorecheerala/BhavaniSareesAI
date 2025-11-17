@@ -7,6 +7,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Customer, Sale, Supplier, Page } from '../types';
 import { logoBase64 } from '../utils/logo';
+import Dropdown from '../components/Dropdown';
 
 interface CustomerWithDue extends Customer {
   dueAmount: number;
@@ -295,20 +296,29 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ setCurrentPage }) => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Filter by Area</label>
-                                <select value={areaFilter} onChange={e => setAreaFilter(e.target.value)} className="w-full p-2 border rounded-lg custom-select mt-1">
-                                    <option value="all">All Areas</option>
-                                    {uniqueAreas.map(area => <option key={area} value={area}>{area}</option>)}
-                                </select>
+                                <div className="mt-1">
+                                    <Dropdown 
+                                        options={[{value: 'all', label: 'All Areas'}, ...uniqueAreas.map(area => ({ value: area, label: area }))]}
+                                        value={areaFilter}
+                                        onChange={setAreaFilter}
+                                    />
+                                </div>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Filter by Dues Age</label>
-                                <select value={duesAgeFilter} onChange={e => setDuesAgeFilter(e.target.value)} className="w-full p-2 border rounded-lg custom-select mt-1">
-                                    <option value="all">All Dues</option>
-                                    <option value="30">Older than 30 days</option>
-                                    <option value="60">Older than 60 days</option>
-                                    <option value="90">Older than 90 days</option>
-                                    <option value="custom">Custom</option>
-                                </select>
+                                <div className="mt-1">
+                                    <Dropdown
+                                        options={[
+                                            { value: 'all', label: 'All Dues' },
+                                            { value: '30', label: 'Older than 30 days' },
+                                            { value: '60', label: 'Older than 60 days' },
+                                            { value: '90', label: 'Older than 90 days' },
+                                            { value: 'custom', label: 'Custom' },
+                                        ]}
+                                        value={duesAgeFilter}
+                                        onChange={setDuesAgeFilter}
+                                    />
+                                </div>
                                 {duesAgeFilter === 'custom' && (
                                     <input type="number" value={customDuesAge} onChange={e => setCustomDuesAge(e.target.value)} placeholder="Enter days" className="w-full p-2 border rounded-lg mt-2" />
                                 )}
@@ -403,10 +413,13 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ setCurrentPage }) => {
                     <Card title="Filters">
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Filter by Supplier</label>
-                            <select value={supplierFilter} onChange={e => setSupplierFilter(e.target.value)} className="w-full p-2 border rounded-lg custom-select mt-1">
-                                <option value="all">All Suppliers</option>
-                                {uniqueSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                            </select>
+                            <div className="mt-1">
+                                <Dropdown 
+                                    options={[{value: 'all', label: 'All Suppliers'}, ...uniqueSuppliers.map(s => ({ value: s.id, label: s.name }))]}
+                                    value={supplierFilter}
+                                    onChange={setSupplierFilter}
+                                />
+                            </div>
                         </div>
                     </Card>
 

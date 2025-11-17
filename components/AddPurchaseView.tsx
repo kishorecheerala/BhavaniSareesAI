@@ -7,6 +7,7 @@ import { Html5Qrcode } from 'html5-qrcode';
 import DeleteButton from './DeleteButton';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
 import QuantityInputModal from './QuantityInputModal';
+import Dropdown, { DropdownOption } from './Dropdown';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -126,51 +127,33 @@ const NewProductModal: React.FC<{
         const trimmedId = id.trim();
         if(currentPurchaseItems.some(item => item.productId.toLowerCase() === trimmedId.toLowerCase())) return alert(`Product with ID "${trimmedId}" is already in this purchase.`);
         // In edit mode for a purchase, we don't need to check against existing stock, as we might be adding a new product line to an old invoice.
-        if(mode === 'add' && existingProducts.some(p => p.id.toLowerCase() === trimmedId.toLowerCase())) return alert(`Product with ID "${trimmedId}" already exists in stock. Please select it from the list instead of creating a new one.`);
+        if(mode === 'add' && existingProducts.some(p => p.id.toLowerCase() === trimmedId.toLowerCase())) return alert(`Product with ID "${trimmedId}" already exists in stock. Please select it from the search instead.`);
 
-        const item: PurchaseItem = {
+        onAdd({
             productId: trimmedId,
             productName: name,
+            quantity: parseFloat(quantity),
             price: parseFloat(purchasePrice),
             saleValue: parseFloat(salePrice),
             gstPercent: parseFloat(gstPercent),
-            quantity: parseInt(quantity)
-        };
-        onAdd(item);
+        });
         onClose();
     };
+    
+    if(!isOpen) return null;
 
-    if (!isOpen) return null;
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[51] p-4 animate-fade-in-fast">
             <Card title="Add New Product to Purchase" className="w-full max-w-md animate-scale-in">
-                <div className="space-y-3">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Product ID (Unique)</label>
-                        <input type="text" value={newProduct.id} onChange={e => setNewProduct({...newProduct, id: e.target.value})} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600" autoFocus />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Product Name</label>
-                        <input type="text" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Quantity</label>
-                        <input type="number" value={newProduct.quantity} onChange={e => setNewProduct({...newProduct, quantity: e.target.value})} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Purchase Price (per item)</label>
-                        <input type="number" value={newProduct.purchasePrice} onChange={e => setNewProduct({...newProduct, purchasePrice: e.target.value})} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Sale Price (per item)</label>
-                        <input type="number" value={newProduct.salePrice} onChange={e => setNewProduct({...newProduct, salePrice: e.target.value})} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">GST %</label>
-                        <input type="number" value={newProduct.gstPercent} onChange={e => setNewProduct({...newProduct, gstPercent: e.target.value})} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600" />
-                    </div>
-                    <div className="flex gap-2 pt-2">
-                        <Button onClick={handleAddItemManually} className="w-full">Add to Purchase</Button>
+                 <div className="space-y-4">
+                    <input type="text" placeholder="Product ID / Code (Unique)" value={newProduct.id} onChange={e => setNewProduct({...newProduct, id: e.target.value})} className="w-full p-2 border rounded" autoFocus />
+                    <input type="text" placeholder="Product Name" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="w-full p-2 border rounded" />
+                    <input type="number" placeholder="Quantity" value={newProduct.quantity} onChange={e => setNewProduct({...newProduct, quantity: e.target.value})} className="w-full p-2 border rounded" />
+                    <input type="number" placeholder="Purchase Price" value={newProduct.purchasePrice} onChange={e => setNewProduct({...newProduct, purchasePrice: e.target.value})} className="w-full p-2 border rounded" />
+                    <input type="number" placeholder="Sale Value" value={newProduct.salePrice} onChange={e => setNewProduct({...newProduct, salePrice: e.target.value})} className="w-full p-2 border rounded" />
+                    <input type="number" placeholder="GST %" value={newProduct.gstPercent} onChange={e => setNewProduct({...newProduct, gstPercent: e.target.value})} className="w-full p-2 border rounded" />
+                    <div className="flex gap-2">
+                        <Button onClick={handleAddItemManually} className="w-full">Add Product</Button>
                         <Button onClick={onClose} variant="secondary" className="w-full">Cancel</Button>
                     </div>
                 </div>
@@ -179,546 +162,317 @@ const NewProductModal: React.FC<{
     );
 };
 
-// --- Main PurchaseForm Component ---
-
 interface PurchaseFormProps {
-    mode: 'add' | 'edit';
-    initialData?: Purchase | null;
-    suppliers: Supplier[];
-    products: Product[];
-    onSubmit: (purchaseData: Purchase) => void;
-    onBack: () => void;
-    setIsDirty: (isDirty: boolean) => void;
-    dispatch: React.Dispatch<any>;
-    showToast: (message: string, type?: 'success' | 'info') => void;
+  mode: 'add' | 'edit';
+  initialData?: Purchase | null;
+  suppliers: Supplier[];
+  products: Product[];
+  onSubmit: (purchase: Purchase) => void;
+  onBack: () => void;
+  setIsDirty: (isDirty: boolean) => void;
+  dispatch: React.Dispatch<any>;
+  showToast: (message: string, type?: 'success' | 'info') => void;
 }
 
-const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, suppliers, products, onSubmit, onBack, setIsDirty, dispatch, showToast }) => {
-    
-    const [supplierId, setSupplierId] = useState('');
-    const [items, setItems] = useState<PurchaseItem[]>([]);
-    const [supplierInvoiceId, setSupplierInvoiceId] = useState('');
-    const [purchaseDate, setPurchaseDate] = useState(getLocalDateString());
-    const [paymentDueDates, setPaymentDueDates] = useState<string[]>([]);
+// FIX: Export PurchaseForm component to be used in other files.
+export const PurchaseForm: React.FC<PurchaseFormProps> = ({
+  mode,
+  initialData,
+  suppliers,
+  products,
+  onSubmit,
+  onBack,
+  setIsDirty,
+  dispatch,
+  showToast
+}) => {
+  const [supplierId, setSupplierId] = useState(initialData?.supplierId || '');
+  const [items, setItems] = useState<PurchaseItem[]>(initialData?.items || []);
+  const [purchaseDate, setPurchaseDate] = useState(initialData ? getLocalDateString(new Date(initialData.date)) : getLocalDateString());
+  const [supplierInvoiceId, setSupplierInvoiceId] = useState(initialData?.supplierInvoiceId || '');
+  const [totalAmount, setTotalAmount] = useState(initialData?.totalAmount.toString() || '');
+  const [amountPaid, setAmountPaid] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'UPI' | 'CHEQUE'>('CASH');
 
-    const [isAddingSupplier, setIsAddingSupplier] = useState(false);
-    const [newSupplier, setNewSupplier] = useState({ id: '', name: '', phone: '', location: '', gstNumber: '', reference: '', account1: '', account2: '', upi: '' });
+  const [isScanning, setIsScanning] = useState(false);
+  const [isNewProductModalOpen, setIsNewProductModalOpen] = useState(false);
+  const [newProductInitialId, setNewProductInitialId] = useState('');
+  const [isExistingProductModalOpen, setIsExistingProductModalOpen] = useState(false);
+  const [isQtyModalOpen, setIsQtyModalOpen] = useState(false);
+  const [productForQty, setProductForQty] = useState<Product | null>(null);
+  
+  const [csvStatus, setCsvStatus] = useState<{ type: 'info' | 'success' | 'error', message: string } | null>(null);
 
-    const isDirtyRef = useRef(false);
+  const isDirtyRef = useRef(false);
 
-    // New states for searchable dropdown
-    const [isSupplierDropdownOpen, setIsSupplierDropdownOpen] = useState(false);
-    const [supplierSearchTerm, setSupplierSearchTerm] = useState('');
-    const supplierDropdownRef = useRef<HTMLDivElement>(null);
-    
-    useOnClickOutside(supplierDropdownRef, () => {
-        if (isSupplierDropdownOpen) {
-            setIsSupplierDropdownOpen(false);
-        }
-    });
+  useEffect(() => {
+    const dirty = !!supplierId || items.length > 0 || totalAmount !== '';
+    if (dirty !== isDirtyRef.current) {
+      isDirtyRef.current = dirty;
+      setIsDirty(dirty);
+    }
+  }, [supplierId, items, totalAmount, setIsDirty]);
 
-    useEffect(() => {
-        if (mode === 'edit' && initialData) {
-            setSupplierId(initialData.supplierId);
-            setItems(initialData.items.map(item => ({ ...item }))); // Deep copy
-            setSupplierInvoiceId(initialData.supplierInvoiceId || '');
-            setPurchaseDate(getLocalDateString(new Date(initialData.date)));
-            setPaymentDueDates(initialData.paymentDueDates || []);
-        }
-    }, [mode, initialData]);
+  useEffect(() => {
+    if (initialData) {
+      setSupplierId(initialData.supplierId);
+      setItems([...initialData.items]);
+      setPurchaseDate(getLocalDateString(new Date(initialData.date)));
+      setSupplierInvoiceId(initialData.supplierInvoiceId || '');
+      setTotalAmount(initialData.totalAmount.toString());
+    }
+  }, [initialData]);
 
-    useEffect(() => {
-        const currentlyDirty = !!supplierId || items.length > 0;
-        if (currentlyDirty !== isDirtyRef.current) {
-            isDirtyRef.current = currentlyDirty;
-            setIsDirty(currentlyDirty);
-        }
-    }, [supplierId, items, setIsDirty]);
+  const supplierOptions = useMemo((): DropdownOption[] => 
+    suppliers
+        .sort((a,b) => a.name.localeCompare(b.name))
+        .map(s => ({ value: s.id, label: s.name })),
+    [suppliers]
+  );
+  
+  const handleItemUpdate = (productId: string, field: keyof PurchaseItem, value: string | number) => {
+    setItems(items.map(item => item.productId === productId ? { ...item, [field]: value } : item));
+  };
+  
+  const handleItemRemove = (productId: string) => {
+    setItems(items.filter(item => item.productId !== productId));
+  };
 
-    const resetForm = () => {
-        setSupplierId('');
-        setItems([]);
-        setSupplierInvoiceId('');
-        setPurchaseDate(getLocalDateString());
-        setPaymentDueDates([]);
-    };
+  const handleScannedId = (id: string) => {
+    setIsScanning(false);
+    const existingItem = items.find(i => i.productId.toLowerCase() === id.toLowerCase());
+    if (existingItem) {
+      handleItemUpdate(existingItem.productId, 'quantity', Number(existingItem.quantity) + 1);
+      return;
+    }
+    const existingProduct = products.find(p => p.id.toLowerCase() === id.toLowerCase());
+    if (existingProduct) {
+      setProductForQty(existingProduct);
+      setIsQtyModalOpen(true);
+    } else {
+      setNewProductInitialId(id);
+      setIsNewProductModalOpen(true);
+    }
+  };
 
-    const [isSelectingProduct, setIsSelectingProduct] = useState(false);
-    const [isAddingProduct, setIsAddingProduct] = useState(false);
-    const [isScanning, setIsScanning] = useState(false);
-    const [scannedProductId, setScannedProductId] = useState('');
-    const [importStatus, setImportStatus] = useState<{ type: 'info' | 'success' | 'error', message: string } | null>(null);
-    const [quantityModalState, setQuantityModalState] = useState<{ isOpen: boolean, product: Product | null }>({ isOpen: false, product: null });
+  const handleSelectExistingProduct = (product: Product) => {
+    setIsExistingProductModalOpen(false);
+    const existingItem = items.find(i => i.productId === product.id);
+    if (existingItem) {
+        handleItemUpdate(existingItem.productId, 'quantity', Number(existingItem.quantity) + 1);
+        return;
+    }
+    setProductForQty(product);
+    setIsQtyModalOpen(true);
+  };
+  
+  const handleQtySubmit = (quantity: number) => {
+    if (productForQty) {
+      setItems([
+        ...items,
+        {
+          productId: productForQty.id,
+          productName: productForQty.name,
+          quantity: quantity,
+          price: productForQty.purchasePrice,
+          gstPercent: productForQty.gstPercent,
+          saleValue: productForQty.salePrice,
+        },
+      ]);
+    }
+    setIsQtyModalOpen(false);
+    setProductForQty(null);
+  };
 
+  const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-    // New memos for searchable dropdown
-    const filteredSuppliers = useMemo(() => 
-        suppliers.filter(s => 
-            s.name.toLowerCase().includes(supplierSearchTerm.toLowerCase()) || 
-            s.location.toLowerCase().includes(supplierSearchTerm.toLowerCase())
-        ).sort((a,b) => a.name.localeCompare(b.name)),
-    [suppliers, supplierSearchTerm]);
+    const reader = new FileReader();
+    setCsvStatus({type: 'info', message: 'Reading file...'});
 
-    const selectedSupplier = useMemo(() => supplierId ? suppliers.find(s => s.id === supplierId) : null, [supplierId, suppliers]);
-
-    const handleSelectProduct = (product: Product) => {
-        setIsSelectingProduct(false); // Close the product search modal
-        setQuantityModalState({ isOpen: true, product: product });
-    };
-
-    const handleSetQuantity = (quantity: number) => {
-        const product = quantityModalState.product;
-        if (!product) return;
-
-        if(isNaN(quantity) || quantity <= 0) {
-            alert('Please enter a valid quantity.');
-            return;
-        }
-
-        const existingItemIndex = items.findIndex(item => item.productId === product.id);
-
-        if (existingItemIndex > -1) {
-            const updatedItems = [...items];
-            updatedItems[existingItemIndex].quantity += quantity;
-            setItems(updatedItems);
-        } else {
-            const newItem: PurchaseItem = {
-                productId: product.id,
-                productName: product.name,
-                price: product.purchasePrice,
-                saleValue: product.salePrice,
-                gstPercent: product.gstPercent,
-                quantity,
-            };
-            setItems([...items, newItem]);
-        }
-        
-        setQuantityModalState({ isOpen: false, product: null });
-    };
-
-
-    const handleItemChange = (productId: string, field: keyof PurchaseItem, value: string) => {
-        const numericFields = ['quantity', 'price', 'saleValue', 'gstPercent'];
-        const isNumeric = numericFields.includes(field as string);
-
-        setItems(prevItems => prevItems.map(item => {
-            if (item.productId === productId) {
-                return { ...item, [field]: isNumeric ? parseFloat(value) || 0 : value };
-            }
-            return item;
-        }));
-    };
-
-    const handleProductScanned = (decodedText: string) => {
-        setIsScanning(false);
-        const product = products.find(p => p.id.toLowerCase() === decodedText.toLowerCase());
-        if (product) {
-            handleSelectProduct(product);
-        } else {
-            alert("Product not found. You can add it as a new product.");
-            setScannedProductId(decodedText);
-            setIsAddingProduct(true);
-        }
-    };
-    
-    const handleDownloadTemplate = (e: React.MouseEvent<HTMLAnchorElement>) => {
-        e.preventDefault();
-        const headers = ['id', 'name', 'quantity', 'purchaseprice', 'saleprice', 'gstpercent'];
-        const exampleRow1 = ['PROD-UNIQUE-1', 'New Saree Model A', '10', '1500', '3000', '5'];
-        const exampleRow2 = ['PROD-UNIQUE-2', 'New Saree Model B', '25', '800', '1600', '12'];
-        
-        const csvContent = "data:text/csv;charset=utf-8," 
-            + [headers.join(','), exampleRow1.join(','), exampleRow2.join(',')].join('\n');
-        
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "purchase-import-template.csv");
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
-
-    const handleImportCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        if (items.length > 0 && !window.confirm("Importing from CSV will replace all current items. Continue?")) {
-            if (event.target) (event.target as HTMLInputElement).value = '';
-            return;
-        }
-
-        const reader = new FileReader();
-        setImportStatus({ type: 'info', message: 'Reading file...' });
-
-        reader.onload = (e) => {
+    reader.onload = (e) => {
+        try {
             const text = e.target?.result as string;
-            if (!text) {
-                setImportStatus({ type: 'error', message: 'Could not read the file content.' });
-                return;
+            if (!text) throw new Error("Could not read file content.");
+
+            const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '');
+            if (lines.length < 2) throw new Error("CSV must have a header and at least one data row.");
+
+            const headers = parseCsvLine(lines[0]).map(h => h.trim().toLowerCase().replace(/\s+/g, ''));
+            const requiredHeaders = ['id', 'name', 'quantity', 'purchaseprice', 'saleprice', 'gstpercent'];
+            if (requiredHeaders.some(rh => !headers.includes(rh))) {
+                throw new Error(`CSV is missing columns. Header must be: ${requiredHeaders.join(', ')}`);
             }
 
-            try {
-                const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '');
-                if (lines.length < 2) throw new Error('CSV must have a header and at least one data row.');
-
-                const headers = parseCsvLine(lines[0]).map(h => h.trim().toLowerCase().replace(/\s+/g, ''));
-                const requiredHeaders = ['id', 'name', 'quantity', 'purchaseprice', 'saleprice', 'gstpercent'];
-                if (requiredHeaders.some(rh => !headers.includes(rh))) {
-                    throw new Error(`CSV is missing required columns. Header must contain: id, name, quantity, purchaseprice, saleprice, gstpercent.`);
-                }
+            const newItems: PurchaseItem[] = [];
+            for (let i = 1; i < lines.length; i++) {
+                const values = parseCsvLine(lines[i]);
+                const row = headers.reduce((obj, header, index) => ({...obj, [header]: values[index] || ''}), {} as any);
+                if (!row.id) continue;
                 
-                const newItems: PurchaseItem[] = [];
-                const existingProductIds = new Set(products.map(p => p.id.toLowerCase()));
-
-                for (let i = 1; i < lines.length; i++) {
-                    const values = parseCsvLine(lines[i]);
-                    const row = headers.reduce((obj, header, index) => ({...obj, [header]: values[index]?.trim() || ''}), {} as any);
-                    
-                    const id = row.id?.trim();
-                    if (!id) continue;
-                    if (existingProductIds.has(id.toLowerCase()) || newItems.some(item => item.productId.toLowerCase() === id.toLowerCase())) {
-                        throw new Error(`Product ID "${id}" from CSV (row ${i+1}) already exists in stock or is duplicated in the CSV.`);
-                    }
-
-                    const quantity = parseInt(row.quantity, 10);
-                    if (!row.name || isNaN(quantity) || isNaN(parseFloat(row.purchaseprice)) || isNaN(parseFloat(row.saleprice)) || isNaN(parseFloat(row.gstpercent)) || quantity <= 0) continue;
-
-                    newItems.push({
-                        productId: id, productName: row.name, quantity,
-                        price: parseFloat(row.purchaseprice), saleValue: parseFloat(row.saleprice), gstPercent: parseFloat(row.gstpercent),
-                    });
+                const trimmedId = row.id.trim();
+                if (items.some(item => item.productId.toLowerCase() === trimmedId.toLowerCase()) || newItems.some(item => item.productId.toLowerCase() === trimmedId.toLowerCase())) {
+                    console.warn(`Skipping duplicate product ID from CSV: ${trimmedId}`);
+                    continue;
+                }
+                if (mode === 'add' && products.some(p => p.id.toLowerCase() === trimmedId.toLowerCase())) {
+                    console.warn(`Skipping existing product from CSV: ${trimmedId}`);
+                    continue;
                 }
 
-                setItems(newItems);
-                setImportStatus({ type: 'success', message: `Successfully imported ${newItems.length} items from CSV.`});
-            } catch (error) {
-                setImportStatus({ type: 'error', message: `Import error: ${(error as Error).message}`});
-            } finally {
-                 if (event.target) (event.target as HTMLInputElement).value = '';
+                newItems.push({
+                    productId: trimmedId,
+                    productName: row.name,
+                    quantity: parseFloat(row.quantity),
+                    price: parseFloat(row.purchaseprice),
+                    saleValue: parseFloat(row.saleprice),
+                    gstPercent: parseFloat(row.gstpercent),
+                });
             }
-        };
-        reader.readAsText(file);
-    };
-    
-    const handleAddSupplier = () => {
-        const trimmedId = newSupplier.id.trim();
-        if (!trimmedId) {
-            alert('Supplier ID is required.');
-            return;
-        }
-        if (!newSupplier.name || !newSupplier.phone || !newSupplier.location) {
-            alert('Please fill all required fields (Name, Phone, Location).');
-            return;
-        }
 
-        const finalId = `SUPP-${trimmedId}`;
-        const isIdTaken = suppliers.some(c => c.id.toLowerCase() === finalId.toLowerCase());
-        
-        if (isIdTaken) {
-            alert(`Supplier ID "${finalId}" is already taken. Please choose another one.`);
-            return;
+            setItems([...items, ...newItems]);
+            setCsvStatus({type: 'success', message: `Successfully imported ${newItems.length} items from CSV.`});
+        } catch (error) {
+             setCsvStatus({type: 'error', message: `Import error: ${(error as Error).message}`});
+        } finally {
+            if (event.target) (event.target as HTMLInputElement).value = ''; // Reset file input
         }
-
-        const supplierToAdd: Supplier = { ...newSupplier, id: finalId };
-        dispatch({ type: 'ADD_SUPPLIER', payload: supplierToAdd });
-        showToast("Supplier added successfully!");
-        
-        setNewSupplier({ id: '', name: '', phone: '', location: '', gstNumber: '', reference: '', account1: '', account2: '', upi: '' });
-        setIsAddingSupplier(false);
-        setSupplierId(finalId); // Automatically select the newly added supplier
     };
-    
-    const handleSubmit = () => {
-        if (!supplierId || items.length === 0) {
-            return alert("Please select a supplier and add at least one item.");
-        }
-        
-        const totalAmount = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-        
+    reader.readAsText(file);
+  };
+  
+  const calculatedTotal = useMemo(() => items.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0), [items]);
+
+  const handleSubmit = () => {
+    const total = parseFloat(totalAmount);
+    if (!supplierId || items.length === 0 || !totalAmount || isNaN(total)) {
+      alert('Please select a supplier, add items, and enter a valid total amount.');
+      return;
+    }
+
+    let purchaseId;
+    let payments: Purchase['payments'] = [];
+
+    if (mode === 'add') {
         const now = new Date();
-        const purchaseId = mode === 'edit' && initialData ? initialData.id : `PUR-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}-${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
-
-        const finalPurchaseData: Purchase = {
-            id: purchaseId,
-            supplierId: supplierId,
-            items: items,
-            totalAmount: totalAmount,
-            date: new Date(purchaseDate).toISOString(),
-            supplierInvoiceId: supplierInvoiceId.trim() || undefined,
-            payments: (mode === 'edit' && initialData) ? initialData.payments : [],
-            paymentDueDates: paymentDueDates.filter(date => date), // Filter out empty strings
-        };
+        purchaseId = `PUR-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}-${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
         
-        onSubmit(finalPurchaseData);
+        const paid = parseFloat(amountPaid);
+        if (!isNaN(paid) && paid > 0) {
+            payments.push({
+                id: `PAY-${purchaseId}`,
+                amount: paid,
+                method: paymentMethod,
+                date: new Date().toISOString()
+            });
+        }
+    } else { // edit mode
+        if (!initialData) return;
+        purchaseId = initialData.id;
+        payments = initialData.payments || []; // Keep existing payments
+    }
+
+    const purchaseData: Purchase = {
+      id: purchaseId,
+      supplierId,
+      items,
+      totalAmount: total,
+      date: new Date(purchaseDate).toISOString(),
+      supplierInvoiceId: supplierInvoiceId || undefined,
+      payments
     };
 
-    const StatusNotification = () => {
-        if (!importStatus) return null;
-        const variants = {
-            info: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300', success: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300', error: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300',
-        };
-        const icons = {
-            info: <Info className="w-5 h-5 mr-3 flex-shrink-0" />, success: <CheckCircle className="w-5 h-5 mr-3 flex-shrink-0" />, error: <XCircle className="w-5 h-5 mr-3 flex-shrink-0" />,
-        };
-        return (
-            <div className={`p-3 rounded-md mt-4 text-sm flex justify-between items-start ${variants[importStatus.type]}`}>
-                <div className="flex items-start">{icons[importStatus.type]}<span>{importStatus.message}</span></div>
-                <button onClick={() => setImportStatus(null)} className="font-bold text-lg leading-none ml-4">&times;</button>
-            </div>
-        );
-    };
-    
-    const handleDueDateChange = (index: number, value: string) => {
-        const newDates = [...paymentDueDates];
-        newDates[index] = value;
-        setPaymentDueDates(newDates);
-    };
+    onSubmit(purchaseData);
+  };
+  
+  return (
+    <div className="space-y-4">
+      {isScanning && <QRScannerModal onClose={() => setIsScanning(false)} onScanned={handleScannedId} />}
+      {isNewProductModalOpen && <NewProductModal isOpen={isNewProductModalOpen} onClose={() => setIsNewProductModalOpen(false)} onAdd={(item) => setItems([...items, item])} initialId={newProductInitialId} existingProducts={products} currentPurchaseItems={items} mode={mode} />}
+      {isExistingProductModalOpen && <ProductSearchModal isOpen={isExistingProductModalOpen} onClose={() => setIsExistingProductModalOpen(false)} onSelect={handleSelectExistingProduct} products={products} />}
+      {isQtyModalOpen && <QuantityInputModal isOpen={isQtyModalOpen} onClose={() => { setIsQtyModalOpen(false); setProductForQty(null); }} onSubmit={handleQtySubmit} product={productForQty} />}
 
-    const addDueDate = () => {
-        setPaymentDueDates([...paymentDueDates, '']);
-    };
-
-    const removeDueDate = (index: number) => {
-        setPaymentDueDates(paymentDueDates.filter((_, i) => i !== index));
-    };
-
-    const totalPurchaseAmount = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const totalGstAmount = items.reduce((sum, item) => {
-        const itemTotal = item.price * item.quantity;
-        const itemGst = itemTotal - (itemTotal / (1 + (item.gstPercent / 100)));
-        return sum + itemGst;
-    }, 0);
-    const subTotal = totalPurchaseAmount - totalGstAmount;
-    const title = mode === 'add' ? 'New Purchase Order' : 'Edit Purchase Order';
-
-    return (
+      <Button onClick={onBack}>&larr; Back</Button>
+      <Card title={mode === 'add' ? 'Create New Purchase' : `Edit Purchase ${initialData?.id}`}>
         <div className="space-y-4">
-             {isAddingSupplier && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
-                    <Card title="Add New Supplier" className="w-full max-w-md animate-scale-in">
-                        <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2">
-                             <div>
-                                <label className="block text-sm font-medium dark:text-gray-300">Supplier ID</label>
-                                <div className="flex items-center mt-1">
-                                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 bg-gray-50 text-gray-500 text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-gray-400">SUPP-</span>
-                                    <input type="text" placeholder="Enter unique ID" value={newSupplier.id} onChange={e => setNewSupplier({ ...newSupplier, id: e.target.value })} className="w-full p-2 border rounded-r-md dark:bg-slate-700 dark:border-slate-600" autoFocus />
-                                </div>
-                            </div>
-                            <input type="text" placeholder="Name*" value={newSupplier.name} onChange={e => setNewSupplier({ ...newSupplier, name: e.target.value })} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" />
-                            <input type="text" placeholder="Phone*" value={newSupplier.phone} onChange={e => setNewSupplier({ ...newSupplier, phone: e.target.value })} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" />
-                            <input type="text" placeholder="Location*" value={newSupplier.location} onChange={e => setNewSupplier({ ...newSupplier, location: e.target.value })} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" />
-                            <input type="text" placeholder="GST Number (Optional)" value={newSupplier.gstNumber} onChange={e => setNewSupplier({ ...newSupplier, gstNumber: e.target.value })} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" />
-                            <input type="text" placeholder="Reference (Optional)" value={newSupplier.reference} onChange={e => setNewSupplier({ ...newSupplier, reference: e.target.value })} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" />
-                            <input type="text" placeholder="Bank Account 1 (Optional)" value={newSupplier.account1} onChange={e => setNewSupplier({ ...newSupplier, account1: e.target.value })} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" />
-                            <input type="text" placeholder="Bank Account 2 (Optional)" value={newSupplier.account2} onChange={e => setNewSupplier({ ...newSupplier, account2: e.target.value })} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" />
-                            <input type="text" placeholder="UPI ID (Optional)" value={newSupplier.upi} onChange={e => setNewSupplier({ ...newSupplier, upi: e.target.value })} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" />
-                        </div>
-                         <div className="flex gap-2 pt-4 border-t dark:border-slate-700 mt-4">
-                            <Button onClick={handleAddSupplier} className="w-full">Save Supplier</Button>
-                            <Button onClick={() => setIsAddingSupplier(false)} variant="secondary" className="w-full">Cancel</Button>
-                        </div>
-                    </Card>
+            <Dropdown 
+                options={supplierOptions}
+                value={supplierId}
+                onChange={setSupplierId}
+                placeholder="Select a Supplier"
+                disabled={mode === 'edit'}
+            />
+          <input type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} className="w-full p-2 border rounded" disabled={mode === 'edit'}/>
+          <input type="text" placeholder="Supplier Invoice ID (Optional)" value={supplierInvoiceId} onChange={e => setSupplierInvoiceId(e.target.value)} className="w-full p-2 border rounded" />
+        </div>
+      </Card>
+
+      <Card title="Add Items">
+        <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                <Button onClick={() => setIsNewProductModalOpen(true)} className="w-full"><Plus size={16}/> New Product</Button>
+                <Button onClick={() => setIsExistingProductModalOpen(true)} variant="secondary" className="w-full"><Search size={16}/> Existing Product</Button>
+                <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full"><QrCode size={16}/> Scan</Button>
+                <label htmlFor="csv-upload" className="px-4 py-2 rounded-md font-semibold text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-sm flex items-center justify-center gap-2 bg-secondary hover:bg-teal-500 focus:ring-secondary cursor-pointer">
+                    <Upload size={16}/> From CSV
+                </label>
+                <input id="csv-upload" type="file" accept=".csv" className="hidden" onChange={handleFileImport} />
+            </div>
+            {csvStatus && (
+                <div className={`p-2 rounded text-sm flex items-center gap-2 ${csvStatus.type === 'success' ? 'bg-green-100 text-green-800' : csvStatus.type === 'error' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
+                    {csvStatus.type === 'success' ? <CheckCircle size={16}/> : csvStatus.type === 'error' ? <XCircle size={16}/> : <Info size={16}/>}
+                    {csvStatus.message}
+                    <button onClick={() => setCsvStatus(null)} className="ml-auto font-bold">&times;</button>
                 </div>
             )}
-            <input 
-                type="file" 
-                accept=".csv, text/csv" 
-                id="csv-purchase-import"
-                onChange={handleImportCSV} 
-                className="hidden"
-                onClick={(event) => { (event.target as HTMLInputElement).value = '' }}
-            />
-            {isScanning && <QRScannerModal onClose={() => setIsScanning(false)} onScanned={handleProductScanned} />}
-            <ProductSearchModal isOpen={isSelectingProduct} onClose={() => setIsSelectingProduct(false)} onSelect={handleSelectProduct} products={products} />
-            <QuantityInputModal
-                isOpen={quantityModalState.isOpen}
-                onClose={() => setQuantityModalState({ isOpen: false, product: null })}
-                onSubmit={handleSetQuantity}
-                product={quantityModalState.product}
-            />
-            <NewProductModal
-                isOpen={isAddingProduct}
-                onClose={() => setIsAddingProduct(false)}
-                onAdd={(item) => setItems([...items, item])}
-                initialId={scannedProductId}
-                existingProducts={products}
-                currentPurchaseItems={items}
-                mode={mode}
-            />
-
-            <Button onClick={onBack} variant="secondary" className="bg-teal-200 text-primary hover:bg-teal-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600">&larr; Back</Button>
-            <Card title={title}>
-                 <div className="space-y-4">
+            <div className="space-y-2">
+            {items.map(item => (
+                <div key={item.productId} className="p-2 bg-gray-50 rounded border animate-fade-in-fast">
+                <div className="flex justify-between items-start">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Supplier</label>
-                        <div className="flex gap-2 items-center mt-1">
-                            <div className="relative w-full" ref={supplierDropdownRef}>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsSupplierDropdownOpen(prev => !prev)}
-                                    className="w-full p-2 border rounded bg-white text-left custom-select dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
-                                    disabled={mode === 'edit'}
-                                    aria-haspopup="listbox"
-                                    aria-expanded={isSupplierDropdownOpen}
-                                >
-                                    {selectedSupplier ? `${selectedSupplier.name} - ${selectedSupplier.location}` : 'Select a Supplier'}
-                                </button>
-
-                                {isSupplierDropdownOpen && (
-                                     <div className="absolute top-full left-0 w-full mt-1 bg-white dark:bg-slate-900 rounded-md shadow-lg border dark:border-slate-700 z-40 animate-fade-in-fast">
-                                        <div className="p-2 border-b dark:border-slate-700">
-                                            <input
-                                                type="text"
-                                                placeholder="Search by name or location..."
-                                                value={supplierSearchTerm}
-                                                onChange={e => setSupplierSearchTerm(e.target.value)}
-                                                className="w-full p-2 border border-gray-300 rounded dark:bg-slate-800 dark:border-slate-600 dark:text-white"
-                                                autoFocus
-                                            />
-                                        </div>
-                                        <ul className="max-h-60 overflow-y-auto" role="listbox">
-                                            <li
-                                                key="select-supplier-placeholder"
-                                                onClick={() => {
-                                                    setSupplierId('');
-                                                    setIsSupplierDropdownOpen(false);
-                                                    setSupplierSearchTerm('');
-                                                }}
-                                                className="px-4 py-2 hover:bg-teal-50 dark:hover:bg-slate-800 cursor-pointer text-gray-500"
-                                                role="option"
-                                            >
-                                                Select a Supplier
-                                            </li>
-                                            {filteredSuppliers.map(s => (
-                                                <li
-                                                    key={s.id}
-                                                    onClick={() => {
-                                                        setSupplierId(s.id);
-                                                        setIsSupplierDropdownOpen(false);
-                                                        setSupplierSearchTerm('');
-                                                    }}
-                                                    className="px-4 py-2 hover:bg-teal-50 dark:hover:bg-slate-800 cursor-pointer border-t dark:border-slate-800"
-                                                    role="option"
-                                                >
-                                                    {s.name} - {s.location}
-                                                </li>
-                                            ))}
-                                            {filteredSuppliers.length === 0 && (
-                                                <li className="px-4 py-2 text-gray-400">No suppliers found.</li>
-                                            )}
-                                        </ul>
-                                    </div>
-                                )}
-                            </div>
-                            {mode === 'add' && (
-                                <Button onClick={() => setIsAddingSupplier(true)} variant="secondary" className="flex-shrink-0">
-                                    <Plus size={16}/> New
-                                </Button>
-                            )}
-                        </div>
+                    <p className="font-semibold">{item.productName}</p>
+                    <p className="text-xs text-gray-500">{item.productId}</p>
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Purchase Date</label>
-                        <input type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Supplier Invoice ID (Optional)</label>
-                        <input type="text" placeholder="Supplier Invoice ID (Optional)" value={supplierInvoiceId} onChange={e => setSupplierInvoiceId(e.target.value)} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600" />
-                    </div>
+                    <DeleteButton variant="remove" onClick={() => handleItemRemove(item.productId)} />
                 </div>
-            </Card>
-            <Card title="Purchase Items">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
-                    <Button onClick={() => setIsAddingProduct(true)}><Plus size={16} className="mr-2"/> Add New Product</Button>
-                    <Button onClick={() => setIsSelectingProduct(true)} variant="secondary"><Search size={16} className="mr-2"/> Select Existing</Button>
-                    <Button onClick={() => setIsScanning(true)} variant="secondary"><QrCode size={16} className="mr-2"/> Scan Product</Button>
-                    <label htmlFor="csv-purchase-import" className="px-4 py-2 rounded-md font-semibold text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-sm flex items-center justify-center gap-2 transform hover:shadow-md hover:-translate-y-px active:shadow-sm active:translate-y-0 bg-secondary hover:bg-teal-500 focus:ring-secondary cursor-pointer">
-                        <Upload size={16} className="mr-2"/> Import from CSV
-                    </label>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm mt-1">
+                    <input type="number" value={item.quantity} onChange={e => handleItemUpdate(item.productId, 'quantity', parseFloat(e.target.value))} className="w-full p-1 border rounded" placeholder="Qty" />
+                    <input type="number" value={item.price} onChange={e => handleItemUpdate(item.productId, 'price', parseFloat(e.target.value))} className="w-full p-1 border rounded" placeholder="Purch Price" />
+                    <input type="number" value={item.saleValue} onChange={e => handleItemUpdate(item.productId, 'saleValue', parseFloat(e.target.value))} className="w-full p-1 border rounded" placeholder="Sale Value" />
+                    <input type="number" value={item.gstPercent} onChange={e => handleItemUpdate(item.productId, 'gstPercent', parseFloat(e.target.value))} className="w-full p-1 border rounded" placeholder="GST %" />
+                    <div className="p-1 flex items-center justify-end font-semibold">₹{(Number(item.quantity) * Number(item.price)).toLocaleString('en-IN')}</div>
                 </div>
-                <div className="text-center text-xs text-gray-500 -mt-2 mb-4 dark:text-gray-400">
-                    <span>CSV format issues? </span>
-                    <a href="#" onClick={handleDownloadTemplate} className="font-semibold text-primary underline hover:text-teal-700">
-                        Download sample template
-                    </a>
                 </div>
-                <StatusNotification />
-                <div className="space-y-2 mt-4">
-                    {items.map(item => (
-                        <div key={item.productId} className="p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg space-y-2 border dark:border-slate-700">
-                            <div className="flex justify-between items-start">
-                                <input 
-                                    type="text" 
-                                    value={item.productName}
-                                    onChange={e => handleItemChange(item.productId, 'productName', e.target.value)}
-                                    className="font-semibold bg-transparent border-b w-full dark:border-slate-600"
-                                />
-                                <DeleteButton variant="remove" onClick={() => setItems(items.filter(i => i.productId !== item.productId))} />
-                            </div>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-                                <div>
-                                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Qty</label>
-                                    <input type="number" value={item.quantity || ''} onChange={e => handleItemChange(item.productId, 'quantity', e.target.value)} className="w-full p-1 border rounded dark:bg-slate-700 dark:border-slate-600" />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Purchase Price</label>
-                                    <input type="number" value={item.price || ''} onChange={e => handleItemChange(item.productId, 'price', e.target.value)} className="w-full p-1 border rounded dark:bg-slate-700 dark:border-slate-600" />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Sale Price</label>
-                                    <input type="number" value={item.saleValue || ''} onChange={e => handleItemChange(item.productId, 'saleValue', e.target.value)} className="w-full p-1 border rounded dark:bg-slate-700 dark:border-slate-600" />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400">GST %</label>
-                                    <input type="number" value={item.gstPercent || ''} onChange={e => handleItemChange(item.productId, 'gstPercent', e.target.value)} className="w-full p-1 border rounded dark:bg-slate-700 dark:border-slate-600" />
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </Card>
-
-            <Card title="Payment Schedule">
-                <div className="space-y-2">
-                    {paymentDueDates.map((date, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                            <input 
-                                type="date" 
-                                value={date} 
-                                onChange={e => handleDueDateChange(index, e.target.value)} 
-                                className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" 
-                            />
-                            <DeleteButton variant="remove" onClick={() => removeDueDate(index)} />
-                        </div>
-                    ))}
-                </div>
-                <Button onClick={addDueDate} variant="secondary" className="w-full mt-3">
-                    <Plus size={16} className="mr-2"/> Add Due Date
-                </Button>
-            </Card>
-
-            <Card title="Transaction Details">
-                 <div className="space-y-2 mb-4">
-                    <div className="flex justify-between text-gray-600 dark:text-gray-300">
-                        <span>Subtotal (excl. GST):</span>
-                        <span>₹{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    <div className="flex justify-between text-gray-600 dark:text-gray-300">
-                        <span>GST Amount:</span>
-                        <span>+ ₹{totalGstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                </div>
-                <div className="p-4 bg-teal-50 dark:bg-slate-700/50 rounded-lg text-center border-t dark:border-slate-700">
-                    <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">Grand Total</p>
-                    <p className="text-4xl font-bold text-primary">₹{totalPurchaseAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
-                </div>
-            </Card>
-            
-            <Button onClick={handleSubmit} className="w-full">{mode === 'add' ? 'Complete Purchase' : 'Update Purchase'}</Button>
-            <Button onClick={resetForm} variant="secondary" className="w-full">Clear Form</Button>
+            ))}
+            </div>
         </div>
-    );
+      </Card>
+      
+       <Card title="Final Details">
+            <div className="space-y-4">
+                <div className="flex justify-between items-center text-lg font-bold">
+                    <span>Calculated Total:</span>
+                    <span>₹{calculatedTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium">Final Invoice Total (as on bill)</label>
+                    <input type="number" value={totalAmount} onChange={e => setTotalAmount(e.target.value)} placeholder="Enter final amount" className="w-full p-2 border rounded mt-1" />
+                </div>
+                {mode === 'add' && (
+                    <div className="grid grid-cols-2 gap-4">
+                        <input type="number" value={amountPaid} onChange={e => setAmountPaid(e.target.value)} placeholder="Amount Paid Now" className="w-full p-2 border rounded" />
+                        <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as any)} className="w-full p-2 border rounded custom-select">
+                            <option value="CASH">Cash</option>
+                            <option value="UPI">UPI</option>
+                            <option value="CHEQUE">Cheque</option>
+                        </select>
+                    </div>
+                )}
+            </div>
+       </Card>
+      
+      <Button onClick={handleSubmit} className="w-full">{mode === 'add' ? 'Complete Purchase' : 'Update Purchase'}</Button>
+    </div>
+  );
 };
-
-export default React.memo(PurchaseForm);

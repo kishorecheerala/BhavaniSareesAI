@@ -6,11 +6,13 @@ import Card from '../components/Card';
 import Button from '../components/Button';
 import ConfirmationModal from '../components/ConfirmationModal';
 import DeleteButton from '../components/DeleteButton';
-import PurchaseForm from '../components/AddPurchaseView';
+// FIX: Module '"file:///components/AddPurchaseView"' has no default export. Changed to a named import.
+import { PurchaseForm } from '../components/AddPurchaseView';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import BatchBarcodeModal from '../components/BatchBarcodeModal';
 import { logoBase64 } from '../utils/logo';
+import Dropdown from '../components/Dropdown';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -33,25 +35,31 @@ const PaymentModal: React.FC<{
     const amountPaid = (purchase.payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
     const dueAmount = Number(purchase.totalAmount) - amountPaid;
 
+    const paymentMethodOptions = [
+        { value: 'CASH', label: 'Cash' },
+        { value: 'UPI', label: 'UPI' },
+        { value: 'CHEQUE', label: 'Cheque' }
+    ];
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
             <Card title="Add Payment" className="w-full max-w-sm animate-scale-in">
                 <div className="space-y-4">
                     <p>Invoice Total: <span className="font-bold">₹{Number(purchase.totalAmount).toLocaleString('en-IN')}</span></p>
                     <p>Amount Due: <span className="font-bold text-red-600">₹{dueAmount.toLocaleString('en-IN')}</span></p>
-                    <input type="number" placeholder="Enter amount" value={paymentDetails.amount} onChange={e => setPaymentDetails({ ...paymentDetails, amount: e.target.value })} className="w-full p-2 border rounded" autoFocus/>
-                    <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any })} className="w-full p-2 border rounded custom-select">
-                        <option value="CASH">Cash</option>
-                        <option value="UPI">UPI</option>
-                        <option value="CHEQUE">Cheque</option>
-                    </select>
-                     <input type="date" value={paymentDetails.date} onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} className="w-full p-2 border rounded" />
+                    <input type="number" placeholder="Enter amount" value={paymentDetails.amount} onChange={e => setPaymentDetails({ ...paymentDetails, amount: e.target.value })} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" autoFocus/>
+                    <Dropdown 
+                        options={paymentMethodOptions}
+                        value={paymentDetails.method}
+                        onChange={(val) => setPaymentDetails({ ...paymentDetails, method: val as any })}
+                    />
+                     <input type="date" value={paymentDetails.date} onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" />
                      <input 
                         type="text"
                         placeholder="Payment Reference (Optional)"
                         value={paymentDetails.reference}
                         onChange={e => setPaymentDetails({ ...paymentDetails, reference: e.target.value })}
-                        className="w-full p-2 border rounded"
+                        className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600"
                     />
                     <div className="flex gap-2">
                        <Button onClick={onSubmit} className="w-full">Save Payment</Button>

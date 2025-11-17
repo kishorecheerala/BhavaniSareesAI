@@ -10,6 +10,7 @@ import { Html5Qrcode } from 'html5-qrcode';
 import DeleteButton from '../components/DeleteButton';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
 import { logoBase64 } from '../utils/logo';
+import Dropdown, { DropdownOption } from '../components/Dropdown';
 
 
 const getLocalDateString = (date = new Date()) => {
@@ -45,9 +46,9 @@ const AddCustomerModal: React.FC<{
         <Card title="Add New Customer" className="w-full max-w-md animate-scale-in">
             <div className="space-y-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Customer ID</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Customer ID</label>
                     <div className="flex items-center mt-1">
-                        <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                        <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-gray-400">
                             CUST-
                         </span>
                         <input
@@ -56,29 +57,29 @@ const AddCustomerModal: React.FC<{
                             placeholder="Enter unique ID"
                             value={newCustomer.id}
                             onChange={onInputChange}
-                            className="w-full p-2 border rounded-r-md"
+                            className="w-full p-2 border rounded-r-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
                         />
                     </div>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Name</label>
-                    <input type="text" placeholder="Full Name" name="name" value={newCustomer.name} onChange={onInputChange} className="w-full p-2 border rounded mt-1" />
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
+                    <input type="text" placeholder="Full Name" name="name" value={newCustomer.name} onChange={onInputChange} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Phone</label>
-                    <input type="text" placeholder="Phone Number" name="phone" value={newCustomer.phone} onChange={onInputChange} className="w-full p-2 border rounded mt-1" />
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone</label>
+                    <input type="text" placeholder="Phone Number" name="phone" value={newCustomer.phone} onChange={onInputChange} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Address</label>
-                    <input type="text" placeholder="Full Address" name="address" value={newCustomer.address} onChange={onInputChange} className="w-full p-2 border rounded mt-1" />
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Address</label>
+                    <input type="text" placeholder="Full Address" name="address" value={newCustomer.address} onChange={onInputChange} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Area/Location</label>
-                    <input type="text" placeholder="e.g. Ameerpet" name="area" value={newCustomer.area} onChange={onInputChange} className="w-full p-2 border rounded mt-1" />
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Area/Location</label>
+                    <input type="text" placeholder="e.g. Ameerpet" name="area" value={newCustomer.area} onChange={onInputChange} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
                 </div>
                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Reference (Optional)</label>
-                    <input type="text" placeholder="Referred by..." name="reference" value={newCustomer.reference} onChange={onInputChange} className="w-full p-2 border rounded mt-1" />
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Reference (Optional)</label>
+                    <input type="text" placeholder="Referred by..." name="reference" value={newCustomer.reference} onChange={onInputChange} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
                 </div>
                 <div className="flex gap-2">
                     <Button onClick={onSave} className="w-full">Save Customer</Button>
@@ -101,7 +102,7 @@ const ProductSearchModal: React.FC<{
           <Card className="w-full max-w-lg animate-scale-in">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold">Select Product</h2>
-              <button onClick={onClose} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
+              <button onClick={onClose} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
                 <X size={20}/>
               </button>
             </div>
@@ -112,7 +113,7 @@ const ProductSearchModal: React.FC<{
                 placeholder="Search products..."
                 value={productSearchTerm}
                 onChange={e => setProductSearchTerm(e.target.value)}
-                className="w-full p-2 pl-10 border rounded-lg"
+                className="w-full p-2 pl-10 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
                 autoFocus
               />
             </div>
@@ -120,10 +121,10 @@ const ProductSearchModal: React.FC<{
               {products
                 .filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase()) || p.id.toLowerCase().includes(productSearchTerm.toLowerCase()))
                 .map(p => (
-                <div key={p.id} onClick={() => onSelect(p)} className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-teal-50 flex justify-between items-center">
+                <div key={p.id} onClick={() => onSelect(p)} className="p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg cursor-pointer hover:bg-teal-50 dark:hover:bg-slate-700 flex justify-between items-center">
                   <div>
                     <p className="font-semibold">{p.name}</p>
-                    <p className="text-sm text-gray-500">Code: {p.id}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Code: {p.id}</p>
                   </div>
                   <div className="text-right">
                       <p className="font-semibold">₹{Number(p.salePrice).toLocaleString('en-IN')}</p>
@@ -178,11 +179,11 @@ const QRScannerModal: React.FC<{
     return (
         <div className="fixed inset-0 bg-black bg-opacity-75 backdrop-blur-sm flex flex-col items-center justify-center z-50 p-4 animate-fade-in-fast">
             <Card title="Scan Product QR Code" className="w-full max-w-md relative animate-scale-in">
-                 <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
+                 <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
                     <X size={20}/>
                  </button>
                 <div id="qr-reader-sales" className="w-full mt-4 rounded-lg overflow-hidden border"></div>
-                <p className="text-center text-sm my-2 text-gray-600">{scanStatus}</p>
+                <p className="text-center text-sm my-2 text-gray-600 dark:text-gray-400">{scanStatus}</p>
             </Card>
         </div>
     );
@@ -194,7 +195,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     const [mode, setMode] = useState<'add' | 'edit'>('add');
     const [saleToEdit, setSaleToEdit] = useState<Sale | null>(null);
 
-    const [customerId, setCustomerId] = useState('');
+    const [customerId, setCustomerId] = useState<string | null>(null);
     const [items, setItems] = useState<SaleItem[]>([]);
     const [discount, setDiscount] = useState('0');
     const [saleDate, setSaleDate] = useState(getLocalDateString());
@@ -212,16 +213,6 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     const [isAddingCustomer, setIsAddingCustomer] = useState(false);
     const [newCustomer, setNewCustomer] = useState(newCustomerInitialState);
     const isDirtyRef = useRef(false);
-
-    const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
-    const [customerSearchTerm, setCustomerSearchTerm] = useState('');
-    const customerDropdownRef = useRef<HTMLDivElement>(null);
-    
-    useOnClickOutside(customerDropdownRef, () => {
-        if (isCustomerDropdownOpen) {
-            setIsCustomerDropdownOpen(false);
-        }
-    });
 
     // Effect to handle switching to edit mode from another page
     useEffect(() => {
@@ -260,7 +251,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     }, [setIsDirty]);
 
     const resetForm = () => {
-        setCustomerId('');
+        setCustomerId(null);
         setItems([]);
         setDiscount('0');
         setSaleDate(getLocalDateString());
@@ -361,12 +352,16 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
 
     const selectedCustomer = useMemo(() => customerId ? state.customers.find(c => c.id === customerId) : null, [customerId, state.customers]);
 
-    const filteredCustomers = useMemo(() => 
-        state.customers.filter(c => 
-            c.name.toLowerCase().includes(customerSearchTerm.toLowerCase()) || 
-            c.area.toLowerCase().includes(customerSearchTerm.toLowerCase())
-        ).sort((a,b) => a.name.localeCompare(b.name)),
-    [state.customers, customerSearchTerm]);
+    const customerOptions = useMemo((): DropdownOption[] => 
+        state.customers
+            .sort((a,b) => a.name.localeCompare(b.name))
+            .map(c => ({
+                value: c.id,
+                label: `${c.name} - ${c.area}`,
+                searchText: `${c.name} ${c.area}`
+            })),
+        [state.customers]
+    );
 
     const customerTotalDue = useMemo(() => {
         if (!customerId) return null;
@@ -676,6 +671,12 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         resetForm();
     };
 
+    const paymentMethodOptions = [
+        { value: 'CASH', label: 'Cash' },
+        { value: 'UPI', label: 'UPI' },
+        { value: 'CHEQUE', label: 'Cheque' }
+    ];
+
     const canCreateSale = customerId && items.length > 0 && mode === 'add';
     const canUpdateSale = customerId && items.length > 0 && mode === 'edit';
     const canRecordPayment = customerId && items.length === 0 && parseFloat(paymentDetails.amount || '0') > 0 && customerTotalDue != null && customerTotalDue > 0.01 && mode === 'add';
@@ -709,65 +710,18 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             <Card>
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Customer</label>
                         <div className="flex gap-2 items-center">
-                            <div className="relative w-full z-30" ref={customerDropdownRef}>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsCustomerDropdownOpen(prev => !prev)}
-                                    className="w-full p-2 border rounded bg-white text-left custom-select"
+                            <div className="relative w-full">
+                                <Dropdown 
+                                    options={customerOptions}
+                                    value={customerId}
+                                    onChange={(val) => setCustomerId(val)}
+                                    placeholder="Select a Customer"
                                     disabled={mode === 'edit' || (mode === 'add' && items.length > 0)}
-                                    aria-haspopup="listbox"
-                                    aria-expanded={isCustomerDropdownOpen}
-                                >
-                                    {selectedCustomer ? `${selectedCustomer.name} - ${selectedCustomer.area}` : 'Select a Customer'}
-                                </button>
-
-                                {isCustomerDropdownOpen && (
-                                    <div className="absolute top-full left-0 w-full mt-1 bg-white text-text rounded-md shadow-lg border border-gray-200 z-10 animate-fade-in-fast">
-                                        <div className="p-2 border-b border-gray-200">
-                                            <input
-                                                type="text"
-                                                placeholder="Search by name or area..."
-                                                value={customerSearchTerm}
-                                                onChange={e => setCustomerSearchTerm(e.target.value)}
-                                                className="w-full p-2 border border-gray-300 rounded"
-                                                autoFocus
-                                            />
-                                        </div>
-                                        <ul className="max-h-60 overflow-y-auto" role="listbox">
-                                            <li
-                                                key="select-customer-placeholder"
-                                                onClick={() => {
-                                                    setCustomerId('');
-                                                    setIsCustomerDropdownOpen(false);
-                                                    setCustomerSearchTerm('');
-                                                }}
-                                                className="px-4 py-2 hover:bg-teal-50 cursor-pointer text-gray-500"
-                                                role="option"
-                                            >
-                                                Select a Customer
-                                            </li>
-                                            {filteredCustomers.map(c => (
-                                                <li
-                                                    key={c.id}
-                                                    onClick={() => {
-                                                        setCustomerId(c.id);
-                                                        setIsCustomerDropdownOpen(false);
-                                                        setCustomerSearchTerm('');
-                                                    }}
-                                                    className="px-4 py-2 hover:bg-teal-50 cursor-pointer border-t border-gray-100"
-                                                    role="option"
-                                                >
-                                                    {c.name} - {c.area}
-                                                </li>
-                                            ))}
-                                            {filteredCustomers.length === 0 && (
-                                                <li className="px-4 py-2 text-gray-400">No customers found.</li>
-                                            )}
-                                        </ul>
-                                    </div>
-                                )}
+                                    searchable
+                                    searchPlaceholder="Search by name or area..."
+                                />
                             </div>
                             {mode === 'add' && (
                                 <Button onClick={() => setIsAddingCustomer(true)} variant="secondary" className="flex-shrink-0">
@@ -778,19 +732,19 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                     </div>
                     
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Sale Date</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Sale Date</label>
                         <input 
                             type="date" 
                             value={saleDate} 
                             onChange={e => setSaleDate(e.target.value)} 
-                            className="w-full p-2 border rounded mt-1"
+                            className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
                             disabled={mode === 'edit'}
                         />
                     </div>
 
                     {customerId && customerTotalDue !== null && mode === 'add' && (
-                        <div className="p-2 bg-gray-50 rounded-lg text-center border">
-                            <p className="text-sm font-medium text-gray-600">
+                        <div className="p-2 bg-gray-50 dark:bg-slate-700/50 rounded-lg text-center border dark:border-slate-700">
+                            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
                                 Selected Customer's Total Outstanding Due:
                             </p>
                             <p className={`text-xl font-bold ${customerTotalDue > 0.01 ? 'text-red-600' : 'text-green-600'}`}>
@@ -813,15 +767,15 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                 </div>
                 <div className="mt-4 space-y-2">
                     {items.map(item => (
-                        <div key={item.productId} className="p-2 bg-gray-50 rounded animate-fade-in-fast border">
+                        <div key={item.productId} className="p-2 bg-gray-50 dark:bg-slate-700/50 rounded animate-fade-in-fast border dark:border-slate-700">
                             <div className="flex justify-between items-start">
                                 <p className="font-semibold flex-grow">{item.productName}</p>
                                 <DeleteButton variant="remove" onClick={() => handleRemoveItem(item.productId)} />
                             </div>
                             <div className="flex items-center gap-2 text-sm mt-1">
-                                <input type="number" value={item.quantity} onChange={e => handleItemChange(item.productId, 'quantity', e.target.value)} className="w-20 p-1 border rounded" placeholder="Qty"/>
+                                <input type="number" value={item.quantity} onChange={e => handleItemChange(item.productId, 'quantity', e.target.value)} className="w-20 p-1 border rounded dark:bg-slate-700 dark:border-slate-600" placeholder="Qty"/>
                                 <span>x</span>
-                                <input type="number" value={item.price} onChange={e => handleItemChange(item.productId, 'price', e.target.value)} className="w-24 p-1 border rounded" placeholder="Price"/>
+                                <input type="number" value={item.price} onChange={e => handleItemChange(item.productId, 'price', e.target.value)} className="w-24 p-1 border rounded dark:bg-slate-700 dark:border-slate-600" placeholder="Price"/>
                                 <span>= ₹{(Number(item.quantity) * Number(item.price)).toLocaleString('en-IN')}</span>
                             </div>
                         </div>
@@ -833,15 +787,15 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                 <div className="space-y-6">
                     {/* Section 1: Calculation Details */}
                     <div className="space-y-3">
-                        <div className="flex justify-between items-center text-gray-700">
+                        <div className="flex justify-between items-center text-gray-700 dark:text-gray-300">
                             <span>Subtotal:</span>
                             <span>₹{calculations.subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                         </div>
-                        <div className="flex justify-between items-center text-gray-700">
+                        <div className="flex justify-between items-center text-gray-700 dark:text-gray-300">
                             <span>Discount:</span>
-                            <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} className="w-28 p-1 border rounded text-right" />
+                            <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} className="w-28 p-1 border rounded text-right dark:bg-slate-700 dark:border-slate-600" />
                         </div>
-                        <div className="flex justify-between items-center text-gray-700">
+                        <div className="flex justify-between items-center text-gray-700 dark:text-gray-300">
                             <span>GST Included:</span>
                             <span>₹{calculations.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                         </div>
@@ -849,7 +803,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
 
                     {/* Section 2: Grand Total */}
                     <div className="text-center">
-                        <p className="text-sm text-gray-500">Grand Total</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Grand Total</p>
                         <p className="text-4xl font-bold text-primary">
                             ₹{calculations.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </p>
@@ -859,25 +813,27 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                     {mode === 'add' ? (
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Amount Paid Now</label>
-                                <input type="number" value={paymentDetails.amount} onChange={e => setPaymentDetails({...paymentDetails, amount: e.target.value })} placeholder={`Total is ₹${calculations.totalAmount.toLocaleString('en-IN')}`} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500 mt-1" />
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Amount Paid Now</label>
+                                <input type="number" value={paymentDetails.amount} onChange={e => setPaymentDetails({...paymentDetails, amount: e.target.value })} placeholder={`Total is ₹${calculations.totalAmount.toLocaleString('en-IN')}`} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500 mt-1 dark:bg-slate-700 dark:border-red-400 dark:text-slate-200" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Payment Method</label>
-                                <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any})} className="w-full p-2 border rounded custom-select mt-1">
-                                    <option value="CASH">Cash</option>
-                                    <option value="UPI">UPI</option>
-                                    <option value="CHEQUE">Cheque</option>
-                                </select>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Method</label>
+                                <div className="mt-1">
+                                    <Dropdown 
+                                        options={paymentMethodOptions}
+                                        value={paymentDetails.method}
+                                        onChange={(val) => setPaymentDetails({ ...paymentDetails, method: val as any })}
+                                    />
+                                </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Payment Reference (Optional)</label>
-                                <input type="text" placeholder="e.g. UPI ID, Cheque No." value={paymentDetails.reference} onChange={e => setPaymentDetails({...paymentDetails, reference: e.target.value })} className="w-full p-2 border rounded mt-1" />
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Reference (Optional)</label>
+                                <input type="text" placeholder="e.g. UPI ID, Cheque No." value={paymentDetails.reference} onChange={e => setPaymentDetails({...paymentDetails, reference: e.target.value })} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600" />
                             </div>
                         </div>
                     ) : (
-                        <div className="pt-4 border-t text-center">
-                            <p className="text-sm text-gray-600">Payments for this invoice must be managed from the customer's details page.</p>
+                        <div className="pt-4 border-t dark:border-slate-700 text-center">
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Payments for this invoice must be managed from the customer's details page.</p>
                         </div>
                     )}
                 </div>
@@ -887,16 +843,18 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                 <Card title="Record Payment for Dues">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Amount Paid</label>
-                            <input type="number" value={paymentDetails.amount} onChange={e => setPaymentDetails({...paymentDetails, amount: e.target.value })} placeholder={'Enter amount to pay dues'} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500" />
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Amount Paid</label>
+                            <input type="number" value={paymentDetails.amount} onChange={e => setPaymentDetails({...paymentDetails, amount: e.target.value })} placeholder={'Enter amount to pay dues'} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500 dark:bg-slate-700 dark:border-red-400" />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Payment Method</label>
-                            <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any})} className="w-full p-2 border rounded custom-select">
-                                <option value="CASH">Cash</option>
-                                <option value="UPI">UPI</option>
-                                <option value="CHEQUE">Cheque</option>
-                            </select>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Method</label>
+                            <div className="mt-1">
+                                <Dropdown 
+                                    options={paymentMethodOptions}
+                                    value={paymentDetails.method}
+                                    onChange={(val) => setPaymentDetails({ ...paymentDetails, method: val as any })}
+                                />
+                            </div>
                         </div>
                     </div>
                 </Card>
@@ -923,7 +881,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                         {customerId ? (items.length === 0 ? 'Enter payment or add items' : 'Complete billing details') : 'Select a customer'}
                     </Button>
                 )}
-                <Button onClick={resetForm} variant="secondary" className="w-full bg-teal-200 hover:bg-teal-300 focus:ring-teal-200">
+                <Button onClick={resetForm} variant="secondary" className="w-full bg-teal-200 hover:bg-teal-300 focus:ring-teal-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600">
                     {mode === 'edit' ? 'Cancel Edit' : 'Clear Form'}
                 </Button>
             </div>

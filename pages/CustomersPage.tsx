@@ -11,6 +11,7 @@ import autoTable from 'jspdf-autotable';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
 // FIX: Add missing import for logoBase64
 import { logoBase64 } from '../utils/logo';
+import Dropdown from '../components/Dropdown';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -42,6 +43,12 @@ const PaymentModal: React.FC<{
     
     const amountPaid = sale.payments.reduce((sum, p) => sum + Number(p.amount), 0);
     const dueAmount = Number(sale.totalAmount) - amountPaid;
+    
+    const paymentMethodOptions = [
+        { value: 'CASH', label: 'Cash' },
+        { value: 'UPI', label: 'UPI' },
+        { value: 'CHEQUE', label: 'Cheque' }
+    ];
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
@@ -50,34 +57,34 @@ const PaymentModal: React.FC<{
                     <p>Invoice Total: <span className="font-bold">₹{Number(sale.totalAmount).toLocaleString('en-IN')}</span></p>
                     <p>Amount Due: <span className="font-bold text-red-600">₹{dueAmount.toLocaleString('en-IN')}</span></p>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Amount</label>
-                        <input type="number" placeholder="Enter amount" value={paymentDetails.amount} onChange={e => setPaymentDetails({ ...paymentDetails, amount: e.target.value })} className="w-full p-2 border rounded" autoFocus/>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Amount</label>
+                        <input type="number" placeholder="Enter amount" value={paymentDetails.amount} onChange={e => setPaymentDetails({ ...paymentDetails, amount: e.target.value })} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" autoFocus/>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Method</label>
-                        <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any })} className="w-full p-2 border rounded custom-select">
-                            <option value="CASH">Cash</option>
-                            <option value="UPI">UPI</option>
-                            <option value="CHEQUE">Cheque</option>
-                        </select>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Method</label>
+                         <Dropdown 
+                            options={paymentMethodOptions}
+                            value={paymentDetails.method}
+                            onChange={(val) => setPaymentDetails({ ...paymentDetails, method: val as any })}
+                        />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Payment Date</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Date</label>
                         <input 
                             type="date" 
                             value={paymentDetails.date} 
                             onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} 
-                            className="w-full p-2 border rounded"
+                            className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600"
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Payment Reference (Optional)</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Reference (Optional)</label>
                         <input 
                             type="text"
                             placeholder="e.g. UPI ID, Cheque No."
                             value={paymentDetails.reference}
                             onChange={e => setPaymentDetails({ ...paymentDetails, reference: e.target.value })}
-                            className="w-full p-2 border rounded"
+                            className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600"
                         />
                     </div>
                     <div className="flex gap-2">

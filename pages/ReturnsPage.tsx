@@ -6,6 +6,7 @@ import Card from '../components/Card';
 import Button from '../components/Button';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import Dropdown from '../components/Dropdown';
 
 type ReturnType = 'CUSTOMER' | 'SUPPLIER';
 
@@ -297,19 +298,23 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium">{returnType === 'CUSTOMER' ? 'Customer' : 'Supplier'}</label>
-                        <select value={partyId} onChange={e => {setPartyId(e.target.value); setReferenceId(''); setReturnedItems({});}} className="w-full p-2 border rounded custom-select mt-1">
-                            <option value="">Select {returnType.toLowerCase()}</option>
-                            {partyList.map(party => <option key={party.id} value={party.id}>{party.name}</option>)}
-                        </select>
+                        <Dropdown 
+                            options={partyList.map(p => ({ value: p.id, label: p.name }))}
+                            value={partyId}
+                            onChange={(val) => { setPartyId(val); setReferenceId(''); setReturnedItems({}); }}
+                            placeholder={`Select ${returnType.toLowerCase()}`}
+                        />
                     </div>
 
                     {partyId && (
                         <div>
                              <label className="block text-sm font-medium">Original Invoice</label>
-                             <select value={referenceId} onChange={e => {setReferenceId(e.target.value); setReturnedItems({});}} className="w-full p-2 border rounded custom-select mt-1">
-                                <option value="">Select invoice</option>
-                                {invoiceList.map(inv => <option key={inv.id} value={inv.id}>{inv.id} - {new Date(inv.date).toLocaleDateString()}</option>)}
-                            </select>
+                             <Dropdown 
+                                options={invoiceList.map(inv => ({ value: inv.id, label: `${inv.id} - ${new Date(inv.date).toLocaleDateString()}`}))}
+                                value={referenceId}
+                                onChange={(val) => { setReferenceId(val); setReturnedItems({}); }}
+                                placeholder="Select invoice"
+                            />
                         </div>
                     )}
                     
