@@ -4,7 +4,8 @@ import { useAppContext } from '../context/AppContext';
 import * as db from '../utils/db';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import DataImportModal from '../components/DataImportModal';
+// FIX: Module '"file:///components/DataImportModal"' has no default export. Changed to a named import.
+import { DataImportModal } from '../components/DataImportModal';
 import { Page, Customer, Sale, Purchase, Supplier } from '../types';
 import { testData, testProfile } from '../utils/testData';
 

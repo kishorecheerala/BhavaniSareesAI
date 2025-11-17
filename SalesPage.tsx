@@ -45,9 +45,9 @@ const AddCustomerModal: React.FC<{
         <Card title="Add New Customer" className="w-full max-w-md animate-scale-in">
             <div className="space-y-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Customer ID</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Customer ID</label>
                     <div className="flex items-center mt-1">
-                        <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                        <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-gray-400">
                             CUST-
                         </span>
                         <input
@@ -56,29 +56,29 @@ const AddCustomerModal: React.FC<{
                             placeholder="Enter unique ID"
                             value={newCustomer.id}
                             onChange={onInputChange}
-                            className="w-full p-2 border rounded-r-md"
+                            className="w-full p-2 border rounded-r-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
                         />
                     </div>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Name</label>
-                    <input type="text" placeholder="Full Name" name="name" value={newCustomer.name} onChange={onInputChange} className="w-full p-2 border rounded mt-1" />
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
+                    <input type="text" placeholder="Full Name" name="name" value={newCustomer.name} onChange={onInputChange} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Phone</label>
-                    <input type="text" placeholder="Phone Number" name="phone" value={newCustomer.phone} onChange={onInputChange} className="w-full p-2 border rounded mt-1" />
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone</label>
+                    <input type="text" placeholder="Phone Number" name="phone" value={newCustomer.phone} onChange={onInputChange} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Address</label>
-                    <input type="text" placeholder="Full Address" name="address" value={newCustomer.address} onChange={onInputChange} className="w-full p-2 border rounded mt-1" />
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Address</label>
+                    <input type="text" placeholder="Full Address" name="address" value={newCustomer.address} onChange={onInputChange} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Area/Location</label>
-                    <input type="text" placeholder="e.g. Ameerpet" name="area" value={newCustomer.area} onChange={onInputChange} className="w-full p-2 border rounded mt-1" />
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Area/Location</label>
+                    <input type="text" placeholder="e.g. Ameerpet" name="area" value={newCustomer.area} onChange={onInputChange} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
                 </div>
                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Reference (Optional)</label>
-                    <input type="text" placeholder="Referred by..." name="reference" value={newCustomer.reference} onChange={onInputChange} className="w-full p-2 border rounded mt-1" />
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Reference (Optional)</label>
+                    <input type="text" placeholder="Referred by..." name="reference" value={newCustomer.reference} onChange={onInputChange} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
                 </div>
                 <div className="flex gap-2">
                     <Button onClick={onSave} className="w-full">Save Customer</Button>
@@ -101,7 +101,7 @@ const ProductSearchModal: React.FC<{
           <Card className="w-full max-w-lg animate-scale-in">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold">Select Product</h2>
-              <button onClick={onClose} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
+              <button onClick={onClose} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
                 <X size={20}/>
               </button>
             </div>
@@ -112,7 +112,7 @@ const ProductSearchModal: React.FC<{
                 placeholder="Search products..."
                 value={productSearchTerm}
                 onChange={e => setProductSearchTerm(e.target.value)}
-                className="w-full p-2 pl-10 border rounded-lg"
+                className="w-full p-2 pl-10 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
                 autoFocus
               />
             </div>
@@ -120,10 +120,10 @@ const ProductSearchModal: React.FC<{
               {products
                 .filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase()) || p.id.toLowerCase().includes(productSearchTerm.toLowerCase()))
                 .map(p => (
-                <div key={p.id} onClick={() => onSelect(p)} className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-teal-50 flex justify-between items-center">
+                <div key={p.id} onClick={() => onSelect(p)} className="p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg cursor-pointer hover:bg-teal-50 dark:hover:bg-slate-700 flex justify-between items-center">
                   <div>
                     <p className="font-semibold">{p.name}</p>
-                    <p className="text-sm text-gray-500">Code: {p.id}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Code: {p.id}</p>
                   </div>
                   <div className="text-right">
                       <p className="font-semibold">₹{Number(p.salePrice).toLocaleString('en-IN')}</p>
@@ -178,11 +178,11 @@ const QRScannerModal: React.FC<{
     return (
         <div className="fixed inset-0 bg-black bg-opacity-75 backdrop-blur-sm flex flex-col items-center justify-center z-50 p-4 animate-fade-in-fast">
             <Card title="Scan Product QR Code" className="w-full max-w-md relative animate-scale-in">
-                 <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
+                 <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
                     <X size={20}/>
                  </button>
                 <div id="qr-reader-sales" className="w-full mt-4 rounded-lg overflow-hidden border"></div>
-                <p className="text-center text-sm my-2 text-gray-600">{scanStatus}</p>
+                <p className="text-center text-sm my-2 text-gray-600 dark:text-gray-400">{scanStatus}</p>
             </Card>
         </div>
     );
@@ -429,121 +429,117 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
 
     const generateAndSharePDF = async (sale: Sale, customer: Customer, paidAmountOnSale: number) => {
       try {
-        let qrCodeBase64: string | null = null;
-        try {
-            const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(sale.id)}&size=50x50&margin=0`;
-            qrCodeBase64 = await fetchImageAsBase64(qrCodeUrl);
-        } catch (error) {
-            console.error("Failed to fetch QR code", error);
-        }
+        const doc = new jsPDF();
+        const profile = state.profile;
+        let currentY = 15;
 
-        const renderContentOnDoc = (doc: jsPDF) => {
-            const subTotal = Number(sale.totalAmount) + Number(sale.discount);
-            const dueAmountOnSale = Number(sale.totalAmount) - paidAmountOnSale;
-            const pageWidth = doc.internal.pageSize.getWidth();
-            const centerX = pageWidth / 2;
-            const margin = 5;
-            const maxLineWidth = pageWidth - margin * 2;
-            let y = 5;
+        // FIX: Change image format to PNG
+        doc.addImage(logoBase64, 'PNG', 14, 10, 25, 25);
 
-            doc.addImage(logoBase64, 'JPEG', centerX - 10, y, 20, 20);
-            y += 22;
-            
-            doc.setFont('times', 'italic');
-            doc.setFontSize(12);
-            doc.text('Om Namo Venkatesaya', centerX, y, { align: 'center' });
-            y += 7;
-            doc.setFont('times', 'bold');
-            doc.setFontSize(16);
+        if (profile) {
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(24);
             doc.setTextColor('#0d9488');
-            doc.text(state.profile?.name || 'Business Manager', centerX, y, { align: 'center' });
-            y += 7;
-            doc.setDrawColor('#cccccc');
-            doc.line(margin, y, pageWidth - margin, y);
-            y += 6;
-            doc.setFont('Helvetica', 'normal');
-            doc.setFontSize(8);
-            const invoiceTextTopY = y - 3;
-            doc.text(`Invoice: ${sale.id}`, margin, y);
-            y += 4;
-            doc.text(`Date: ${new Date(sale.date).toLocaleString()}`, margin, y);
-            if (qrCodeBase64) {
-                const qrSize = 15;
-                doc.addImage(qrCodeBase64, 'PNG', pageWidth - margin - qrSize, invoiceTextTopY, qrSize, qrSize);
-                const qrBottom = invoiceTextTopY + qrSize;
-                if (qrBottom > y) y = qrBottom;
-            }
-            y += 5;
-            doc.setFont('Helvetica', 'bold');
-            doc.text('Billed To:', margin, y);
-            y += 4;
-            doc.setFont('Helvetica', 'normal');
-            doc.text(customer.name, margin, y);
-            y += 4;
-            const addressLines = doc.splitTextToSize(customer.address, maxLineWidth);
-            doc.text(addressLines, margin, y);
-            y += (addressLines.length * 4) + 2;
-            doc.setDrawColor('#000000');
-            doc.line(margin, y, pageWidth - margin, y);
-            y += 5;
-            doc.setFont('Helvetica', 'bold');
-            doc.text('Purchase Details', centerX, y, { align: 'center' });
-            y += 5;
-            doc.line(margin, y, pageWidth - margin, y);
-            y += 5;
-            doc.text('Item', margin, y);
-            doc.text('Total', pageWidth - margin, y, { align: 'right' });
-            y += 2;
-            doc.setDrawColor('#cccccc');
-            doc.line(margin, y, pageWidth - margin, y);
-            y += 5;
-            doc.setFont('Helvetica', 'normal');
-            sale.items.forEach(item => {
-                const itemTotal = Number(item.price) * Number(item.quantity);
-                doc.setFontSize(9);
-                const splitName = doc.splitTextToSize(item.productName, maxLineWidth - 20);
-                doc.text(splitName, margin, y);
-                doc.text(`Rs. ${itemTotal.toLocaleString('en-IN')}`, pageWidth - margin, y, { align: 'right' });
-                y += (splitName.length * 4);
-                doc.setFontSize(7);
-                doc.setTextColor('#666666');
-                doc.text(`(x${item.quantity} @ Rs. ${Number(item.price).toLocaleString('en-IN')})`, margin, y);
-                y += 6;
-                doc.setTextColor('#000000');
-            });
-            y -= 2;
-            doc.setDrawColor('#cccccc');
-            doc.line(margin, y, pageWidth - margin, y);
-            y += 5;
-            const totals = [
-                { label: 'Subtotal', value: subTotal },
-                { label: 'GST', value: Number(sale.gstAmount) },
-                { label: 'Discount', value: -Number(sale.discount) },
-                { label: 'Total', value: Number(sale.totalAmount), bold: true },
-                { label: 'Paid', value: paidAmountOnSale },
-                { label: 'Due', value: dueAmountOnSale, bold: true },
-            ];
-            const totalsX = pageWidth - margin;
-            totals.forEach(({ label, value, bold = false }) => {
-                doc.setFont('Helvetica', bold ? 'bold' : 'normal');
-                doc.setFontSize(bold ? 10 : 8);
-                doc.text(label, totalsX - 25, y, { align: 'right' });
-                doc.text(`Rs. ${value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, y, { align: 'right' });
-                y += (bold ? 5 : 4);
-            });
-            return y;
-        };
+            doc.text(profile.name, 105, currentY, { align: 'center' });
+            currentY += 8;
+            doc.setFontSize(10);
+            doc.setTextColor('#333333');
+            const addressLines = doc.splitTextToSize(profile.address, 180);
+            doc.text(addressLines, 105, currentY, { align: 'center' });
+            currentY += (addressLines.length * 5);
+            doc.text(`Phone: ${profile.phone} | GSTIN: ${profile.gstNumber}`, 105, currentY, { align: 'center' });
+        }
         
-        const dummyDoc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, 500] });
-        const finalY = renderContentOnDoc(dummyDoc);
-        const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, finalY + 5] });
-        renderContentOnDoc(doc);
+        currentY = Math.max(currentY, 10 + 25) + 5;
+
+        doc.setDrawColor('#cccccc');
+        doc.line(14, currentY, 196, currentY);
+        currentY += 10;
+        
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text('TAX INVOICE', 105, currentY, { align: 'center' });
+        currentY += 10;
+        
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Billed To:', 14, currentY);
+        doc.text('Invoice Details:', 120, currentY);
+        currentY += 5;
+
+        doc.setFont('helvetica', 'normal');
+        doc.text(customer.name, 14, currentY);
+        doc.text(`Invoice ID: ${sale.id}`, 120, currentY);
+        currentY += 5;
+        
+        const customerAddressLines = doc.splitTextToSize(customer.address, 80);
+        doc.text(customerAddressLines, 14, currentY);
+        doc.text(`Date: ${new Date(sale.date).toLocaleString()}`, 120, currentY);
+        currentY += (customerAddressLines.length * 5) + 5;
+        
+        autoTable(doc, {
+            startY: currentY,
+            head: [['#', 'Item Description', 'Qty', 'Rate', 'Amount']],
+            body: sale.items.map((item, index) => [
+                index + 1,
+                item.productName,
+                item.quantity,
+                `Rs. ${Number(item.price).toLocaleString('en-IN')}`,
+                `Rs. ${(Number(item.quantity) * Number(item.price)).toLocaleString('en-IN')}`
+            ]),
+            theme: 'grid',
+            headStyles: { fillColor: [13, 148, 136] },
+            columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } }
+        });
+        
+        currentY = (doc as any).lastAutoTable.finalY + 10;
+        
+        // FIX: Calculate values from the `sale` object, not stale component state. This also fixes the scope issue.
+        const subTotal = sale.items.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
+        const dueAmountOnSale = Number(sale.totalAmount) - paidAmountOnSale;
+        
+        const totalsX = 196;
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Subtotal:', totalsX - 30, currentY, { align: 'right' });
+        doc.text(`Rs. ${subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
+        currentY += 7;
+
+        doc.text('Discount:', totalsX - 30, currentY, { align: 'right' });
+        doc.text(`- Rs. ${Number(sale.discount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
+        currentY += 7;
+
+        doc.text('GST Included:', totalsX - 30, currentY, { align: 'right' });
+        doc.text(`Rs. ${Number(sale.gstAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
+        currentY += 7;
+        
+        doc.setFont('helvetica', 'bold');
+        doc.text('Grand Total:', totalsX - 30, currentY, { align: 'right' });
+        doc.text(`Rs. ${Number(sale.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
+        currentY += 7;
+
+        doc.setFont('helvetica', 'normal');
+        doc.text('Paid:', totalsX - 30, currentY, { align: 'right' });
+        doc.text(`Rs. ${paidAmountOnSale.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
+        currentY += 7;
+
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(dueAmountOnSale > 0.01 ? '#dc2626' : '#16a34a');
+        doc.text('Amount Due:', totalsX - 30, currentY, { align: 'right' });
+        doc.text(`Rs. ${dueAmountOnSale.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
+        
+        currentY = doc.internal.pageSize.height - 20;
+        doc.setFontSize(10);
+        doc.setTextColor('#888888');
+        doc.text('Thank you for your business!', 105, currentY, { align: 'center' });
         
         const pdfBlob = doc.output('blob');
         const pdfFile = new File([pdfBlob], `Invoice-${sale.id}.pdf`, { type: 'application/pdf' });
         const businessName = state.profile?.name || 'Your Business';
         
-        const whatsAppText = `Thank you for your purchase from ${businessName}!\n\n*Invoice Summary:*\nInvoice ID: ${sale.id}\nDate: ${new Date(sale.date).toLocaleString()}\n\n*Items:*\n${sale.items.map(i => `- ${i.productName} (x${i.quantity}) - Rs. ${(Number(i.price) * Number(i.quantity)).toLocaleString('en-IN')}`).join('\n')}\n\nSubtotal: Rs. ${calculations.subTotal.toLocaleString('en-IN')}\nGST: Rs. ${calculations.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\nDiscount: Rs. ${calculations.discountAmount.toLocaleString('en-IN')}\n*Total: Rs. ${Number(sale.totalAmount).toLocaleString('en-IN')}*\nPaid: Rs. ${paidAmountOnSale.toLocaleString('en-IN')}\nDue: Rs. ${dueAmountOnSale.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\nHave a blessed day!`;
+        // FIX: Use locally scoped variables for whatsAppText instead of calculations from component state to ensure data consistency.
+        const whatsAppText = `Thank you for your purchase from ${businessName}!\n\n*Invoice Summary:*\nInvoice ID: ${sale.id}\nDate: ${new Date(sale.date).toLocaleString()}\n\n*Items:*\n${sale.items.map(i => `- ${i.productName} (x${i.quantity}) - Rs. ${(Number(i.price) * Number(i.quantity)).toLocaleString('en-IN')}`).join('\n')}\n\nSubtotal: Rs. ${subTotal.toLocaleString('en-IN')}\nGST: Rs. ${Number(sale.gstAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}\nDiscount: Rs. ${Number(sale.discount).toLocaleString('en-IN')}\n*Total: Rs. ${Number(sale.totalAmount).toLocaleString('en-IN')}*\nPaid: Rs. ${paidAmountOnSale.toLocaleString('en-IN')}\nDue: Rs. ${dueAmountOnSale.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\nHave a blessed day!`;
         
         if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
           try {
@@ -713,13 +709,13 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             <Card>
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Customer</label>
                         <div className="flex gap-2 items-center">
                             <div className="relative w-full" ref={customerDropdownRef}>
                                 <button
                                     type="button"
                                     onClick={() => setIsCustomerDropdownOpen(prev => !prev)}
-                                    className="w-full p-2 border rounded bg-white text-left custom-select"
+                                    className="w-full p-2 border rounded bg-white text-left custom-select dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
                                     disabled={mode === 'edit' || (mode === 'add' && items.length > 0)}
                                     aria-haspopup="listbox"
                                     aria-expanded={isCustomerDropdownOpen}
@@ -728,14 +724,14 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                                 </button>
 
                                 {isCustomerDropdownOpen && (
-                                    <div className="absolute top-full left-0 w-full mt-1 bg-gray-800 text-white rounded-md shadow-lg z-10 animate-fade-in-fast">
-                                        <div className="p-2 border-b border-gray-700">
+                                    <div className="absolute top-full left-0 w-full mt-1 bg-white dark:bg-slate-900 rounded-md shadow-lg border dark:border-slate-700 z-40 animate-fade-in-fast">
+                                        <div className="p-2 border-b dark:border-slate-700">
                                             <input
                                                 type="text"
                                                 placeholder="Search by name or area..."
                                                 value={customerSearchTerm}
                                                 onChange={e => setCustomerSearchTerm(e.target.value)}
-                                                className="w-full p-2 bg-gray-700 border border-gray-600 rounded text-white"
+                                                className="w-full p-2 border border-gray-300 rounded dark:bg-slate-800 dark:border-slate-600 dark:text-white"
                                                 autoFocus
                                             />
                                         </div>
@@ -747,7 +743,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                                                     setIsCustomerDropdownOpen(false);
                                                     setCustomerSearchTerm('');
                                                 }}
-                                                className="px-4 py-2 hover:bg-gray-700 cursor-pointer text-gray-400"
+                                                className="px-4 py-2 hover:bg-teal-50 dark:hover:bg-slate-800 cursor-pointer text-gray-500"
                                                 role="option"
                                             >
                                                 Select a Customer
@@ -760,7 +756,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                                                         setIsCustomerDropdownOpen(false);
                                                         setCustomerSearchTerm('');
                                                     }}
-                                                    className="px-4 py-2 hover:bg-gray-700 cursor-pointer border-t border-gray-600"
+                                                    className="px-4 py-2 hover:bg-teal-50 dark:hover:bg-slate-800 cursor-pointer border-t dark:border-slate-800"
                                                     role="option"
                                                 >
                                                     {c.name} - {c.area}
@@ -782,19 +778,19 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                     </div>
                     
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Sale Date</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Sale Date</label>
                         <input 
                             type="date" 
                             value={saleDate} 
                             onChange={e => setSaleDate(e.target.value)} 
-                            className="w-full p-2 border rounded mt-1"
+                            className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
                             disabled={mode === 'edit'}
                         />
                     </div>
 
                     {customerId && customerTotalDue !== null && mode === 'add' && (
-                        <div className="p-2 bg-gray-50 rounded-lg text-center border">
-                            <p className="text-sm font-medium text-gray-600">
+                        <div className="p-2 bg-gray-50 dark:bg-slate-700/50 rounded-lg text-center border dark:border-slate-700">
+                            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
                                 Selected Customer's Total Outstanding Due:
                             </p>
                             <p className={`text-xl font-bold ${customerTotalDue > 0.01 ? 'text-red-600' : 'text-green-600'}`}>
@@ -817,15 +813,15 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                 </div>
                 <div className="mt-4 space-y-2">
                     {items.map(item => (
-                        <div key={item.productId} className="p-2 bg-gray-50 rounded animate-fade-in-fast border">
+                        <div key={item.productId} className="p-2 bg-gray-50 dark:bg-slate-700/50 rounded animate-fade-in-fast border dark:border-slate-700">
                             <div className="flex justify-between items-start">
                                 <p className="font-semibold flex-grow">{item.productName}</p>
                                 <DeleteButton variant="remove" onClick={() => handleRemoveItem(item.productId)} />
                             </div>
                             <div className="flex items-center gap-2 text-sm mt-1">
-                                <input type="number" value={item.quantity} onChange={e => handleItemChange(item.productId, 'quantity', e.target.value)} className="w-20 p-1 border rounded" placeholder="Qty"/>
+                                <input type="number" value={item.quantity} onChange={e => handleItemChange(item.productId, 'quantity', e.target.value)} className="w-20 p-1 border rounded dark:bg-slate-700 dark:border-slate-600" placeholder="Qty"/>
                                 <span>x</span>
-                                <input type="number" value={item.price} onChange={e => handleItemChange(item.productId, 'price', e.target.value)} className="w-24 p-1 border rounded" placeholder="Price"/>
+                                <input type="number" value={item.price} onChange={e => handleItemChange(item.productId, 'price', e.target.value)} className="w-24 p-1 border rounded dark:bg-slate-700 dark:border-slate-600" placeholder="Price"/>
                                 <span>= ₹{(Number(item.quantity) * Number(item.price)).toLocaleString('en-IN')}</span>
                             </div>
                         </div>
@@ -837,15 +833,15 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                 <div className="space-y-6">
                     {/* Section 1: Calculation Details */}
                     <div className="space-y-3">
-                        <div className="flex justify-between items-center text-gray-700">
+                        <div className="flex justify-between items-center text-gray-700 dark:text-gray-300">
                             <span>Subtotal:</span>
                             <span>₹{calculations.subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                         </div>
-                        <div className="flex justify-between items-center text-gray-700">
+                        <div className="flex justify-between items-center text-gray-700 dark:text-gray-300">
                             <span>Discount:</span>
-                            <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} className="w-28 p-1 border rounded text-right" />
+                            <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} className="w-28 p-1 border rounded text-right dark:bg-slate-700 dark:border-slate-600" />
                         </div>
-                        <div className="flex justify-between items-center text-gray-700">
+                        <div className="flex justify-between items-center text-gray-700 dark:text-gray-300">
                             <span>GST Included:</span>
                             <span>₹{calculations.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                         </div>
@@ -853,7 +849,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
 
                     {/* Section 2: Grand Total */}
                     <div className="text-center">
-                        <p className="text-sm text-gray-500">Grand Total</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Grand Total</p>
                         <p className="text-4xl font-bold text-primary">
                             ₹{calculations.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </p>
@@ -863,25 +859,25 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                     {mode === 'add' ? (
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Amount Paid Now</label>
-                                <input type="number" value={paymentDetails.amount} onChange={e => setPaymentDetails({...paymentDetails, amount: e.target.value })} placeholder={`Total is ₹${calculations.totalAmount.toLocaleString('en-IN')}`} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500 mt-1" />
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Amount Paid Now</label>
+                                <input type="number" value={paymentDetails.amount} onChange={e => setPaymentDetails({...paymentDetails, amount: e.target.value })} placeholder={`Total is ₹${calculations.totalAmount.toLocaleString('en-IN')}`} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500 mt-1 dark:bg-slate-700 dark:border-red-400 dark:text-slate-200" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Payment Method</label>
-                                <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any})} className="w-full p-2 border rounded custom-select mt-1">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Method</label>
+                                <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any})} className="w-full p-2 border rounded custom-select mt-1 dark:bg-slate-700 dark:border-slate-600">
                                     <option value="CASH">Cash</option>
                                     <option value="UPI">UPI</option>
                                     <option value="CHEQUE">Cheque</option>
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Payment Reference (Optional)</label>
-                                <input type="text" placeholder="e.g. UPI ID, Cheque No." value={paymentDetails.reference} onChange={e => setPaymentDetails({...paymentDetails, reference: e.target.value })} className="w-full p-2 border rounded mt-1" />
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Reference (Optional)</label>
+                                <input type="text" placeholder="e.g. UPI ID, Cheque No." value={paymentDetails.reference} onChange={e => setPaymentDetails({...paymentDetails, reference: e.target.value })} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600" />
                             </div>
                         </div>
                     ) : (
-                        <div className="pt-4 border-t text-center">
-                            <p className="text-sm text-gray-600">Payments for this invoice must be managed from the customer's details page.</p>
+                        <div className="pt-4 border-t dark:border-slate-700 text-center">
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Payments for this invoice must be managed from the customer's details page.</p>
                         </div>
                     )}
                 </div>
@@ -891,12 +887,12 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                 <Card title="Record Payment for Dues">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Amount Paid</label>
-                            <input type="number" value={paymentDetails.amount} onChange={e => setPaymentDetails({...paymentDetails, amount: e.target.value })} placeholder={'Enter amount to pay dues'} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500" />
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Amount Paid</label>
+                            <input type="number" value={paymentDetails.amount} onChange={e => setPaymentDetails({...paymentDetails, amount: e.target.value })} placeholder={'Enter amount to pay dues'} className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500 dark:bg-slate-700 dark:border-red-400" />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Payment Method</label>
-                            <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any})} className="w-full p-2 border rounded custom-select">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Method</label>
+                            <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any})} className="w-full p-2 border rounded custom-select dark:bg-slate-700 dark:border-slate-600">
                                 <option value="CASH">Cash</option>
                                 <option value="UPI">UPI</option>
                                 <option value="CHEQUE">Cheque</option>
@@ -927,7 +923,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                         {customerId ? (items.length === 0 ? 'Enter payment or add items' : 'Complete billing details') : 'Select a customer'}
                     </Button>
                 )}
-                <Button onClick={resetForm} variant="secondary" className="w-full bg-teal-200 hover:bg-teal-300 focus:ring-teal-200">
+                <Button onClick={resetForm} variant="secondary" className="w-full bg-teal-200 hover:bg-teal-300 focus:ring-teal-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600">
                     {mode === 'edit' ? 'Cancel Edit' : 'Clear Form'}
                 </Button>
             </div>

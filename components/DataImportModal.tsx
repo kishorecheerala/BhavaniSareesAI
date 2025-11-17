@@ -36,9 +36,9 @@ const StatusNotification: React.FC<{ status: { type: 'info' | 'success' | 'error
     if (!status) return null;
 
     const variants = {
-        info: 'bg-blue-100 text-blue-800',
-        success: 'bg-green-100 text-green-800',
-        error: 'bg-red-100 text-red-800',
+        info: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300',
+        success: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300',
+        error: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300',
     };
     const icons = {
         info: <Info className="w-5 h-5 mr-3 flex-shrink-0" />,
@@ -60,7 +60,7 @@ interface DataImportModalProps {
   onClose: () => void;
 }
 
-const DataImportModal: React.FC<DataImportModalProps> = ({ isOpen, onClose }) => {
+export const DataImportModal: React.FC<DataImportModalProps> = ({ isOpen, onClose }) => {
   const { dispatch, showToast } = useAppContext();
   const [activeTab, setActiveTab] = useState<Tab>('customers');
   const [importStatus, setImportStatus] = useState<{ type: 'info' | 'success' | 'error', message: string } | null>(null);
@@ -174,68 +174,61 @@ const DataImportModal: React.FC<DataImportModalProps> = ({ isOpen, onClose }) =>
       <Card className="w-full max-w-4xl animate-scale-in">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-primary">Import Data from CSV</h2>
-          <button onClick={onClose} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors"><X size={24} /></button>
+          <button onClick={onClose} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"><X size={24} /></button>
         </div>
         
         <div className="flex flex-col md:flex-row md:gap-8 mt-4">
             {/* Nav (Top on mobile, Left on desktop) */}
-            <nav className="flex flex-row md:flex-col md:space-y-2 md:border-r md:pr-6 space-x-2 md:space-x-0 overflow-x-auto border-b md:border-b-0 pb-2 md:pb-0 mb-4 md:mb-0" aria-label="Tabs">
+            <nav className="flex flex-row md:flex-col md:space-y-2 md:border-r md:pr-6 dark:border-slate-700 space-x-2 md:space-x-0 overflow-x-auto border-b md:border-b-0 pb-2 md:pb-0 mb-4 md:mb-0" aria-label="Tabs">
                 {Object.entries(tabConfig).map(([key, { label, icon: Icon }]) => {
                     const isActive = activeTab === key;
                     return (
                         <button
                             key={key}
-                            onClick={() => { setActiveTab(key as Tab); setImportStatus(null); }}
-                            className={`group shrink-0 flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors w-full justify-center md:justify-start
-                                ${isActive
-                                    ? 'bg-purple-100 text-primary'
-                                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                                }`}
+                            onClick={() => setActiveTab(key as Tab)}
+                            className={`flex items-center gap-3 p-3 rounded-md text-left w-full transition-colors ${
+                                isActive
+                                    ? 'bg-primary text-white'
+                                    : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-slate-700'
+                            }`}
                             aria-current={isActive ? 'page' : undefined}
                         >
-                            <Icon className={`w-5 h-5 ${isActive ? 'text-primary' : 'text-gray-400 group-hover:text-gray-500'}`} />
-                            <span>{label}</span>
+                            <Icon className="w-5 h-5" />
+                            <span className="font-semibold">{label}</span>
                         </button>
                     );
                 })}
             </nav>
 
-            {/* Content Panel */}
-            <div className="flex-grow">
-                <h3 className="font-bold text-lg">Import {tabConfig[activeTab].label}</h3>
-                <p className="text-sm text-gray-600 mt-1">
-                    You can use a spreadsheet program like Excel to create a CSV file.
-                </p>
-                <p className="text-sm font-bold text-red-600 mt-2">
-                    Warning: Importing a file will replace all existing {activeTab} in the application.
-                </p>
-                
+            {/* Content */}
+            <div className="flex-1">
+                <div className="bg-blue-50 dark:bg-slate-700/50 border-l-4 border-blue-400 p-4 rounded-r-lg">
+                    <h3 className="font-semibold text-blue-800 dark:text-blue-300">Instructions:</h3>
+                    <ol className="list-decimal list-inside text-sm text-blue-700 dark:text-blue-300/90 mt-2 space-y-1">
+                        <li>Download the template CSV file.</li>
+                        <li>Fill it with your data. <strong>Do not change the header row.</strong></li>
+                        <li>Make sure each <strong>ID is unique</strong>. The import will fail if an ID already exists.</li>
+                        <li>Upload the file. This will <strong>replace</strong> all existing data for this category.</li>
+                    </ol>
+                </div>
+
                 <StatusNotification status={importStatus} onClose={() => setImportStatus(null)} />
-                
-                <div className="mt-6 space-y-4">
-                    <div>
-                        <h4 className="font-semibold">Step 1: Download Template</h4>
-                        <p className="text-xs text-gray-500 mb-2">Use this template to ensure your data is in the correct format.</p>
-                        <Button onClick={() => handleDownloadTemplate(activeTab)} variant="secondary" className="w-full sm:w-auto">
-                            <Download className="w-4 h-4 mr-2" />
-                            Download {tabConfig[activeTab].label} Template
-                        </Button>
-                    </div>
-                    <div>
-                        <h4 className="font-semibold">Step 2: Upload Your File</h4>
-                        <p className="text-xs text-gray-500 mb-2">Select the CSV file you prepared.</p>
-                         <label htmlFor="csv-import-input" className="px-4 py-2 rounded-md font-semibold text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-sm flex items-center justify-center gap-2 transform hover:scale-[1.02] active:scale-[0.98] bg-primary hover:bg-purple-800 focus:ring-primary cursor-pointer w-full sm:w-auto">
-                            <Upload className="w-4 h-4 mr-2" />
-                            Upload {tabConfig[activeTab].label} CSV
-                        </label>
-                        <input 
-                            type="file" 
-                            id="csv-import-input"
-                            accept=".csv, text/csv"
-                            className="hidden"
-                            onChange={(e) => handleFileImport(e, tabConfig[activeTab].storeName)}
-                        />
-                    </div>
+
+                <div className="mt-6 flex flex-col sm:flex-row gap-4">
+                    <Button onClick={() => handleDownloadTemplate(activeTab)} className="w-full">
+                        <Download className="w-4 h-4 mr-2" /> Download Template
+                    </Button>
+                    <label htmlFor={`csv-import-${activeTab}`} className="px-4 py-2 rounded-md font-semibold text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-sm flex items-center justify-center gap-2 transform hover:shadow-md hover:-translate-y-px active:shadow-sm active:translate-y-0 bg-secondary hover:bg-teal-500 focus:ring-secondary cursor-pointer w-full">
+                        <Upload className="w-4 h-4 mr-2" /> Upload & Replace
+                    </label>
+                    <input
+                        id={`csv-import-${activeTab}`}
+                        type="file"
+                        accept=".csv, text/csv"
+                        className="hidden"
+                        onChange={(e) => handleFileImport(e, tabConfig[activeTab].storeName)}
+                        onClick={(event) => { (event.target as HTMLInputElement).value = '' }} // Reset file input
+                    />
                 </div>
             </div>
         </div>
@@ -243,5 +236,3 @@ const DataImportModal: React.FC<DataImportModalProps> = ({ isOpen, onClose }) =>
     </div>
   );
 };
-
-export default DataImportModal;

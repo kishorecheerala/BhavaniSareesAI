@@ -63,11 +63,11 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, onClose
 
     return (
         <div 
-          className="absolute top-full right-0 mt-2 w-80 max-h-[70vh] flex flex-col bg-white rounded-lg shadow-2xl border border-gray-200 text-text animate-scale-in origin-top-right z-[150]"
+          className="absolute top-full right-0 mt-2 w-80 max-h-[70vh] flex flex-col bg-white dark:bg-slate-800 rounded-lg shadow-2xl border border-gray-200 dark:border-slate-700 text-text dark:text-slate-200 animate-scale-in origin-top-right z-[150]"
           role="dialog"
           aria-label="Notifications Panel"
         >
-            <div className="flex justify-between items-center p-3 border-b">
+            <div className="flex justify-between items-center p-3 border-b dark:border-slate-700">
                 <h3 className="font-bold text-lg text-primary">Notifications</h3>
                 <Button onClick={handleMarkAllAsRead} variant="secondary" className="px-2 py-1 text-xs">
                     Mark all as read
@@ -75,20 +75,20 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, onClose
             </div>
             <div className="flex-grow overflow-y-auto">
                 {notifications.length === 0 ? (
-                    <p className="text-center text-gray-500 p-6">No new notifications.</p>
+                    <p className="text-center text-gray-500 dark:text-gray-400 p-6">No new notifications.</p>
                 ) : (
-                    <div className="divide-y">
+                    <div className="divide-y dark:divide-slate-700">
                         {notifications.map(notification => (
                             <div
                                 key={notification.id}
                                 onClick={() => handleNotificationClick(notification.id, notification.type, notification.actionLink)}
-                                className={`p-3 flex items-start gap-3 transition-colors ${notification.actionLink ? 'cursor-pointer' : ''} ${!notification.read ? 'bg-purple-50 hover:bg-purple-100' : 'hover:bg-gray-50'}`}
+                                className={`p-3 flex items-start gap-3 transition-colors ${notification.actionLink ? 'cursor-pointer' : ''} ${!notification.read ? 'bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/50 dark:hover:bg-purple-900/80' : 'hover:bg-gray-50 dark:hover:bg-slate-700/50'}`}
                             >
                                 <NotificationIcon type={notification.type} />
                                 <div>
                                     <p className="font-semibold text-sm">{notification.title}</p>
-                                    <p className="text-xs text-gray-600">{notification.message}</p>
-                                    <p className="text-xs text-gray-400 mt-1">{timeSince(notification.createdAt)}</p>
+                                    <p className="text-xs text-gray-600 dark:text-gray-400">{notification.message}</p>
+                                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{timeSince(notification.createdAt)}</p>
                                 </div>
                             </div>
                         ))}

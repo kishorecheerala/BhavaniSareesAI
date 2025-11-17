@@ -347,19 +347,19 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
               <div className="mt-2">
                 <button 
                   onClick={() => setLanguage('en')}
-                  className={`px-3 py-1 text-sm rounded-l-md ${language === 'en' ? 'bg-primary text-white' : 'bg-gray-200'}`}
+                  className={`px-3 py-1 text-sm rounded-l-md ${language === 'en' ? 'bg-primary text-white' : 'bg-gray-200 dark:bg-slate-700'}`}
                 >
                   English
                 </button>
                 <button 
                   onClick={() => setLanguage('te')}
-                  className={`px-3 py-1 text-sm rounded-r-md ${language === 'te' ? 'bg-primary text-white' : 'bg-gray-200'}`}
+                  className={`px-3 py-1 text-sm rounded-r-md ${language === 'te' ? 'bg-primary text-white' : 'bg-gray-200 dark:bg-slate-700'}`}
                 >
                   తెలుగు
                 </button>
               </div>
             </div>
-            <button onClick={onClose} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
+            <button onClick={onClose} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
               <X size={24} />
             </button>
           </div>
@@ -368,7 +368,7 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             <div className="space-y-4">
               {content.sections.map((section, index) => (
                 <Card key={index} title={section.title} className="animate-slide-up-fade" style={{ animationDelay: `${index * 50}ms` }}>
-                  {section.content}
+                  <div className="dark:text-slate-300">{section.content}</div>
                 </Card>
               ))}
             </div>

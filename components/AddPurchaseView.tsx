@@ -90,12 +90,12 @@ const ProductSearchModal: React.FC<{
                 <h2 className="text-lg font-bold">Select Existing Product</h2>
                 <button onClick={onClose}><X size={20}/></button>
             </div>
-            <input type="text" placeholder="Search products..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full p-2 border rounded-lg mb-4" autoFocus/>
+            <input type="text" placeholder="Search products..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full p-2 border rounded-lg mb-4 dark:bg-slate-700 dark:border-slate-600" autoFocus/>
             <div className="max-h-80 overflow-y-auto space-y-2">
                 {products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase())).map(p => (
-                <div key={p.id} onClick={() => onSelect(p)} className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-teal-50">
+                <div key={p.id} onClick={() => onSelect(p)} className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-teal-50 dark:bg-slate-700/50 dark:hover:bg-slate-700">
                     <p className="font-semibold">{p.name}</p>
-                    <p className="text-sm text-gray-500">Code: {p.id} | Stock: {p.quantity}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Code: {p.id} | Stock: {p.quantity}</p>
                 </div>
                 ))}
             </div>
@@ -146,28 +146,28 @@ const NewProductModal: React.FC<{
             <Card title="Add New Product to Purchase" className="w-full max-w-md animate-scale-in">
                 <div className="space-y-3">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Product ID (Unique)</label>
-                        <input type="text" value={newProduct.id} onChange={e => setNewProduct({...newProduct, id: e.target.value})} className="w-full p-2 border rounded mt-1" autoFocus />
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Product ID (Unique)</label>
+                        <input type="text" value={newProduct.id} onChange={e => setNewProduct({...newProduct, id: e.target.value})} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600" autoFocus />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Product Name</label>
-                        <input type="text" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="w-full p-2 border rounded mt-1" />
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Product Name</label>
+                        <input type="text" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600" />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Quantity</label>
-                        <input type="number" value={newProduct.quantity} onChange={e => setNewProduct({...newProduct, quantity: e.target.value})} className="w-full p-2 border rounded mt-1" />
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Quantity</label>
+                        <input type="number" value={newProduct.quantity} onChange={e => setNewProduct({...newProduct, quantity: e.target.value})} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600" />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Purchase Price (per item)</label>
-                        <input type="number" value={newProduct.purchasePrice} onChange={e => setNewProduct({...newProduct, purchasePrice: e.target.value})} className="w-full p-2 border rounded mt-1" />
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Purchase Price (per item)</label>
+                        <input type="number" value={newProduct.purchasePrice} onChange={e => setNewProduct({...newProduct, purchasePrice: e.target.value})} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600" />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Sale Price (per item)</label>
-                        <input type="number" value={newProduct.salePrice} onChange={e => setNewProduct({...newProduct, salePrice: e.target.value})} className="w-full p-2 border rounded mt-1" />
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Sale Price (per item)</label>
+                        <input type="number" value={newProduct.salePrice} onChange={e => setNewProduct({...newProduct, salePrice: e.target.value})} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600" />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">GST %</label>
-                        <input type="number" value={newProduct.gstPercent} onChange={e => setNewProduct({...newProduct, gstPercent: e.target.value})} className="w-full p-2 border rounded mt-1" />
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">GST %</label>
+                        <input type="number" value={newProduct.gstPercent} onChange={e => setNewProduct({...newProduct, gstPercent: e.target.value})} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600" />
                     </div>
                     <div className="flex gap-2 pt-2">
                         <Button onClick={handleAddItemManually} className="w-full">Add to Purchase</Button>
@@ -456,7 +456,7 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
     const StatusNotification = () => {
         if (!importStatus) return null;
         const variants = {
-            info: 'bg-blue-100 text-blue-800', success: 'bg-green-100 text-green-800', error: 'bg-red-100 text-red-800',
+            info: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300', success: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300', error: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300',
         };
         const icons = {
             info: <Info className="w-5 h-5 mr-3 flex-shrink-0" />, success: <CheckCircle className="w-5 h-5 mr-3 flex-shrink-0" />, error: <XCircle className="w-5 h-5 mr-3 flex-shrink-0" />,
@@ -499,22 +499,22 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
                     <Card title="Add New Supplier" className="w-full max-w-md animate-scale-in">
                         <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2">
                              <div>
-                                <label className="block text-sm font-medium">Supplier ID</label>
+                                <label className="block text-sm font-medium dark:text-gray-300">Supplier ID</label>
                                 <div className="flex items-center mt-1">
-                                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 bg-gray-50 text-gray-500 text-sm">SUPP-</span>
-                                    <input type="text" placeholder="Enter unique ID" value={newSupplier.id} onChange={e => setNewSupplier({ ...newSupplier, id: e.target.value })} className="w-full p-2 border rounded-r-md" autoFocus />
+                                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 bg-gray-50 text-gray-500 text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-gray-400">SUPP-</span>
+                                    <input type="text" placeholder="Enter unique ID" value={newSupplier.id} onChange={e => setNewSupplier({ ...newSupplier, id: e.target.value })} className="w-full p-2 border rounded-r-md dark:bg-slate-700 dark:border-slate-600" autoFocus />
                                 </div>
                             </div>
-                            <input type="text" placeholder="Name*" value={newSupplier.name} onChange={e => setNewSupplier({ ...newSupplier, name: e.target.value })} className="w-full p-2 border rounded" />
-                            <input type="text" placeholder="Phone*" value={newSupplier.phone} onChange={e => setNewSupplier({ ...newSupplier, phone: e.target.value })} className="w-full p-2 border rounded" />
-                            <input type="text" placeholder="Location*" value={newSupplier.location} onChange={e => setNewSupplier({ ...newSupplier, location: e.target.value })} className="w-full p-2 border rounded" />
-                            <input type="text" placeholder="GST Number (Optional)" value={newSupplier.gstNumber} onChange={e => setNewSupplier({ ...newSupplier, gstNumber: e.target.value })} className="w-full p-2 border rounded" />
-                            <input type="text" placeholder="Reference (Optional)" value={newSupplier.reference} onChange={e => setNewSupplier({ ...newSupplier, reference: e.target.value })} className="w-full p-2 border rounded" />
-                            <input type="text" placeholder="Bank Account 1 (Optional)" value={newSupplier.account1} onChange={e => setNewSupplier({ ...newSupplier, account1: e.target.value })} className="w-full p-2 border rounded" />
-                            <input type="text" placeholder="Bank Account 2 (Optional)" value={newSupplier.account2} onChange={e => setNewSupplier({ ...newSupplier, account2: e.target.value })} className="w-full p-2 border rounded" />
-                            <input type="text" placeholder="UPI ID (Optional)" value={newSupplier.upi} onChange={e => setNewSupplier({ ...newSupplier, upi: e.target.value })} className="w-full p-2 border rounded" />
+                            <input type="text" placeholder="Name*" value={newSupplier.name} onChange={e => setNewSupplier({ ...newSupplier, name: e.target.value })} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" />
+                            <input type="text" placeholder="Phone*" value={newSupplier.phone} onChange={e => setNewSupplier({ ...newSupplier, phone: e.target.value })} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" />
+                            <input type="text" placeholder="Location*" value={newSupplier.location} onChange={e => setNewSupplier({ ...newSupplier, location: e.target.value })} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" />
+                            <input type="text" placeholder="GST Number (Optional)" value={newSupplier.gstNumber} onChange={e => setNewSupplier({ ...newSupplier, gstNumber: e.target.value })} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" />
+                            <input type="text" placeholder="Reference (Optional)" value={newSupplier.reference} onChange={e => setNewSupplier({ ...newSupplier, reference: e.target.value })} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" />
+                            <input type="text" placeholder="Bank Account 1 (Optional)" value={newSupplier.account1} onChange={e => setNewSupplier({ ...newSupplier, account1: e.target.value })} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" />
+                            <input type="text" placeholder="Bank Account 2 (Optional)" value={newSupplier.account2} onChange={e => setNewSupplier({ ...newSupplier, account2: e.target.value })} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" />
+                            <input type="text" placeholder="UPI ID (Optional)" value={newSupplier.upi} onChange={e => setNewSupplier({ ...newSupplier, upi: e.target.value })} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" />
                         </div>
-                         <div className="flex gap-2 pt-4 border-t mt-4">
+                         <div className="flex gap-2 pt-4 border-t dark:border-slate-700 mt-4">
                             <Button onClick={handleAddSupplier} className="w-full">Save Supplier</Button>
                             <Button onClick={() => setIsAddingSupplier(false)} variant="secondary" className="w-full">Cancel</Button>
                         </div>
@@ -547,17 +547,17 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
                 mode={mode}
             />
 
-            <Button onClick={onBack} variant="secondary" className="bg-teal-200 text-primary hover:bg-teal-300">&larr; Back</Button>
+            <Button onClick={onBack} variant="secondary" className="bg-teal-200 text-primary hover:bg-teal-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600">&larr; Back</Button>
             <Card title={title}>
                  <div className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Supplier</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Supplier</label>
                         <div className="flex gap-2 items-center mt-1">
                             <div className="relative w-full" ref={supplierDropdownRef}>
                                 <button
                                     type="button"
                                     onClick={() => setIsSupplierDropdownOpen(prev => !prev)}
-                                    className="w-full p-2 border rounded bg-white text-left custom-select"
+                                    className="w-full p-2 border rounded bg-white text-left custom-select dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
                                     disabled={mode === 'edit'}
                                     aria-haspopup="listbox"
                                     aria-expanded={isSupplierDropdownOpen}
@@ -566,14 +566,14 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
                                 </button>
 
                                 {isSupplierDropdownOpen && (
-                                    <div className="absolute top-full left-0 w-full mt-1 bg-gray-800 text-white rounded-md shadow-lg z-10 animate-fade-in-fast">
-                                        <div className="p-2 border-b border-gray-700">
+                                     <div className="absolute top-full left-0 w-full mt-1 bg-white dark:bg-slate-900 rounded-md shadow-lg border dark:border-slate-700 z-40 animate-fade-in-fast">
+                                        <div className="p-2 border-b dark:border-slate-700">
                                             <input
                                                 type="text"
                                                 placeholder="Search by name or location..."
                                                 value={supplierSearchTerm}
                                                 onChange={e => setSupplierSearchTerm(e.target.value)}
-                                                className="w-full p-2 bg-gray-700 border border-gray-600 rounded text-white"
+                                                className="w-full p-2 border border-gray-300 rounded dark:bg-slate-800 dark:border-slate-600 dark:text-white"
                                                 autoFocus
                                             />
                                         </div>
@@ -585,7 +585,7 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
                                                     setIsSupplierDropdownOpen(false);
                                                     setSupplierSearchTerm('');
                                                 }}
-                                                className="px-4 py-2 hover:bg-gray-700 cursor-pointer text-gray-400"
+                                                className="px-4 py-2 hover:bg-teal-50 dark:hover:bg-slate-800 cursor-pointer text-gray-500"
                                                 role="option"
                                             >
                                                 Select a Supplier
@@ -598,7 +598,7 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
                                                         setIsSupplierDropdownOpen(false);
                                                         setSupplierSearchTerm('');
                                                     }}
-                                                    className="px-4 py-2 hover:bg-gray-700 cursor-pointer border-t border-gray-600"
+                                                    className="px-4 py-2 hover:bg-teal-50 dark:hover:bg-slate-800 cursor-pointer border-t dark:border-slate-800"
                                                     role="option"
                                                 >
                                                     {s.name} - {s.location}
@@ -619,12 +619,12 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
                         </div>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Purchase Date</label>
-                        <input type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} className="w-full p-2 border rounded mt-1" />
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Purchase Date</label>
+                        <input type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Supplier Invoice ID (Optional)</label>
-                        <input type="text" placeholder="Supplier Invoice ID (Optional)" value={supplierInvoiceId} onChange={e => setSupplierInvoiceId(e.target.value)} className="w-full p-2 border rounded mt-1" />
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Supplier Invoice ID (Optional)</label>
+                        <input type="text" placeholder="Supplier Invoice ID (Optional)" value={supplierInvoiceId} onChange={e => setSupplierInvoiceId(e.target.value)} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600" />
                     </div>
                 </div>
             </Card>
@@ -637,7 +637,7 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
                         <Upload size={16} className="mr-2"/> Import from CSV
                     </label>
                 </div>
-                <div className="text-center text-xs text-gray-500 -mt-2 mb-4">
+                <div className="text-center text-xs text-gray-500 -mt-2 mb-4 dark:text-gray-400">
                     <span>CSV format issues? </span>
                     <a href="#" onClick={handleDownloadTemplate} className="font-semibold text-primary underline hover:text-teal-700">
                         Download sample template
@@ -646,32 +646,32 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
                 <StatusNotification />
                 <div className="space-y-2 mt-4">
                     {items.map(item => (
-                        <div key={item.productId} className="p-3 bg-gray-50 rounded-lg space-y-2 border">
+                        <div key={item.productId} className="p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg space-y-2 border dark:border-slate-700">
                             <div className="flex justify-between items-start">
                                 <input 
                                     type="text" 
                                     value={item.productName}
                                     onChange={e => handleItemChange(item.productId, 'productName', e.target.value)}
-                                    className="font-semibold bg-transparent border-b w-full"
+                                    className="font-semibold bg-transparent border-b w-full dark:border-slate-600"
                                 />
                                 <DeleteButton variant="remove" onClick={() => setItems(items.filter(i => i.productId !== item.productId))} />
                             </div>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
                                 <div>
-                                    <label className="text-xs font-medium text-gray-500">Qty</label>
-                                    <input type="number" value={item.quantity || ''} onChange={e => handleItemChange(item.productId, 'quantity', e.target.value)} className="w-full p-1 border rounded" />
+                                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Qty</label>
+                                    <input type="number" value={item.quantity || ''} onChange={e => handleItemChange(item.productId, 'quantity', e.target.value)} className="w-full p-1 border rounded dark:bg-slate-700 dark:border-slate-600" />
                                 </div>
                                 <div>
-                                    <label className="text-xs font-medium text-gray-500">Purchase Price</label>
-                                    <input type="number" value={item.price || ''} onChange={e => handleItemChange(item.productId, 'price', e.target.value)} className="w-full p-1 border rounded" />
+                                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Purchase Price</label>
+                                    <input type="number" value={item.price || ''} onChange={e => handleItemChange(item.productId, 'price', e.target.value)} className="w-full p-1 border rounded dark:bg-slate-700 dark:border-slate-600" />
                                 </div>
                                 <div>
-                                    <label className="text-xs font-medium text-gray-500">Sale Price</label>
-                                    <input type="number" value={item.saleValue || ''} onChange={e => handleItemChange(item.productId, 'saleValue', e.target.value)} className="w-full p-1 border rounded" />
+                                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Sale Price</label>
+                                    <input type="number" value={item.saleValue || ''} onChange={e => handleItemChange(item.productId, 'saleValue', e.target.value)} className="w-full p-1 border rounded dark:bg-slate-700 dark:border-slate-600" />
                                 </div>
                                 <div>
-                                    <label className="text-xs font-medium text-gray-500">GST %</label>
-                                    <input type="number" value={item.gstPercent || ''} onChange={e => handleItemChange(item.productId, 'gstPercent', e.target.value)} className="w-full p-1 border rounded" />
+                                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400">GST %</label>
+                                    <input type="number" value={item.gstPercent || ''} onChange={e => handleItemChange(item.productId, 'gstPercent', e.target.value)} className="w-full p-1 border rounded dark:bg-slate-700 dark:border-slate-600" />
                                 </div>
                             </div>
                         </div>
@@ -687,7 +687,7 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
                                 type="date" 
                                 value={date} 
                                 onChange={e => handleDueDateChange(index, e.target.value)} 
-                                className="w-full p-2 border rounded" 
+                                className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" 
                             />
                             <DeleteButton variant="remove" onClick={() => removeDueDate(index)} />
                         </div>
@@ -700,17 +700,17 @@ const PurchaseForm: React.FC<PurchaseFormProps> = ({ mode, initialData, supplier
 
             <Card title="Transaction Details">
                  <div className="space-y-2 mb-4">
-                    <div className="flex justify-between text-gray-600">
+                    <div className="flex justify-between text-gray-600 dark:text-gray-300">
                         <span>Subtotal (excl. GST):</span>
                         <span>₹{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
-                    <div className="flex justify-between text-gray-600">
+                    <div className="flex justify-between text-gray-600 dark:text-gray-300">
                         <span>GST Amount:</span>
                         <span>+ ₹{totalGstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
                 </div>
-                <div className="p-4 bg-teal-50 rounded-lg text-center border-t">
-                    <p className="text-sm font-semibold text-gray-600">Grand Total</p>
+                <div className="p-4 bg-teal-50 dark:bg-slate-700/50 rounded-lg text-center border-t dark:border-slate-700">
+                    <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">Grand Total</p>
                     <p className="text-4xl font-bold text-primary">₹{totalPurchaseAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                 </div>
             </Card>

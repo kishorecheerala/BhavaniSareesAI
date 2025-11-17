@@ -1,8 +1,9 @@
 
 
 
+
 import React, { createContext, useReducer, useContext, useEffect, ReactNode, useState } from 'react';
-import { Customer, Supplier, Product, Sale, Purchase, Return, Payment, BeforeInstallPromptEvent, Notification, ProfileData, Page, AppMetadata, AppMetadataPin } from '../types';
+import { Customer, Supplier, Product, Sale, Purchase, Return, Payment, BeforeInstallPromptEvent, Notification, ProfileData, Page, AppMetadata, AppMetadataPin, Theme } from '../types';
 import * as db from '../utils/db';
 import { StoreName } from '../utils/db';
 
@@ -26,10 +27,12 @@ export interface AppState {
   selection: { page: Page; id: string; action?: 'edit' } | null;
   installPromptEvent: BeforeInstallPromptEvent | null;
   pin: string | null;
+  theme: Theme;
 }
 
 type Action =
-  | { type: 'SET_STATE'; payload: Omit<AppState, 'toast' | 'selection' | 'installPromptEvent' | 'notifications' | 'profile' | 'pin'> }
+  | { type: 'SET_STATE'; payload: Omit<AppState, 'toast' | 'selection' | 'installPromptEvent' | 'notifications' | 'profile' | 'pin' | 'theme'> }
+  | { type: 'SET_THEME'; payload: Theme }
   | { type: 'SET_NOTIFICATIONS'; payload: Notification[] }
   | { type: 'SET_PROFILE'; payload: ProfileData | null }
   | { type: 'SET_PIN'; payload: string }
@@ -77,12 +80,15 @@ const initialState: AppState = {
   selection: null,
   installPromptEvent: null,
   pin: null,
+  theme: 'light',
 };
 
 const appReducer = (state: AppState, action: Action): AppState => {
   switch (action.type) {
     case 'SET_STATE':
         return { ...state, ...action.payload };
+    case 'SET_THEME':
+        return { ...state, theme: action.payload };
     case 'REPLACE_COLLECTION':
         return { ...state, [action.payload.storeName]: action.payload.data };
     case 'SET_NOTIFICATIONS':
@@ -434,6 +440,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [state, dispatch] = useReducer(appReducer, initialState);
   const [isDbLoaded, setIsDbLoaded] = useState(false);
 
+  // Load theme from local storage or system preference
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') as Theme | null;
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (savedTheme) {
+        dispatch({ type: 'SET_THEME', payload: savedTheme });
+    } else if (prefersDark) {
+        dispatch({ type: 'SET_THEME', payload: 'dark' });
+    }
+  }, []);
+
   // Set up the PWA install prompt listener.
   useEffect(() => {
     // Check if the event was already captured by the global listener in index.tsx
@@ -475,7 +492,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const validatedMetadata = Array.isArray(app_metadata) ? app_metadata : [];
         const pinData = validatedMetadata.find(m => m.id === 'securityPin') as AppMetadataPin | undefined;
 
-        const validatedState: Omit<AppState, 'toast' | 'selection' | 'installPromptEvent' | 'notifications' | 'profile' | 'pin'> = {
+        const validatedState: Omit<AppState, 'toast' | 'selection' | 'installPromptEvent' | 'notifications' | 'profile' | 'pin' | 'theme'> = {
             customers: Array.isArray(customers) ? customers : [],
             suppliers: Array.isArray(suppliers) ? suppliers : [],
             products: Array.isArray(products) ? products : [],

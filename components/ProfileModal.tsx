@@ -56,27 +56,27 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
       <Card className="w-full max-w-lg animate-scale-in">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-primary">My Business Profile</h2>
-          <button onClick={onClose} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
+          <button onClick={onClose} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
             <X size={24} />
           </button>
         </div>
-        <p className="text-sm text-gray-600 mb-4">This information will be used on invoices and other documents you generate.</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">This information will be used on invoices and other documents you generate.</p>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Business Name</label>
-            <input type="text" name="name" value={formData.name} onChange={handleInputChange} className="w-full p-2 border rounded mt-1" />
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Business Name</label>
+            <input type="text" name="name" value={formData.name} onChange={handleInputChange} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Phone Number</label>
-            <input type="text" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full p-2 border rounded mt-1" />
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone Number</label>
+            <input type="text" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600" />
           </div>
            <div>
-            <label className="block text-sm font-medium text-gray-700">Address</label>
-            <textarea name="address" value={formData.address} onChange={handleInputChange} className="w-full p-2 border rounded mt-1" rows={3}></textarea>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Address</label>
+            <textarea name="address" value={formData.address} onChange={handleInputChange} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600" rows={3}></textarea>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">GST Number</label>
-            <input type="text" name="gstNumber" value={formData.gstNumber} onChange={handleInputChange} className="w-full p-2 border rounded mt-1" />
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">GST Number</label>
+            <input type="text" name="gstNumber" value={formData.gstNumber} onChange={handleInputChange} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600" />
           </div>
         </div>
         <div className="mt-6 flex justify-end">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle, Bell, Menu, Plus, UserPlus, PackagePlus, Download, X } from 'lucide-react';
+import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle, Bell, Menu, Plus, UserPlus, PackagePlus, Download, X, Sun, Moon } from 'lucide-react';
 
 import { AppProvider, useAppContext } from './context/AppContext';
 import Dashboard from './pages/Dashboard';
@@ -17,7 +17,7 @@ import NotificationsPanel from './components/NotificationsPanel';
 import MenuPanel from './components/MenuPanel';
 import ProfileModal from './components/ProfileModal';
 // FIX: Import AppMetadataBackup to use for type assertion.
-import { BeforeInstallPromptEvent, Notification, Page, AppMetadataBackup } from './types';
+import { BeforeInstallPromptEvent, Notification, Page, AppMetadataBackup, Theme } from './types';
 import { useOnClickOutside } from './hooks/useOnClickOutside';
 import { useSwipe } from './hooks/useSwipe';
 import ConfirmationModal from './components/ConfirmationModal';
@@ -79,7 +79,7 @@ const QuickAddMenu: React.FC<{
 
     return (
         <div 
-          className="absolute top-full right-0 mt-2 w-56 bg-white rounded-lg shadow-2xl border border-gray-200 text-text animate-scale-in origin-top-right z-[150]"
+          className="absolute top-full right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-lg shadow-2xl border border-gray-200 dark:border-slate-700 text-text dark:text-slate-200 animate-scale-in origin-top-right z-[150]"
           role="dialog"
           aria-label="Quick Add Menu"
         >
@@ -88,7 +88,7 @@ const QuickAddMenu: React.FC<{
                     <button
                         key={action.page}
                         onClick={() => onNavigate(action.page, action.action)}
-                        className="w-full flex items-center gap-3 text-left p-3 rounded-md hover:bg-teal-50 transition-colors"
+                        className="w-full flex items-center gap-3 text-left p-3 rounded-md hover:bg-teal-50 dark:hover:bg-slate-700 transition-colors"
                     >
                         <action.icon className="w-5 h-5 text-primary" />
                         <span className="font-semibold text-sm">{action.label}</span>
@@ -115,7 +115,7 @@ const MainApp: React.FC = () => {
   const [navConfirm, setNavConfirm] = useState<{ show: boolean, page: Page | null }>({ show: false, page: null });
 
   const { state, dispatch, isDbLoaded } = useAppContext();
-  const { installPromptEvent } = state;
+  const { installPromptEvent, theme } = state;
   const [isInstallBannerVisible, setIsInstallBannerVisible] = useState(true);
 
   const canExitApp = useRef(false);
@@ -131,6 +131,20 @@ const MainApp: React.FC = () => {
 
   // FIX: Cast the result of find to AppMetadataBackup to satisfy TypeScript, as it cannot infer the discriminated union type from the predicate.
   const lastBackupDate = (state.app_metadata.find(m => m.id === 'lastBackup') as AppMetadataBackup | undefined)?.date;
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+  
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    dispatch({ type: 'SET_THEME', payload: newTheme });
+  };
 
   useEffect(() => {
     if (state.profile?.name) {
@@ -369,7 +383,7 @@ const MainApp: React.FC = () => {
 
 
   return (
-    <div className="flex flex-col h-screen font-sans text-text bg-background">
+    <div className="flex flex-col h-screen font-sans text-text bg-background dark:bg-slate-900 dark:text-slate-300">
       <Toast />
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
@@ -422,6 +436,9 @@ const MainApp: React.FC = () => {
             <h1 className="text-xl font-bold text-center truncate">{state.profile?.name || 'Business Manager'}</h1>
           </button>
           <div className="flex items-center gap-2">
+             <button onClick={toggleTheme} className="p-1 rounded-full hover:bg-white/20 transition-colors" aria-label="Toggle theme">
+                {theme === 'dark' ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
+            </button>
              <div className="relative" ref={quickAddRef}>
                 <button onClick={() => setIsQuickAddOpen(prev => !prev)} className="p-1 rounded-full hover:bg-white/20 transition-colors" aria-label="Open quick add menu">
                     <Plus className="w-6 h-6" />
@@ -462,7 +479,7 @@ const MainApp: React.FC = () => {
             <div className="flex items-center gap-2 flex-shrink-0">
                 <button 
                     onClick={handleInstallClick} 
-                    className="bg-white text-primary font-bold py-1 px-3 rounded-md text-sm hover:bg-gray-100 transition-colors"
+                    className="bg-white text-primary font-bold py-1 px-3 rounded-md text-sm hover:bg-gray-100 transition-colors dark:bg-slate-200 dark:text-primary"
                 >
                     Install
                 </button>
@@ -502,7 +519,7 @@ const MainApp: React.FC = () => {
                 </button>
 
                 {isMoreMenuOpen && (
-                    <div className="absolute bottom-full right-0 mb-2 w-48 bg-white rounded-lg shadow-xl border text-text z-10 animate-slide-up-fade">
+                    <div className="absolute bottom-full right-0 mb-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-xl border dark:border-slate-700 text-text dark:text-slate-200 z-10 animate-slide-up-fade">
                         {moreNavItems.map(item => (
                             <button 
                                 key={item.page} 
@@ -510,7 +527,7 @@ const MainApp: React.FC = () => {
                                     setCurrentPage(item.page);
                                     setIsMoreMenuOpen(false);
                                 }} 
-                                className="w-full flex items-center gap-3 p-3 text-left hover:bg-teal-50 transition-colors"
+                                className="w-full flex items-center gap-3 p-3 text-left hover:bg-teal-50 dark:hover:bg-slate-700 transition-colors"
                             >
                                 <item.icon className="w-5 h-5 text-primary" />
                                 <span className={`font-semibold text-sm ${currentPage === item.page ? 'text-primary' : ''}`}>

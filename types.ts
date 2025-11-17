@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 
 export type Page = 'DASHBOARD' | 'CUSTOMERS' | 'SALES' | 'PURCHASES' | 'REPORTS' | 'RETURNS' | 'PRODUCTS' | 'INSIGHTS';
+export type Theme = 'light' | 'dark';
 
 export interface Payment {
   id: string;

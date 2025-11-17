@@ -1,6 +1,3 @@
-
-
-
 import { AppState } from '../context/AppContext';
 import { ProfileData, Customer, Supplier, Product, Purchase, Sale, Return } from '../types';
 
@@ -236,4 +233,6 @@ export const testData: Omit<AppState, 'toast' | 'selection' | 'installPromptEven
   purchases,
   returns,
   app_metadata: [],
+  // FIX: Added missing 'theme' property to satisfy the type.
+  theme: 'light',
 };

@@ -72,7 +72,7 @@ const PinModal: React.FC<PinModalProps> = ({ mode, onSetPin, onCorrectPin, corre
                 <div className="text-center">
                     <Lock size={24} className="mx-auto text-primary mb-2" />
                     <h2 className="text-xl font-bold text-primary">{title}</h2>
-                    <p className="text-sm text-gray-600 mt-1 mb-4">{description}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 mb-4">{description}</p>
                 </div>
                 <div className="space-y-4">
                     <input
@@ -84,7 +84,7 @@ const PinModal: React.FC<PinModalProps> = ({ mode, onSetPin, onCorrectPin, corre
                         value={pin}
                         onChange={(e) => handleInputChange(e, setPin)}
                         onKeyPress={handleKeyPress}
-                        className="w-full p-3 text-center text-2xl tracking-[1em] bg-gray-100 border-2 border-gray-300 rounded-lg focus:border-primary focus:ring-primary"
+                        className="w-full p-3 text-center text-2xl tracking-[1em] bg-gray-100 border-2 border-gray-300 rounded-lg focus:border-primary focus:ring-primary dark:bg-slate-700 dark:border-slate-600 dark:text-white"
                         placeholder="----"
                     />
                     {mode === 'setup' && (
@@ -96,7 +96,7 @@ const PinModal: React.FC<PinModalProps> = ({ mode, onSetPin, onCorrectPin, corre
                             value={confirmPin}
                             onChange={(e) => handleInputChange(e, setConfirmPin)}
                             onKeyPress={handleKeyPress}
-                            className="w-full p-3 text-center text-2xl tracking-[1em] bg-gray-100 border-2 border-gray-300 rounded-lg focus:border-primary focus:ring-primary"
+                            className="w-full p-3 text-center text-2xl tracking-[1em] bg-gray-100 border-2 border-gray-300 rounded-lg focus:border-primary focus:ring-primary dark:bg-slate-700 dark:border-slate-600 dark:text-white"
                             placeholder="----"
                         />
                     )}
@@ -106,7 +106,7 @@ const PinModal: React.FC<PinModalProps> = ({ mode, onSetPin, onCorrectPin, corre
                             {mode === 'setup' ? 'Set PIN' : 'Unlock'}
                         </Button>
                         {onCancel && (
-                             <Button onClick={onCancel} variant="secondary" className="w-full bg-gray-200 text-gray-700 hover:bg-gray-300">
+                             <Button onClick={onCancel} variant="secondary" className="w-full bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600">
                                 Go Back
                             </Button>
                         )}
@@ -114,7 +114,7 @@ const PinModal: React.FC<PinModalProps> = ({ mode, onSetPin, onCorrectPin, corre
                     {mode === 'enter' && onResetRequest && (
                         <button
                             onClick={onResetRequest}
-                            className="text-sm text-center text-blue-600 hover:underline mt-2 w-full"
+                            className="text-sm text-center text-blue-600 hover:underline mt-2 w-full dark:text-blue-400"
                         >
                             Forgot PIN? Reset
                         </button>
