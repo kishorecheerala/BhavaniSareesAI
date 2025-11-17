@@ -538,7 +538,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         const pdfFile = new File([pdfBlob], `Invoice-${sale.id}.pdf`, { type: 'application/pdf' });
         const businessName = state.profile?.name || 'Your Business';
         
-        // FIX: Use locally scoped variables for `whatsAppText` instead of `calculations` from component state to ensure data consistency.
+        // FIX: Use locally scoped variables for whatsAppText instead of calculations from component state to ensure data consistency.
         const whatsAppText = `Thank you for your purchase from ${businessName}!\n\n*Invoice Summary:*\nInvoice ID: ${sale.id}\nDate: ${new Date(sale.date).toLocaleString()}\n\n*Items:*\n${sale.items.map(i => `- ${i.productName} (x${i.quantity}) - Rs. ${(Number(i.price) * Number(i.quantity)).toLocaleString('en-IN')}`).join('\n')}\n\nSubtotal: Rs. ${subTotal.toLocaleString('en-IN')}\nGST: Rs. ${Number(sale.gstAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}\nDiscount: Rs. ${Number(sale.discount).toLocaleString('en-IN')}\n*Total: Rs. ${Number(sale.totalAmount).toLocaleString('en-IN')}*\nPaid: Rs. ${paidAmountOnSale.toLocaleString('en-IN')}\nDue: Rs. ${dueAmountOnSale.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\nHave a blessed day!`;
         
         if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
@@ -711,7 +711,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
                         <div className="flex gap-2 items-center">
-                            <div className="relative w-full" ref={customerDropdownRef}>
+                            <div className="relative w-full z-20" ref={customerDropdownRef}>
                                 <button
                                     type="button"
                                     onClick={() => setIsCustomerDropdownOpen(prev => !prev)}
