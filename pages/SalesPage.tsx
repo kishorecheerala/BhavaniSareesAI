@@ -707,7 +707,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             }
             <h1 className="text-2xl font-bold text-primary">{pageTitle}</h1>
             
-            <Card className={isCustomerDropdownOpen ? 'relative z-10' : ''}>
+            <Card>
                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Customer</label>
