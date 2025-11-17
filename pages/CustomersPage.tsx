@@ -301,7 +301,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             y += 7;
             
             doc.setFont('times', 'bold');
-            doc.setFontSize(16);
+            doc.setFontSize(20);
             doc.setTextColor('#0d9488'); // Primary Color
             doc.text(state.profile?.name || 'Business Manager', centerX, y, { align: 'center' });
             y += 7;
@@ -419,7 +419,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
     
         if (profile) {
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(20);
+            doc.setFontSize(24);
             doc.setTextColor('#0d9488');
             doc.text(profile.name, 105, currentY, { align: 'center' });
             currentY += 8;
@@ -554,7 +554,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             doc.text('Om Namo Venkatesaya', centerX, y, { align: 'center' });
             y += 7;
             doc.setFont('times', 'bold');
-            doc.setFontSize(16);
+            doc.setFontSize(20);
             doc.setTextColor('#0d9488');
             doc.text(state.profile?.name || 'Business Manager', centerX, y, { align: 'center' });
             y += 7;

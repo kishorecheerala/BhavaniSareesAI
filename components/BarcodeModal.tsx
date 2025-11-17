@@ -23,7 +23,7 @@ export const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, product, onC
 
   const generateLabelCanvas = (): HTMLCanvasElement => {
     const labelCanvas = document.createElement('canvas');
-    const dpiScale = 4; // Upped to 4 for ~600 DPI on a 2x1 inch label
+    const dpiScale = 6; // Upped to 6 for ~900 DPI on a 2x1 inch label
     labelCanvas.width = 300 * dpiScale;
     labelCanvas.height = 150 * dpiScale;
 
@@ -35,7 +35,7 @@ export const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, product, onC
     ctx.fillRect(0, 0, labelCanvas.width, labelCanvas.height);
 
     // Add Business Name
-    ctx.font = `bold ${12 * dpiScale}px Arial`;
+    ctx.font = `bold ${16 * dpiScale}px Arial`;
     ctx.fillStyle = '#000000';
     ctx.textAlign = 'center';
     ctx.fillText(businessName, labelCanvas.width / 2, 20 * dpiScale);

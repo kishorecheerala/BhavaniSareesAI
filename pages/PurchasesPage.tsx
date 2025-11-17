@@ -272,7 +272,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
         
         let currentY = 35;
         
-        doc.setFontSize(12);
+        doc.setFontSize(18);
         doc.text(profile.name, 14, currentY);
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);

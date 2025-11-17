@@ -438,7 +438,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
 
         if (profile) {
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(20);
+            doc.setFontSize(24);
             doc.setTextColor('#0d9488');
             doc.text(profile.name, 105, currentY, { align: 'center' });
             currentY += 8;
@@ -538,6 +538,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         const pdfFile = new File([pdfBlob], `Invoice-${sale.id}.pdf`, { type: 'application/pdf' });
         const businessName = state.profile?.name || 'Your Business';
         
+        // FIX: Use locally scoped variables for `whatsAppText` instead of `calculations` from component state to ensure data consistency.
         const whatsAppText = `Thank you for your purchase from ${businessName}!\n\n*Invoice Summary:*\nInvoice ID: ${sale.id}\nDate: ${new Date(sale.date).toLocaleString()}\n\n*Items:*\n${sale.items.map(i => `- ${i.productName} (x${i.quantity}) - Rs. ${(Number(i.price) * Number(i.quantity)).toLocaleString('en-IN')}`).join('\n')}\n\nSubtotal: Rs. ${subTotal.toLocaleString('en-IN')}\nGST: Rs. ${Number(sale.gstAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}\nDiscount: Rs. ${Number(sale.discount).toLocaleString('en-IN')}\n*Total: Rs. ${Number(sale.totalAmount).toLocaleString('en-IN')}*\nPaid: Rs. ${paidAmountOnSale.toLocaleString('en-IN')}\nDue: Rs. ${dueAmountOnSale.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\nHave a blessed day!`;
         
         if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
