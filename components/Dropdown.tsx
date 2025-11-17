@@ -66,7 +66,7 @@ const Dropdown: React.FC<DropdownProps> = ({
   };
 
   return (
-    <div ref={dropdownRef} className="relative w-full">
+    <div ref={dropdownRef} className={`relative w-full ${isOpen ? 'z-50' : ''}`}>
       <button
         type="button"
         onClick={handleTriggerClick}
