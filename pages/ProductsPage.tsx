@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Edit, Save, X, Package, IndianRupee, Percent, PackageCheck, Barcode, AlertTriangle, Printer } from 'lucide-react';
+import { Search, Edit, Save, X, Package, Percent, PackageCheck, Barcode, AlertTriangle, Printer } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Product } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { BarcodeModal } from '../components/BarcodeModal';
+import { formatINR } from '../utils/currency';
 
 interface ProductsPageProps {
   setIsDirty: (isDirty: boolean) => void;
@@ -142,7 +143,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                             <div className="pt-4 space-y-3">
                                 <div className="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
                                     <p className="text-sm font-semibold text-gray-600">Sale Price</p>
-                                    <p className="text-lg font-bold text-green-600">₹{selectedProduct.salePrice.toLocaleString('en-IN')}</p>
+                                    <p className="text-lg font-bold text-green-600">{formatINR(selectedProduct.salePrice)}</p>
                                 </div>
                                 <div className="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
                                     <p className="text-sm font-semibold text-gray-600">GST</p>
@@ -209,7 +210,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                          <p className="text-sm text-gray-500 mb-2">Code: {product.id}</p>
                          <div className="flex justify-between text-sm">
                              <span className="font-semibold text-gray-700">Stock: <span className="text-blue-600 font-bold text-base">{product.quantity}</span></span>
-                             <span className="font-semibold text-gray-700">Price: <span className="text-green-600 font-bold text-base">₹{product.salePrice.toLocaleString('en-IN')}</span></span>
+                             <span className="font-semibold text-gray-700">Price: <span className="text-green-600 font-bold text-base">{formatINR(product.salePrice)}</span></span>
                          </div>
                     </Card>
                 ))}

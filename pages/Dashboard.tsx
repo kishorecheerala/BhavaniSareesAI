@@ -7,6 +7,7 @@ import Button from '../components/Button';
 import DataImportModal from '../components/DataImportModal';
 import { Page, Customer, Sale, Purchase, Supplier } from '../types';
 import { testData, testProfile } from '../utils/testData';
+import { formatINR } from '../utils/currency';
 
 interface DashboardProps {
     setCurrentPage: (page: Page) => void;
@@ -19,7 +20,7 @@ const MetricCard: React.FC<{
     color: string;
     iconBgColor: string;
     textColor: string;
-    unit?: string;
+    unit?: string; // '₹' is the default for currency
     onClick?: () => void;
 }> = ({ icon: Icon, title, value, color, iconBgColor, textColor, unit = '₹', onClick }) => (
     <div
@@ -34,7 +35,12 @@ const MetricCard: React.FC<{
         </div>
         <div className="ml-4 flex-grow">
             <p className={`font-semibold text-lg ${textColor}`}>{title}</p>
-            <p className={`text-2xl font-bold ${textColor} break-all`}>{unit}{typeof value === 'number' ? value.toLocaleString('en-IN') : value}</p>
+            <p className={`text-2xl font-bold ${textColor} break-all`}>
+                {unit === '₹' && typeof value === 'number'
+                    ? formatINR(value)
+                    : `${unit || ''}${typeof value === 'number' ? value.toLocaleString('en-IN') : value}`
+                }
+            </p>
         </div>
     </div>
 );
@@ -198,7 +204,7 @@ const OverdueDuesCard: React.FC<{ sales: Sale[]; customers: Customer[]; onNaviga
                             </div>
                         </div>
                         <div className="text-right flex-shrink-0 ml-2">
-                            <p className="font-bold text-lg text-red-600">₹{totalOverdue.toLocaleString('en-IN')}</p>
+                            <p className="font-bold text-lg text-red-600">{formatINR(totalOverdue)}</p>
                             <p className="text-xs text-gray-500">Oldest: {new Date(oldestOverdueDate).toLocaleDateString()}</p>
                         </div>
                     </div>
@@ -302,7 +308,7 @@ const UpcomingPurchaseDuesCard: React.FC<{
                                 </div>
                             </div>
                             <div className="text-right flex-shrink-0 ml-2">
-                                <p className="font-bold text-lg text-red-600">₹{due.totalPurchaseDue.toLocaleString('en-IN')}</p>
+                                <p className="font-bold text-lg text-red-600">{formatINR(due.totalPurchaseDue)}</p>
                                 <p className="text-xs font-bold text-amber-800">{countdownText}</p>
                                 <p className="text-xs text-gray-500">on {due.dueDate.toLocaleDateString()}</p>
                             </div>

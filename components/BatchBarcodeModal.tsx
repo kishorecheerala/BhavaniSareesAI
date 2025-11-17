@@ -82,7 +82,6 @@ const BatchBarcodeModal: React.FC<BatchBarcodeModalProps> = ({ isOpen, purchaseI
         }));
     };
 
-    // FIX: Explicitly type the accumulator and value in the reduce function to prevent a type inference issue.
     const totalLabels = useMemo(() => Object.values(quantities).reduce((sum: number, qty: number) => sum + (qty || 0), 0), [quantities]);
 
     const handleDownloadPDF = async () => {
