@@ -265,8 +265,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
 
         const doc = new jsPDF();
         
-        doc.addImage(logoBase64, 'JPEG', 14, 10, 20, 20);
-
+        // FIX: Removed logo from non-customer-facing document.
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(20);
         doc.text('DEBIT NOTE', 105, 20, { align: 'center' });

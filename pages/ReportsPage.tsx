@@ -85,7 +85,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ setCurrentPage }) => {
     const generateDuesPDF = () => {
         if (customerDues.length === 0) return alert("No customer dues data to export.");
         const doc = new jsPDF();
-        doc.addImage(logoBase64, 'JPEG', doc.internal.pageSize.getWidth() - 34, 10, 20, 20);
+        // FIX: Removed logo from internal report.
         doc.text('Customer Dues Report', 14, 22);
         autoTable(doc, {
             startY: 40,
@@ -132,7 +132,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ setCurrentPage }) => {
     const generateCustomerSummaryPDF = () => {
         if (customerAccountSummary.length === 0) return alert("No customer account data to export.");
         const doc = new jsPDF();
-        doc.addImage(logoBase64, 'JPEG', doc.internal.pageSize.getWidth() - 34, 10, 20, 20);
+        // FIX: Removed logo from internal report.
         doc.text('Customer Account Summary Report', 14, 22);
         autoTable(doc, {
             startY: 40,
@@ -210,7 +210,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ setCurrentPage }) => {
     const generateSupplierDuesPDF = () => {
         if (supplierDues.length === 0) return alert("No supplier dues data to export.");
         const doc = new jsPDF();
-        doc.addImage(logoBase64, 'JPEG', doc.internal.pageSize.getWidth() - 34, 10, 20, 20);
+        // FIX: Removed logo from internal report.
         doc.text('Supplier Dues Report', 14, 22);
         autoTable(doc, {
             startY: 40,
@@ -241,7 +241,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ setCurrentPage }) => {
     const generateSupplierSummaryPDF = () => {
         if (supplierAccountSummary.length === 0) return alert("No supplier account data to export.");
         const doc = new jsPDF();
-        doc.addImage(logoBase64, 'JPEG', doc.internal.pageSize.getWidth() - 34, 10, 20, 20);
+        // FIX: Removed logo from internal report.
         doc.text('Supplier Account Summary Report', 14, 22);
         autoTable(doc, {
             startY: 40,

@@ -99,7 +99,7 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
         const currentFY = new Date().getMonth() < 3 ? new Date().getFullYear() - 1 : new Date().getFullYear();
         if (!years.has(currentFY)) years.add(currentFY);
         // FIX: Explicitly type the sort parameters 'a' and 'b' as numbers to resolve a TypeScript type inference issue.
-        return Array.from(years).sort((a: number, b: number) => b - a);
+        return Array.from(years).sort((a, b) => b - a);
     }, [state.sales, isDbLoaded]);
 
     const yearlySalesData = useMemo(() => {

@@ -433,7 +433,8 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         const profile = state.profile;
         let currentY = 15;
 
-        doc.addImage(logoBase64, 'JPEG', 14, 10, 25, 25);
+        // FIX: Change image format to PNG
+        doc.addImage(logoBase64, 'PNG', 14, 10, 25, 25);
 
         if (profile) {
             doc.setFont('helvetica', 'bold');
@@ -493,22 +494,23 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         
         currentY = (doc as any).lastAutoTable.finalY + 10;
         
-        // FIX: Define dueAmountOnSale before it is used.
+        // FIX: Calculate values from the `sale` object, not stale component state. This also fixes the scope issue.
+        const subTotal = sale.items.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
         const dueAmountOnSale = Number(sale.totalAmount) - paidAmountOnSale;
         
         const totalsX = 196;
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
         doc.text('Subtotal:', totalsX - 30, currentY, { align: 'right' });
-        doc.text(`Rs. ${calculations.subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
+        doc.text(`Rs. ${subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
         currentY += 7;
 
         doc.text('Discount:', totalsX - 30, currentY, { align: 'right' });
-        doc.text(`- Rs. ${calculations.discountAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
+        doc.text(`- Rs. ${Number(sale.discount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
         currentY += 7;
 
         doc.text('GST Included:', totalsX - 30, currentY, { align: 'right' });
-        doc.text(`Rs. ${calculations.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
+        doc.text(`Rs. ${Number(sale.gstAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
         currentY += 7;
         
         doc.setFont('helvetica', 'bold');
@@ -536,7 +538,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         const pdfFile = new File([pdfBlob], `Invoice-${sale.id}.pdf`, { type: 'application/pdf' });
         const businessName = state.profile?.name || 'Your Business';
         
-        const whatsAppText = `Thank you for your purchase from ${businessName}!\n\n*Invoice Summary:*\nInvoice ID: ${sale.id}\nDate: ${new Date(sale.date).toLocaleString()}\n\n*Items:*\n${sale.items.map(i => `- ${i.productName} (x${i.quantity}) - Rs. ${(Number(i.price) * Number(i.quantity)).toLocaleString('en-IN')}`).join('\n')}\n\nSubtotal: Rs. ${calculations.subTotal.toLocaleString('en-IN')}\nGST: Rs. ${calculations.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\nDiscount: Rs. ${calculations.discountAmount.toLocaleString('en-IN')}\n*Total: Rs. ${Number(sale.totalAmount).toLocaleString('en-IN')}*\nPaid: Rs. ${paidAmountOnSale.toLocaleString('en-IN')}\nDue: Rs. ${dueAmountOnSale.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\nHave a blessed day!`;
+        const whatsAppText = `Thank you for your purchase from ${businessName}!\n\n*Invoice Summary:*\nInvoice ID: ${sale.id}\nDate: ${new Date(sale.date).toLocaleString()}\n\n*Items:*\n${sale.items.map(i => `- ${i.productName} (x${i.quantity}) - Rs. ${(Number(i.price) * Number(i.quantity)).toLocaleString('en-IN')}`).join('\n')}\n\nSubtotal: Rs. ${subTotal.toLocaleString('en-IN')}\nGST: Rs. ${Number(sale.gstAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}\nDiscount: Rs. ${Number(sale.discount).toLocaleString('en-IN')}\n*Total: Rs. ${Number(sale.totalAmount).toLocaleString('en-IN')}*\nPaid: Rs. ${paidAmountOnSale.toLocaleString('en-IN')}\nDue: Rs. ${dueAmountOnSale.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\nHave a blessed day!`;
         
         if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
           try {

@@ -9,6 +9,7 @@ import DeleteButton from '../components/DeleteButton';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
+// FIX: Add missing import for logoBase64
 import { logoBase64 } from '../utils/logo';
 
 const getLocalDateString = (date = new Date()) => {
@@ -290,10 +291,8 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             const centerX = pageWidth / 2;
             const margin = 5;
             const maxLineWidth = pageWidth - margin * 2;
-            let y = 5;
-
-            doc.addImage(logoBase64, 'JPEG', centerX - 10, y, 20, 20);
-            y += 22;
+            // FIX: Removed logo from thermal receipt to match sample image and improve layout.
+            let y = 10;
 
             doc.setFont('times', 'italic');
             doc.setFontSize(12);
@@ -415,7 +414,8 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         const profile = state.profile;
         let currentY = 15;
 
-        doc.addImage(logoBase64, 'JPEG', 14, 10, 25, 25);
+        // FIX: Change image type to PNG
+        doc.addImage(logoBase64, 'PNG', 14, 10, 25, 25);
     
         if (profile) {
             doc.setFont('helvetica', 'bold');
@@ -546,10 +546,8 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             const centerX = pageWidth / 2;
             const margin = 5;
             const maxLineWidth = pageWidth - margin * 2;
-            let y = 5;
-
-            doc.addImage(logoBase64, 'JPEG', centerX - 10, y, 20, 20);
-            y += 22;
+            // FIX: Removed logo from thermal receipt to match sample image and improve layout.
+            let y = 10;
 
             doc.setFont('times', 'italic');
             doc.setFontSize(12);
