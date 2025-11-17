@@ -214,16 +214,6 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     const [newCustomer, setNewCustomer] = useState(newCustomerInitialState);
     const isDirtyRef = useRef(false);
 
-    const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
-    const [customerSearchTerm, setCustomerSearchTerm] = useState('');
-    const customerDropdownRef = useRef<HTMLDivElement>(null);
-    
-    useOnClickOutside(customerDropdownRef, () => {
-        if (isCustomerDropdownOpen) {
-            setIsCustomerDropdownOpen(false);
-        }
-    });
-
     // Effect to handle switching to edit mode from another page
     useEffect(() => {
         if (state.selection?.page === 'SALES' && state.selection.action === 'edit') {
@@ -361,13 +351,23 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     }, [items, discount, state.products]);
 
     const selectedCustomer = useMemo(() => customerId ? state.customers.find(c => c.id === customerId) : null, [customerId, state.customers]);
+    
+    const customerOptions = useMemo((): DropdownOption[] =>
+        state.customers
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map(c => ({
+                value: c.id,
+                label: `${c.name} - ${c.area}`,
+                searchText: `${c.name} ${c.area}`
+            })),
+        [state.customers]
+    );
 
-    const filteredCustomers = useMemo(() => 
-        state.customers.filter(c => 
-            c.name.toLowerCase().includes(customerSearchTerm.toLowerCase()) || 
-            c.area.toLowerCase().includes(customerSearchTerm.toLowerCase())
-        ).sort((a,b) => a.name.localeCompare(b.name)),
-    [state.customers, customerSearchTerm]);
+    const paymentMethodOptions: DropdownOption[] = [
+        { value: 'CASH', label: 'Cash' },
+        { value: 'UPI', label: 'UPI' },
+        { value: 'CHEQUE', label: 'Cheque' }
+    ];
 
     const customerTotalDue = useMemo(() => {
         if (!customerId) return null;
@@ -712,64 +712,15 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Customer</label>
                         <div className="flex gap-2 items-center">
-                            <div className="relative w-full" ref={customerDropdownRef}>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsCustomerDropdownOpen(prev => !prev)}
-                                    className="w-full p-2 border rounded bg-white text-left custom-select dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
-                                    disabled={mode === 'edit' || (mode === 'add' && items.length > 0)}
-                                    aria-haspopup="listbox"
-                                    aria-expanded={isCustomerDropdownOpen}
-                                >
-                                    {selectedCustomer ? `${selectedCustomer.name} - ${selectedCustomer.area}` : 'Select a Customer'}
-                                </button>
-
-                                {isCustomerDropdownOpen && (
-                                    <div className="absolute top-full left-0 w-full mt-1 bg-white dark:bg-slate-900 rounded-md shadow-lg border dark:border-slate-700 z-40 animate-fade-in-fast">
-                                        <div className="p-2 border-b dark:border-slate-700">
-                                            <input
-                                                type="text"
-                                                placeholder="Search by name or area..."
-                                                value={customerSearchTerm}
-                                                onChange={e => setCustomerSearchTerm(e.target.value)}
-                                                className="w-full p-2 border border-gray-300 rounded dark:bg-slate-800 dark:border-slate-600 dark:text-white"
-                                                autoFocus
-                                            />
-                                        </div>
-                                        <ul className="max-h-60 overflow-y-auto" role="listbox">
-                                            <li
-                                                key="select-customer-placeholder"
-                                                onClick={() => {
-                                                    setCustomerId('');
-                                                    setIsCustomerDropdownOpen(false);
-                                                    setCustomerSearchTerm('');
-                                                }}
-                                                className="px-4 py-2 hover:bg-teal-50 dark:hover:bg-slate-800 cursor-pointer text-gray-500"
-                                                role="option"
-                                            >
-                                                Select a Customer
-                                            </li>
-                                            {filteredCustomers.map(c => (
-                                                <li
-                                                    key={c.id}
-                                                    onClick={() => {
-                                                        setCustomerId(c.id);
-                                                        setIsCustomerDropdownOpen(false);
-                                                        setCustomerSearchTerm('');
-                                                    }}
-                                                    className="px-4 py-2 hover:bg-teal-50 dark:hover:bg-slate-800 cursor-pointer border-t dark:border-slate-800"
-                                                    role="option"
-                                                >
-                                                    {c.name} - {c.area}
-                                                </li>
-                                            ))}
-                                            {filteredCustomers.length === 0 && (
-                                                <li className="px-4 py-2 text-gray-400">No customers found.</li>
-                                            )}
-                                        </ul>
-                                    </div>
-                                )}
-                            </div>
+                            <Dropdown
+                                options={customerOptions}
+                                value={customerId}
+                                onChange={setCustomerId}
+                                placeholder="Select a Customer"
+                                disabled={mode === 'edit' || (mode === 'add' && items.length > 0)}
+                                searchable={true}
+                                searchPlaceholder="Search by name or area..."
+                            />
                             {mode === 'add' && (
                                 <Button onClick={() => setIsAddingCustomer(true)} variant="secondary" className="flex-shrink-0">
                                     <Plus size={16}/> New Customer
@@ -865,11 +816,11 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Method</label>
-                                <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any})} className="w-full p-2 border rounded custom-select mt-1 dark:bg-slate-700 dark:border-slate-600">
-                                    <option value="CASH">Cash</option>
-                                    <option value="UPI">UPI</option>
-                                    <option value="CHEQUE">Cheque</option>
-                                </select>
+                                <Dropdown
+                                    options={paymentMethodOptions}
+                                    value={paymentDetails.method}
+                                    onChange={(val) => setPaymentDetails({ ...paymentDetails, method: val as any})}
+                                />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Reference (Optional)</label>
@@ -893,11 +844,11 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Method</label>
-                            <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any})} className="w-full p-2 border rounded custom-select dark:bg-slate-700 dark:border-slate-600">
-                                <option value="CASH">Cash</option>
-                                <option value="UPI">UPI</option>
-                                <option value="CHEQUE">Cheque</option>
-                            </select>
+                            <Dropdown
+                                options={paymentMethodOptions}
+                                value={paymentDetails.method}
+                                onChange={(val) => setPaymentDetails({ ...paymentDetails, method: val as any})}
+                            />
                         </div>
                     </div>
                 </Card>

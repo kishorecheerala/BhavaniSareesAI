@@ -17,14 +17,14 @@ export const useOnClickOutside = <T extends HTMLElement = HTMLElement>(
       handler(event);
     };
 
-    // Using the 'click' event in the capture phase (the `true` argument) is more robust.
-    // It handles both mouse clicks and touch taps reliably and prevents race conditions.
-    // The capture phase ensures this listener runs before the target's own click listeners
-    // in the bubbling phase, giving us more predictable control over closing the dropdown.
-    document.addEventListener('click', listener, true);
+    // Using mousedown is more reliable for this hook. It fires before the click event,
+    // which can prevent some race conditions with other click handlers. 'touchstart' is for mobile.
+    document.addEventListener('mousedown', listener);
+    document.addEventListener('touchstart', listener);
 
     return () => {
-      document.removeEventListener('click', listener, true);
+      document.removeEventListener('mousedown', listener);
+      document.removeEventListener('touchstart', listener);
     };
   }, [ref, handler]); // Reload only if ref or handler changes
 };
