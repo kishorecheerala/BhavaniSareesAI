@@ -9,9 +9,8 @@ import DeleteButton from '../components/DeleteButton';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
+// FIX: Add missing import for logoBase64
 import { logoBase64 } from '../utils/logo';
-import { formatINR } from '../utils/currency';
-import { hindRegularBase64 } from '../utils/font';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -48,8 +47,8 @@ const PaymentModal: React.FC<{
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
             <Card title="Add Payment" className="w-full max-w-sm animate-scale-in">
                 <div className="space-y-4">
-                    <p>Invoice Total: <span className="font-bold">{formatINR(sale.totalAmount)}</span></p>
-                    <p>Amount Due: <span className="font-bold text-red-600">{formatINR(dueAmount)}</span></p>
+                    <p>Invoice Total: <span className="font-bold">₹{Number(sale.totalAmount).toLocaleString('en-IN')}</span></p>
+                    <p>Amount Due: <span className="font-bold text-red-600">₹{dueAmount.toLocaleString('en-IN')}</span></p>
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Amount</label>
                         <input type="number" placeholder="Enter amount" value={paymentDetails.amount} onChange={e => setPaymentDetails({ ...paymentDetails, amount: e.target.value })} className="w-full p-2 border rounded" autoFocus/>
@@ -252,7 +251,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         const newPaymentAmount = parseFloat(paymentDetails.amount);
 
         if(newPaymentAmount > dueAmount + 0.01) { // Epsilon for float
-            alert(`Payment of ${formatINR(newPaymentAmount)} exceeds due amount of ${formatINR(dueAmount)}.`);
+            alert(`Payment of ₹${newPaymentAmount.toLocaleString('en-IN')} exceeds due amount of ₹${dueAmount.toLocaleString('en-IN')}.`);
             return;
         }
 
@@ -292,6 +291,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             const centerX = pageWidth / 2;
             const margin = 5;
             const maxLineWidth = pageWidth - margin * 2;
+            // FIX: Removed logo from thermal receipt to match sample image and improve layout.
             let y = 10;
 
             doc.setFont('times', 'italic');
@@ -310,7 +310,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             doc.line(margin, y, pageWidth - margin, y);
             y += 6;
 
-            doc.setFont('Hind', 'normal');
+            doc.setFont('Helvetica', 'normal');
             doc.setFontSize(8);
             doc.setTextColor('#000000');
             
@@ -323,6 +323,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                 const qrSize = 15; // 15mm
                 doc.addImage(qrCodeBase64, 'PNG', pageWidth - margin - qrSize, invoiceTextTopY, qrSize, qrSize);
                 
+                // Ensure y position is below the QR code for subsequent content
                 const qrBottom = invoiceTextTopY + qrSize;
                 if (qrBottom > y) {
                     y = qrBottom;
@@ -330,10 +331,10 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             }
             y += 5;
             
-            doc.setFont('Hind', 'bold');
+            doc.setFont('Helvetica', 'bold');
             doc.text('Billed To:', margin, y);
             y += 4;
-            doc.setFont('Hind', 'normal');
+            doc.setFont('Helvetica', 'normal');
             doc.text(customer.name, margin, y);
             y += 4;
             const addressLines = doc.splitTextToSize(customer.address, maxLineWidth);
@@ -344,13 +345,13 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             doc.setDrawColor('#000000');
             doc.line(margin, y, pageWidth - margin, y); 
             y += 5;
-            doc.setFont('Hind', 'bold');
+            doc.setFont('Helvetica', 'bold');
             doc.text('Purchase Details', centerX, y, { align: 'center' });
             y += 5;
             doc.line(margin, y, pageWidth - margin, y); 
             y += 5;
 
-            doc.setFont('Hind', 'bold');
+            doc.setFont('Helvetica', 'bold');
             doc.text('Item', margin, y);
             doc.text('Total', pageWidth - margin, y, { align: 'right' });
             y += 2;
@@ -358,17 +359,17 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             doc.line(margin, y, pageWidth - margin, y);
             y += 5;
             
-            doc.setFont('Hind', 'normal');
+            doc.setFont('Helvetica', 'normal');
             sale.items.forEach(item => {
                 const itemTotal = Number(item.price) * Number(item.quantity);
                 doc.setFontSize(9);
                 const splitName = doc.splitTextToSize(item.productName, maxLineWidth - 20);
                 doc.text(splitName, margin, y);
-                doc.text(formatINR(itemTotal), pageWidth - margin, y, { align: 'right' });
+                doc.text(`Rs. ${itemTotal.toLocaleString('en-IN')}`, pageWidth - margin, y, { align: 'right' });
                 y += (splitName.length * 4);
                 doc.setFontSize(7);
                 doc.setTextColor('#666666');
-                doc.text(`(x${item.quantity} @ ${formatINR(item.price)})`, margin, y);
+                doc.text(`(x${item.quantity} @ Rs. ${Number(item.price).toLocaleString('en-IN')})`, margin, y);
                 y += 6;
                 doc.setTextColor('#000000');
             });
@@ -389,10 +390,10 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             
             const totalsX = pageWidth - margin;
             totals.forEach(({label, value, bold = false}) => {
-                doc.setFont('Hind', bold ? 'bold' : 'normal');
+                doc.setFont('Helvetica', bold ? 'bold' : 'normal');
                 doc.setFontSize(bold ? 10 : 8);
                 doc.text(label, totalsX - 25, y, { align: 'right' });
-                doc.text(formatINR(value), totalsX, y, { align: 'right' });
+                doc.text(`Rs. ${value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, y, { align: 'right' });
                 y += (bold ? 5 : 4);
             });
           
@@ -400,15 +401,9 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         };
         
         const dummyDoc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, 500] });
-        dummyDoc.addFileToVFS('Hind-Regular.ttf', hindRegularBase64);
-        dummyDoc.addFont('Hind-Regular.ttf', 'Hind', 'normal');
-        dummyDoc.setFont('Hind', 'normal');
         const finalY = renderContentOnDoc(dummyDoc);
 
         const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, finalY + 5] });
-        doc.addFileToVFS('Hind-Regular.ttf', hindRegularBase64);
-        doc.addFont('Hind-Regular.ttf', 'Hind', 'normal');
-        doc.setFont('Hind', 'normal');
         renderContentOnDoc(doc);
         
         doc.save(`${sale.id}.pdf`);
@@ -416,17 +411,14 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
 
     const generateA4InvoicePdf = async (sale: Sale, customer: Customer) => {
         const doc = new jsPDF();
-        doc.addFileToVFS('Hind-Regular.ttf', hindRegularBase64);
-        doc.addFont('Hind-Regular.ttf', 'Hind', 'normal');
-        doc.setFont('Hind', 'normal');
-
         const profile = state.profile;
         let currentY = 15;
 
+        // FIX: Change image type to PNG
         doc.addImage(logoBase64, 'PNG', 14, 10, 25, 25);
     
         if (profile) {
-            doc.setFont('Hind', 'bold');
+            doc.setFont('helvetica', 'bold');
             doc.setFontSize(20);
             doc.setTextColor('#0d9488');
             doc.text(profile.name, 105, currentY, { align: 'center' });
@@ -446,17 +438,17 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         currentY += 10;
         
         doc.setFontSize(16);
-        doc.setFont('Hind', 'bold');
+        doc.setFont('helvetica', 'bold');
         doc.text('TAX INVOICE', 105, currentY, { align: 'center' });
         currentY += 10;
         
         doc.setFontSize(10);
-        doc.setFont('Hind', 'bold');
+        doc.setFont('helvetica', 'bold');
         doc.text('Billed To:', 14, currentY);
         doc.text('Invoice Details:', 120, currentY);
         currentY += 5;
     
-        doc.setFont('Hind', 'normal');
+        doc.setFont('helvetica', 'normal');
         doc.text(customer.name, 14, currentY);
         doc.text(`Invoice ID: ${sale.id}`, 120, currentY);
         currentY += 5;
@@ -474,12 +466,11 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                 index + 1,
                 item.productName,
                 item.quantity,
-                formatINR(item.price),
-                formatINR(item.quantity * item.price)
+                `Rs. ${Number(item.price).toLocaleString('en-IN')}`,
+                `Rs. ${(Number(item.quantity) * Number(item.price)).toLocaleString('en-IN')}`
             ]),
             theme: 'grid',
-            styles: { font: 'Hind', fontStyle: 'normal' },
-            headStyles: { font: 'Hind', fontStyle: 'bold', fillColor: [13, 148, 136] },
+            headStyles: { fillColor: [13, 148, 136] },
             columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } }
         });
         
@@ -490,36 +481,35 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         
         const totalsX = 196;
         doc.setFontSize(10);
-        doc.setFont('Hind', 'normal');
+        doc.setFont('helvetica', 'normal');
         doc.text('Subtotal:', totalsX - 30, currentY, { align: 'right' });
-        doc.text(formatINR(subTotal), totalsX, currentY, { align: 'right' });
+        doc.text(`Rs. ${subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
         currentY += 7;
     
         doc.text('Discount:', totalsX - 30, currentY, { align: 'right' });
-        doc.text(`- ${formatINR(sale.discount)}`, totalsX, currentY, { align: 'right' });
+        doc.text(`- Rs. ${Number(sale.discount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
         currentY += 7;
     
         doc.text('GST Included:', totalsX - 30, currentY, { align: 'right' });
-        doc.text(formatINR(sale.gstAmount), totalsX, currentY, { align: 'right' });
+        doc.text(`Rs. ${Number(sale.gstAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
         currentY += 7;
         
-        doc.setFont('Hind', 'bold');
+        doc.setFont('helvetica', 'bold');
         doc.text('Grand Total:', totalsX - 30, currentY, { align: 'right' });
-        doc.text(formatINR(sale.totalAmount), totalsX, currentY, { align: 'right' });
+        doc.text(`Rs. ${Number(sale.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
         currentY += 7;
     
-        doc.setFont('Hind', 'normal');
+        doc.setFont('helvetica', 'normal');
         doc.text('Paid:', totalsX - 30, currentY, { align: 'right' });
-        doc.text(formatINR(paidAmount), totalsX, currentY, { align: 'right' });
+        doc.text(`Rs. ${paidAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
         currentY += 7;
     
         doc.setFontSize(12);
-        doc.setFont('Hind', 'bold');
+        doc.setFont('helvetica', 'bold');
         doc.setTextColor(dueAmount > 0.01 ? '#dc2626' : '#16a34a');
         doc.text('Amount Due:', totalsX - 30, currentY, { align: 'right' });
-        doc.text(formatINR(dueAmount), totalsX, currentY, { align: 'right' });
+        doc.text(`Rs. ${dueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
         
-        doc.setTextColor('#000000');
         currentY = doc.internal.pageSize.height - 20;
         doc.setFontSize(10);
         doc.setTextColor('#888888');
@@ -539,11 +529,6 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
     const handleShareInvoice = async (sale: Sale) => {
         if (!selectedCustomer) return;
         
-        const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, 500] });
-        doc.addFileToVFS('Hind-Regular.ttf', hindRegularBase64);
-        doc.addFont('Hind-Regular.ttf', 'Hind', 'normal');
-        doc.setFont('Hind', 'normal');
-        
         let qrCodeBase64: string | null = null;
         try {
             const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(sale.id)}&size=50x50&margin=0`;
@@ -561,6 +546,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             const centerX = pageWidth / 2;
             const margin = 5;
             const maxLineWidth = pageWidth - margin * 2;
+            // FIX: Removed logo from thermal receipt to match sample image and improve layout.
             let y = 10;
 
             doc.setFont('times', 'italic');
@@ -575,7 +561,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             doc.setDrawColor('#cccccc');
             doc.line(margin, y, pageWidth - margin, y);
             y += 6;
-            doc.setFont('Hind', 'normal');
+            doc.setFont('Helvetica', 'normal');
             doc.setFontSize(8);
             const invoiceTextTopY = y - 3;
             doc.text(`Invoice: ${sale.id}`, margin, y);
@@ -588,10 +574,10 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                 if (qrBottom > y) y = qrBottom;
             }
             y += 5;
-            doc.setFont('Hind', 'bold');
+            doc.setFont('Helvetica', 'bold');
             doc.text('Billed To:', margin, y);
             y += 4;
-            doc.setFont('Hind', 'normal');
+            doc.setFont('Helvetica', 'normal');
             doc.text(customer.name, margin, y);
             y += 4;
             const addressLines = doc.splitTextToSize(customer.address, maxLineWidth);
@@ -600,7 +586,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             doc.setDrawColor('#000000');
             doc.line(margin, y, pageWidth - margin, y);
             y += 5;
-            doc.setFont('Hind', 'bold');
+            doc.setFont('Helvetica', 'bold');
             doc.text('Purchase Details', centerX, y, { align: 'center' });
             y += 5;
             doc.line(margin, y, pageWidth - margin, y);
@@ -611,17 +597,17 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             doc.setDrawColor('#cccccc');
             doc.line(margin, y, pageWidth - margin, y);
             y += 5;
-            doc.setFont('Hind', 'normal');
+            doc.setFont('Helvetica', 'normal');
             sale.items.forEach(item => {
                 const itemTotal = Number(item.price) * Number(item.quantity);
                 doc.setFontSize(9);
                 const splitName = doc.splitTextToSize(item.productName, maxLineWidth - 20);
                 doc.text(splitName, margin, y);
-                doc.text(formatINR(itemTotal), pageWidth - margin, y, { align: 'right' });
+                doc.text(`Rs. ${itemTotal.toLocaleString('en-IN')}`, pageWidth - margin, y, { align: 'right' });
                 y += (splitName.length * 4);
                 doc.setFontSize(7);
                 doc.setTextColor('#666666');
-                doc.text(`(x${item.quantity} @ ${formatINR(item.price)})`, margin, y);
+                doc.text(`(x${item.quantity} @ Rs. ${Number(item.price).toLocaleString('en-IN')})`, margin, y);
                 y += 6;
                 doc.setTextColor('#000000');
             });
@@ -639,16 +625,18 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             ];
             const totalsX = pageWidth - margin;
             totals.forEach(({ label, value, bold = false }) => {
-                doc.setFont('Hind', bold ? 'bold' : 'normal');
+                doc.setFont('Helvetica', bold ? 'bold' : 'normal');
                 doc.setFontSize(bold ? 10 : 8);
                 doc.text(label, totalsX - 25, y, { align: 'right' });
-                doc.text(formatINR(value), totalsX, y, { align: 'right' });
+                doc.text(`Rs. ${value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, y, { align: 'right' });
                 y += (bold ? 5 : 4);
             });
             return y;
         };
-        const finalY = renderContentOnDoc(doc);
-        doc.internal.pageSize.height = finalY + 5;
+        const dummyDoc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, 500] });
+        const finalY = renderContentOnDoc(dummyDoc);
+        const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, finalY + 5] });
+        renderContentOnDoc(doc);
         
         const pdfBlob = doc.output('blob');
         const pdfFile = new File([pdfBlob], `Receipt-${sale.id}.pdf`, { type: 'application/pdf' });
@@ -684,14 +672,10 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         }, 0);
         
         const doc = new jsPDF();
-        doc.addFileToVFS('Hind-Regular.ttf', hindRegularBase64);
-        doc.addFont('Hind-Regular.ttf', 'Hind', 'normal');
-        doc.setFont('Hind', 'normal');
-        
         const profile = state.profile;
         let currentY = 15;
 
-        doc.setFont('Hind', 'bold');
+        doc.setFont('helvetica', 'bold');
         doc.setFontSize(20);
         doc.setTextColor('#0d9488'); // Primary color
         doc.text('Customer Dues Summary', 105, currentY, { align: 'center' });
@@ -706,11 +690,11 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         
         currentY += 5;
         doc.setFontSize(12);
-        doc.setFont('Hind', 'bold');
+        doc.setFont('helvetica', 'bold');
         doc.setTextColor('#000000');
         doc.text(`Billed To: ${selectedCustomer.name}`, 14, currentY);
         currentY += 6;
-        doc.setFont('Hind', 'normal');
+        doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
         doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, currentY);
         currentY += 10;
@@ -724,23 +708,22 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                 return [
                     sale.id,
                     new Date(sale.date).toLocaleDateString(),
-                    formatINR(sale.totalAmount),
-                    formatINR(paid),
-                    formatINR(due)
+                    `Rs. ${Number(sale.totalAmount).toLocaleString('en-IN')}`,
+                    `Rs. ${paid.toLocaleString('en-IN')}`,
+                    `Rs. ${due.toLocaleString('en-IN')}`
                 ];
             }),
             theme: 'grid',
-            styles: { font: 'Hind', fontStyle: 'normal' },
-            headStyles: { font: 'Hind', fontStyle: 'bold', fillColor: [13, 148, 136] }, // Primary color
+            headStyles: { fillColor: [13, 148, 136] }, // Primary color
             columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } }
         });
         
         currentY = (doc as any).lastAutoTable.finalY + 15;
         doc.setFontSize(14);
-        doc.setFont('Hind', 'bold');
+        doc.setFont('helvetica', 'bold');
         doc.setTextColor('#0d9488');
         doc.text(
-            `Total Outstanding Due: ${formatINR(totalDue)}`,
+            `Total Outstanding Due: Rs. ${totalDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
             196, currentY, { align: 'right' }
         );
 
@@ -855,9 +838,9 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                                             <p className="text-xs text-gray-600">{new Date(sale.date).toLocaleString()}</p>
                                         </div>
                                         <div className="text-right mx-2">
-                                            <p className="font-bold text-lg text-primary">{formatINR(sale.totalAmount)}</p>
+                                            <p className="font-bold text-lg text-primary">₹{Number(sale.totalAmount).toLocaleString('en-IN')}</p>
                                             <p className={`text-sm font-semibold ${isPaid ? 'text-green-600' : 'text-red-600'}`}>
-                                                {isPaid ? 'Paid' : `Due: ${formatINR(dueAmount)}`}
+                                                {isPaid ? 'Paid' : `Due: ₹${dueAmount.toLocaleString('en-IN')}`}
                                             </p>
                                         </div>
                                         <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
@@ -892,7 +875,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                                                     <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
                                                         {sale.items.map((item, index) => (
                                                             <li key={index}>
-                                                                {item.productName} (x{item.quantity}) @ {formatINR(item.price)} each
+                                                                {item.productName} (x{item.quantity}) @ ₹{Number(item.price).toLocaleString('en-IN')} each
                                                             </li>
                                                         ))}
                                                     </ul>
@@ -900,10 +883,10 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                                                 <div className="p-2 bg-white rounded-md text-sm border">
                                                     <h4 className="font-semibold text-gray-700 mb-2">Transaction Details:</h4>
                                                     <div className="space-y-1">
-                                                        <div className="flex justify-between"><span>Subtotal:</span> <span>{formatINR(subTotal)}</span></div>
-                                                        <div className="flex justify-between"><span>Discount:</span> <span>- {formatINR(sale.discount)}</span></div>
-                                                        <div className="flex justify-between"><span>GST Included:</span> <span>{formatINR(sale.gstAmount)}</span></div>
-                                                        <div className="flex justify-between font-bold border-t pt-1 mt-1"><span>Grand Total:</span> <span>{formatINR(sale.totalAmount)}</span></div>
+                                                        <div className="flex justify-between"><span>Subtotal:</span> <span>₹{subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                                                        <div className="flex justify-between"><span>Discount:</span> <span>- ₹{Number(sale.discount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                                                        <div className="flex justify-between"><span>GST Included:</span> <span>₹{Number(sale.gstAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                                                        <div className="flex justify-between font-bold border-t pt-1 mt-1"><span>Grand Total:</span> <span>₹{Number(sale.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
                                                     </div>
                                                 </div>
                                                 <div>
@@ -912,7 +895,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                                                         <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
                                                             {sale.payments.map(payment => (
                                                                 <li key={payment.id}>
-                                                                    {formatINR(payment.amount)} {payment.method === 'RETURN_CREDIT' ? <span className="text-blue-600 font-semibold">(Return Credit)</span> : `via ${payment.method}`} on {new Date(payment.date).toLocaleDateString()}
+                                                                    ₹{Number(payment.amount).toLocaleString('en-IN')} {payment.method === 'RETURN_CREDIT' ? <span className="text-blue-600 font-semibold">(Return Credit)</span> : `via ${payment.method}`} on {new Date(payment.date).toLocaleDateString()}
                                                                     {payment.reference && <span className="text-xs text-gray-500 block">Ref: {payment.reference}</span>}
                                                                 </li>
                                                             ))}
@@ -947,7 +930,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                                             <p className="text-xs text-gray-500">Original Invoice: {ret.referenceId}</p>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <p className="font-semibold text-primary">Refunded: {formatINR(ret.amount)}</p>
+                                            <p className="font-semibold text-primary">Refunded: ₹{Number(ret.amount).toLocaleString('en-IN')}</p>
                                             <Button onClick={() => handleEditReturn(ret.id)} variant="secondary" className="p-2 h-auto">
                                                 <Edit size={16} />
                                             </Button>
@@ -1044,11 +1027,11 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                                 <div className="text-right flex-shrink-0 ml-4">
                                     <div className="flex items-center justify-end gap-1 text-green-600">
                                         <ShoppingCart size={14} />
-                                        <span className="font-semibold">{formatINR(totalPurchase)}</span>
+                                        <span className="font-semibold">₹{totalPurchase.toLocaleString('en-IN')}</span>
                                     </div>
                                      <div className={`flex items-center justify-end gap-1 ${totalDue > 0 ? 'text-red-600' : 'text-gray-600'}`}>
                                         <IndianRupee size={14} />
-                                        <span className="font-semibold">{formatINR(totalDue)}</span>
+                                        <span className="font-semibold">₹{totalDue.toLocaleString('en-IN')}</span>
                                     </div>
                                 </div>
                             </div>
