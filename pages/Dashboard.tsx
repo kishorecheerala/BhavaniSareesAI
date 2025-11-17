@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { IndianRupee, User, AlertTriangle, Download, Upload, ShoppingCart, Package, XCircle, CheckCircle, Info, Calendar, ShieldCheck, ShieldAlert, ShieldX, Archive, PackageCheck, TestTube2, TrendingUp, Users } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import * as db from '../utils/db';
+import { saveFile } from '../utils/db';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import DataImportModal from '../components/DataImportModal';
@@ -321,6 +322,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
     const [restoreStatus, setRestoreStatus] = useState<{ type: 'info' | 'success' | 'error', message: string } | null>(null);
     const [lastBackupDate, setLastBackupDate] = useState<string | null>(null);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const businessName = state.profile?.name || 'Business Manager';
 
     useEffect(() => {
         const fetchLastBackup = async () => {
@@ -379,16 +381,9 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                 return;
             }
             const dataString = JSON.stringify(data, null, 2);
-            const blob = new Blob([dataString], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
             const date = new Date().toISOString().slice(0, 10);
-            a.href = url;
-            a.download = `bhavani-sarees-backup-${date}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            
+            saveFile(dataString, `backup-${date}.json`, 'Backups', businessName, 'application/json');
             
             await db.setLastBackupDate();
             dispatch({ type: 'SET_LAST_BACKUP_DATE', payload: new Date().toISOString() });

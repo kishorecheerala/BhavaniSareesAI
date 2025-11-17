@@ -5,6 +5,7 @@ import Card from './Card';
 import Button from './Button';
 import { X, Download, Printer } from 'lucide-react';
 import { PurchaseItem } from '../types';
+import { savePdf } from '../utils/db';
 
 interface BatchBarcodeModalProps {
   isOpen: boolean;
@@ -119,7 +120,7 @@ const BatchBarcodeModal: React.FC<BatchBarcodeModalProps> = ({ isOpen, purchaseI
                 }
             }
 
-            doc.save(`purchase-labels.pdf`);
+            savePdf(doc, `purchase-labels.pdf`, 'Barcodes', businessName);
             onClose();
         } catch (error) {
             console.error('PDF generation failed:', error);

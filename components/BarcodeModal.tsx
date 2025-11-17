@@ -4,6 +4,7 @@ import JsBarcode from 'jsbarcode';
 import Card from './Card';
 import Button from './Button';
 import { X, Download, Printer } from 'lucide-react';
+import { savePdf } from '../utils/db';
 
 interface BarcodeModalProps {
   isOpen: boolean;
@@ -132,7 +133,7 @@ export const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, product, onC
       }
 
       const filename = `${product.id}-labels-${numberOfCopies}.pdf`;
-      doc.save(filename);
+      savePdf(doc, filename, 'Barcodes', businessName);
       onClose();
     } catch (error) {
       console.error('PDF generation failed:', error);
