@@ -627,8 +627,12 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                 return;
             }
 
+            const originalTime = new Date(saleToEdit.date).toTimeString().split(' ')[0];
+            const newDateWithTime = new Date(`${saleDate}T${originalTime}`);
+
             const updatedSale: Sale = {
                 ...saleToEdit, items, discount: discountAmount, gstAmount, totalAmount,
+                date: newDateWithTime.toISOString(),
             };
             dispatch({ type: 'UPDATE_SALE', payload: { oldSale: saleToEdit, updatedSale } });
             showToast('Sale updated successfully!');
@@ -758,7 +762,6 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                             value={saleDate} 
                             onChange={e => setSaleDate(e.target.value)} 
                             className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
-                            disabled={mode === 'edit'}
                         />
                     </div>
 
