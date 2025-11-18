@@ -173,7 +173,6 @@ interface PurchaseFormProps {
   showToast: (message: string, type?: 'success' | 'info') => void;
 }
 
-// FIX: Export PurchaseForm component to be used in other files.
 export const PurchaseForm: React.FC<PurchaseFormProps> = ({
   mode,
   initialData,
@@ -192,6 +191,8 @@ export const PurchaseForm: React.FC<PurchaseFormProps> = ({
   const [totalAmount, setTotalAmount] = useState(initialData?.totalAmount.toString() || '');
   const [amountPaid, setAmountPaid] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'UPI' | 'CHEQUE'>('CASH');
+  const [paymentReference, setPaymentReference] = useState('');
+  const [paymentDueDates, setPaymentDueDates] = useState<string[]>(initialData?.paymentDueDates || []);
 
   const [isScanning, setIsScanning] = useState(false);
   const [isNewProductModalOpen, setIsNewProductModalOpen] = useState(false);
@@ -219,6 +220,7 @@ export const PurchaseForm: React.FC<PurchaseFormProps> = ({
       setPurchaseDate(getLocalDateString(new Date(initialData.date)));
       setSupplierInvoiceId(initialData.supplierInvoiceId || '');
       setTotalAmount(initialData.totalAmount.toString());
+      setPaymentDueDates(initialData.paymentDueDates || []);
     }
   }, [initialData]);
 
@@ -342,6 +344,12 @@ export const PurchaseForm: React.FC<PurchaseFormProps> = ({
   };
   
   const calculatedTotal = useMemo(() => items.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0), [items]);
+  const calculatedGST = useMemo(() => items.reduce((sum, item) => {
+    const itemTotal = Number(item.price) * Number(item.quantity);
+    const gstPercent = Number.isFinite(item.gstPercent) ? item.gstPercent : 0;
+    const itemGst = itemTotal - (itemTotal / (1 + (gstPercent / 100)));
+    return sum + itemGst;
+  }, 0), [items]);
 
   const handleSubmit = () => {
     const total = parseFloat(totalAmount);
@@ -363,7 +371,8 @@ export const PurchaseForm: React.FC<PurchaseFormProps> = ({
                 id: `PAY-${purchaseId}`,
                 amount: paid,
                 method: paymentMethod,
-                date: new Date().toISOString()
+                date: new Date().toISOString(),
+                reference: paymentReference.trim() || undefined
             });
         }
     } else { // edit mode
@@ -379,7 +388,8 @@ export const PurchaseForm: React.FC<PurchaseFormProps> = ({
       totalAmount: total,
       date: new Date(purchaseDate).toISOString(),
       supplierInvoiceId: supplierInvoiceId || undefined,
-      payments
+      payments,
+      paymentDueDates: paymentDueDates.filter(d => d).length > 0 ? paymentDueDates.filter(d => d).sort() : undefined,
     };
 
     onSubmit(purchaseData);
@@ -408,8 +418,8 @@ export const PurchaseForm: React.FC<PurchaseFormProps> = ({
                 placeholder="Select a Supplier"
                 disabled={mode === 'edit'}
             />
-          <input type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} className="w-full p-2 border rounded" disabled={mode === 'edit'}/>
-          <input type="text" placeholder="Supplier Invoice ID (Optional)" value={supplierInvoiceId} onChange={e => setSupplierInvoiceId(e.target.value)} className="w-full p-2 border rounded" />
+          <input type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" />
+          <input type="text" placeholder="Supplier Invoice ID (Optional)" value={supplierInvoiceId} onChange={e => setSupplierInvoiceId(e.target.value)} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" />
         </div>
       </Card>
 
@@ -419,7 +429,7 @@ export const PurchaseForm: React.FC<PurchaseFormProps> = ({
                 <Button onClick={() => setIsNewProductModalOpen(true)} className="w-full"><Plus size={16}/> New Product</Button>
                 <Button onClick={() => setIsExistingProductModalOpen(true)} variant="secondary" className="w-full"><Search size={16}/> Existing Product</Button>
                 <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full"><QrCode size={16}/> Scan</Button>
-                <label htmlFor="csv-upload" className="px-4 py-2 rounded-md font-semibold text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-sm flex items-center justify-center gap-2 bg-secondary hover:bg-teal-500 focus:ring-secondary cursor-pointer">
+                <label htmlFor="csv-upload" className="px-4 py-2 rounded-md font-semibold text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-sm flex items-center justify-center gap-2 bg-secondary hover:bg-teal-500 focus:ring-secondary cursor-pointer">
                     <Upload size={16}/> From CSV
                 </label>
                 <input id="csv-upload" type="file" accept=".csv" className="hidden" onChange={handleFileImport} />
@@ -433,19 +443,19 @@ export const PurchaseForm: React.FC<PurchaseFormProps> = ({
             )}
             <div className="space-y-2">
             {items.map(item => (
-                <div key={item.productId} className="p-2 bg-gray-50 rounded border animate-fade-in-fast">
+                <div key={item.productId} className="p-2 bg-gray-50 dark:bg-slate-700/50 rounded border dark:border-slate-700 animate-fade-in-fast">
                 <div className="flex justify-between items-start">
                     <div>
                     <p className="font-semibold">{item.productName}</p>
-                    <p className="text-xs text-gray-500">{item.productId}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{item.productId}</p>
                     </div>
                     <DeleteButton variant="remove" onClick={() => handleItemRemove(item.productId)} />
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm mt-1">
-                    <input type="number" value={item.quantity} onChange={e => handleItemUpdate(item.productId, 'quantity', parseFloat(e.target.value))} className="w-full p-1 border rounded" placeholder="Qty" />
-                    <input type="number" value={item.price} onChange={e => handleItemUpdate(item.productId, 'price', parseFloat(e.target.value))} className="w-full p-1 border rounded" placeholder="Purch Price" />
-                    <input type="number" value={item.saleValue} onChange={e => handleItemUpdate(item.productId, 'saleValue', parseFloat(e.target.value))} className="w-full p-1 border rounded" placeholder="Sale Value" />
-                    <input type="number" value={item.gstPercent} onChange={e => handleItemUpdate(item.productId, 'gstPercent', parseFloat(e.target.value))} className="w-full p-1 border rounded" placeholder="GST %" />
+                    <input type="number" value={item.quantity} onChange={e => handleItemUpdate(item.productId, 'quantity', parseFloat(e.target.value))} className="w-full p-1 border rounded dark:bg-slate-700 dark:border-slate-600" placeholder="Qty" />
+                    <input type="number" value={item.price} onChange={e => handleItemUpdate(item.productId, 'price', parseFloat(e.target.value))} className="w-full p-1 border rounded dark:bg-slate-700 dark:border-slate-600" placeholder="Purch Price" />
+                    <input type="number" value={item.saleValue} onChange={e => handleItemUpdate(item.productId, 'saleValue', parseFloat(e.target.value))} className="w-full p-1 border rounded dark:bg-slate-700 dark:border-slate-600" placeholder="Sale Value" />
+                    <input type="number" value={item.gstPercent} onChange={e => handleItemUpdate(item.productId, 'gstPercent', parseFloat(e.target.value))} className="w-full p-1 border rounded dark:bg-slate-700 dark:border-slate-600" placeholder="GST %" />
                     <div className="p-1 flex items-center justify-end font-semibold">₹{(Number(item.quantity) * Number(item.price)).toLocaleString('en-IN')}</div>
                 </div>
                 </div>
@@ -454,26 +464,84 @@ export const PurchaseForm: React.FC<PurchaseFormProps> = ({
         </div>
       </Card>
       
-       <Card title="Final Details">
-            <div className="space-y-4">
-                <div className="flex justify-between items-center text-lg font-bold">
-                    <span>Calculated Total:</span>
-                    <span>₹{calculatedTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+       <Card title="Final Details & Payment">
+            <div className="space-y-6">
+                <div className="space-y-3">
+                    <div className="flex justify-between items-center text-gray-700 dark:text-gray-300">
+                        <span>Subtotal (from items):</span>
+                        <span>₹{calculatedTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-gray-700 dark:text-gray-300">
+                        <span>Total GST (from items):</span>
+                        <span>₹{calculatedGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
                 </div>
-                <div>
-                    <label className="block text-sm font-medium">Final Invoice Total (as on bill)</label>
-                    <input type="number" value={totalAmount} onChange={e => setTotalAmount(e.target.value)} placeholder="Enter final amount" className="w-full p-2 border rounded mt-1" />
+
+                <div className="text-center">
+                    <label className="text-sm text-gray-500 dark:text-gray-400">Final Invoice Total (as on bill)</label>
+                    <input 
+                        type="number" 
+                        value={totalAmount} 
+                        onChange={e => setTotalAmount(e.target.value)} 
+                        placeholder="0.00"
+                        className="w-full p-2 text-center text-4xl font-bold text-primary bg-transparent border-x-0 border-t-0 border-b-2 border-primary focus:ring-0 focus:border-primary dark:text-secondary"
+                    />
                 </div>
+
                 {mode === 'add' && (
-                    <div className="grid grid-cols-2 gap-4">
-                        <input type="number" value={amountPaid} onChange={e => setAmountPaid(e.target.value)} placeholder="Amount Paid Now" className="w-full p-2 border rounded" />
-                        <Dropdown
-                            options={paymentMethodOptions}
-                            value={paymentMethod}
-                            onChange={(val) => setPaymentMethod(val as any)}
-                        />
+                    <div className="space-y-4 pt-4 border-t dark:border-slate-700">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Amount Paid Now</label>
+                            <input 
+                                type="number" 
+                                value={amountPaid} 
+                                onChange={e => setAmountPaid(e.target.value)} 
+                                placeholder="Enter amount paid" 
+                                className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500 mt-1 dark:bg-slate-700 dark:border-red-400 dark:text-slate-200" 
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Method</label>
+                            <Dropdown
+                                options={paymentMethodOptions}
+                                value={paymentMethod}
+                                onChange={(val) => setPaymentMethod(val as any)}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Reference (Optional)</label>
+                            <input 
+                                type="text" 
+                                placeholder="e.g. UPI ID, Cheque No." 
+                                value={paymentReference}
+                                onChange={e => setPaymentReference(e.target.value)}
+                                className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600"
+                            />
+                        </div>
                     </div>
                 )}
+                
+                <div className="space-y-2 pt-4 border-t dark:border-slate-700">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Due Dates (Optional)</label>
+                    {paymentDueDates.map((date, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                            <input 
+                                type="date" 
+                                value={date} 
+                                onChange={(e) => {
+                                    const newDates = [...paymentDueDates];
+                                    newDates[index] = e.target.value;
+                                    setPaymentDueDates(newDates);
+                                }} 
+                                className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" 
+                            />
+                            <DeleteButton variant="remove" onClick={() => setPaymentDueDates(paymentDueDates.filter((_, i) => i !== index))} />
+                        </div>
+                    ))}
+                    <Button onClick={() => setPaymentDueDates([...paymentDueDates, getLocalDateString()])} variant="secondary" className="w-full">
+                        <Plus size={16} className="mr-2" /> Add Due Date
+                    </Button>
+                </div>
             </div>
        </Card>
       
