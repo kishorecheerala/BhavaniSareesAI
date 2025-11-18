@@ -227,7 +227,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
     }
 
     return (
-        <div className="space-y-4">
+        <div>
              {isBatchBarcodeModalOpen && (
                 <BatchBarcodeModal
                     isOpen={isBatchBarcodeModalOpen}
@@ -237,43 +237,46 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                     title="Print Barcode Labels"
                 />
              )}
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-primary">Products & Inventory</h1>
-                <div className="flex items-center gap-2">
-                    {isSelectMode ? (
-                        <>
-                            <Button 
-                                onClick={() => setIsBatchBarcodeModalOpen(true)} 
-                                disabled={selectedProductIds.length === 0}
-                            >
-                                <Printer size={16} className="mr-2" />
-                                Print Labels ({selectedProductIds.length})
+            <div className="sticky top-[-1rem] z-10 bg-background dark:bg-slate-900 py-4 -mx-4 px-4 border-b dark:border-slate-700 mb-4">
+                <div className="flex justify-between items-center">
+                    <h1 className="text-2xl font-bold text-primary">Products & Inventory</h1>
+                    <div className="flex items-center gap-2">
+                        {isSelectMode ? (
+                            <>
+                                <Button 
+                                    onClick={() => setIsBatchBarcodeModalOpen(true)} 
+                                    disabled={selectedProductIds.length === 0}
+                                >
+                                    <Printer size={16} className="mr-2" />
+                                    Print Labels ({selectedProductIds.length})
+                                </Button>
+                                <Button onClick={toggleSelectMode} variant="secondary">
+                                    <X size={16} className="mr-2"/>
+                                    Cancel
+                                </Button>
+                            </>
+                        ) : (
+                            <Button onClick={toggleSelectMode}>
+                                <QrCode size={16} className="mr-2"/>
+                                Bulk QR Print
                             </Button>
-                            <Button onClick={toggleSelectMode} variant="secondary">
-                                <X size={16} className="mr-2"/>
-                                Cancel
-                            </Button>
-                        </>
-                    ) : (
-                        <Button onClick={toggleSelectMode}>
-                            <QrCode size={16} className="mr-2"/>
-                            Bulk QR Print
-                        </Button>
-                    )}
+                        )}
+                    </div>
+                </div>
+                
+                <div className="relative mt-4">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                    <input
+                        type="text"
+                        placeholder="Search products by name or code..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full p-2 pl-10 border rounded-lg"
+                        disabled={isSelectMode}
+                    />
                 </div>
             </div>
-            
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                <input
-                    type="text"
-                    placeholder="Search products by name or code..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full p-2 pl-10 border rounded-lg"
-                    disabled={isSelectMode}
-                />
-            </div>
+
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {filteredProducts.map(product => {
