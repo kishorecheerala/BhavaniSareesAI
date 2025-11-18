@@ -20,6 +20,7 @@ interface BarcodeModalProps {
 export const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, product, onClose, businessName }) => {
   const [numberOfCopies, setNumberOfCopies] = useState(1);
   const labelPreviewCanvasRef = useRef<HTMLCanvasElement>(null);
+  const printIframeRef = useRef<HTMLIFrameElement | null>(null);
 
   const generateLabelCanvas = (): HTMLCanvasElement => {
     const labelCanvas = document.createElement('canvas');
@@ -80,6 +81,14 @@ export const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, product, onC
     if (isOpen && product) {
         setNumberOfCopies(product.quantity || 0);
     }
+
+    // Cleanup iframe on modal close/unmount
+    return () => {
+        if (printIframeRef.current) {
+            document.body.removeChild(printIframeRef.current);
+            printIframeRef.current = null;
+        }
+    };
   }, [isOpen, product]);
 
   useEffect(() => {
@@ -161,7 +170,13 @@ export const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, product, onC
             }
         `;
         
+        // Cleanup previous iframe if it exists from a prior print action
+        if (printIframeRef.current) {
+            document.body.removeChild(printIframeRef.current);
+        }
+
         const iframe = document.createElement('iframe');
+        printIframeRef.current = iframe; // Store ref
         iframe.style.position = 'absolute';
         iframe.style.width = '0';
         iframe.style.height = '0';
@@ -178,15 +193,14 @@ export const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, product, onC
                     iframe.contentWindow.focus();
                     iframe.contentWindow.print();
                 }
-                // After print dialog is closed (or even if it's non-blocking),
-                // wait a moment before cleaning up.
-                setTimeout(() => {
-                    document.body.removeChild(iframe);
-                }, 500);
+                // NOTE: The iframe is NOT removed here. It will be cleaned up by the useEffect hook when the modal closes.
             };
         } else {
              // Fallback if doc is not available
-             document.body.removeChild(iframe);
+             if (printIframeRef.current) {
+                document.body.removeChild(printIframeRef.current);
+                printIframeRef.current = null;
+             }
         }
     } catch (error) {
         console.error('Printing failed:', error);

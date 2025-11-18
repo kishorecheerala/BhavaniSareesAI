@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import jsPDF from 'jspdf';
 import JsBarcode from 'jsbarcode';
 import Card from './Card';
@@ -63,6 +63,7 @@ const generateLabelCanvas = (product: { id: string, name: string, salePrice: num
 
 const BatchBarcodeModal: React.FC<BatchBarcodeModalProps> = ({ isOpen, purchaseItems, onClose, businessName, title }) => {
     const [quantities, setQuantities] = useState<{ [key: string]: string }>({});
+    const printIframeRef = useRef<HTMLIFrameElement | null>(null);
 
     useEffect(() => {
         if (isOpen && purchaseItems.length > 0) {
@@ -74,14 +75,24 @@ const BatchBarcodeModal: React.FC<BatchBarcodeModalProps> = ({ isOpen, purchaseI
         } else if (!isOpen) {
             setQuantities({});
         }
+
+        // Cleanup iframe on modal close/unmount
+        return () => {
+            if (printIframeRef.current) {
+                document.body.removeChild(printIframeRef.current);
+                printIframeRef.current = null;
+            }
+        };
     }, [isOpen, purchaseItems]);
 
     const handleQuantityChange = (productId: string, value: string) => {
         const num = parseInt(value, 10);
+        const cleanValue = String(num); // This removes leading zeros
+
         if (value === "") {
             setQuantities(prev => ({ ...prev, [productId]: "" }));
         } else if (!isNaN(num) && num >= 0) {
-            setQuantities(prev => ({ ...prev, [productId]: String(num) }));
+            setQuantities(prev => ({ ...prev, [productId]: cleanValue }));
         }
     };
 
@@ -156,7 +167,13 @@ const BatchBarcodeModal: React.FC<BatchBarcodeModalProps> = ({ isOpen, purchaseI
                 }
             `;
             
+            // Cleanup previous iframe if it exists
+            if (printIframeRef.current) {
+                document.body.removeChild(printIframeRef.current);
+            }
+
             const iframe = document.createElement('iframe');
+            printIframeRef.current = iframe; // Store ref
             iframe.style.position = 'absolute';
             iframe.style.width = '0';
             iframe.style.height = '0';
@@ -173,12 +190,14 @@ const BatchBarcodeModal: React.FC<BatchBarcodeModalProps> = ({ isOpen, purchaseI
                         iframe.contentWindow.focus();
                         iframe.contentWindow.print();
                     }
-                    setTimeout(() => {
-                        document.body.removeChild(iframe);
-                    }, 500);
+                    // NOTE: The iframe is NOT removed here. It will be cleaned up by the useEffect hook when the modal closes.
                 };
             } else {
-                 document.body.removeChild(iframe);
+                 // Fallback
+                 if (printIframeRef.current) {
+                    document.body.removeChild(printIframeRef.current);
+                    printIframeRef.current = null;
+                 }
             }
         } catch (error) {
             console.error('Printing failed:', error);
