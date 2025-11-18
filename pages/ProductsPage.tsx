@@ -284,24 +284,28 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                     return (
                         <Card 
                             key={product.id} 
-                            className={`relative cursor-pointer transition-all duration-200 ${isSelected ? 'ring-2 ring-primary shadow-xl scale-[1.02]' : 'hover:shadow-lg'}`} 
+                            className={`cursor-pointer transition-all duration-200 ${isSelected ? 'ring-2 ring-primary shadow-xl scale-[1.02]' : 'hover:shadow-lg'}`} 
                             onClick={() => handleProductClick(product)}
                         >
-                            {isSelectMode && (
-                                <div className="absolute top-2 right-2 z-10 p-1 bg-white/50 dark:bg-slate-900/50 rounded-full pointer-events-none">
-                                    <input
-                                        type="checkbox"
-                                        checked={isSelected}
-                                        readOnly
-                                        className="h-5 w-5 rounded-full text-primary focus:ring-0 focus:ring-offset-0 border-gray-400 dark:bg-slate-600 dark:border-slate-500"
-                                    />
+                            <div className="flex items-start gap-4">
+                                {isSelectMode && (
+                                    <div className="flex-shrink-0 pt-1">
+                                        <input
+                                            type="checkbox"
+                                            checked={isSelected}
+                                            readOnly
+                                            className="h-5 w-5 rounded text-primary focus:ring-0 focus:ring-offset-0 border-gray-400 dark:bg-slate-600 dark:border-slate-500 pointer-events-none"
+                                        />
+                                    </div>
+                                )}
+                                <div className="flex-grow min-w-0">
+                                    <p className="font-bold text-lg text-primary truncate">{product.name}</p>
+                                    <p className="text-sm text-gray-500 mb-2">Code: {product.id}</p>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="font-semibold text-gray-700">Stock: <span className="text-blue-600 font-bold text-base">{product.quantity}</span></span>
+                                        <span className="font-semibold text-gray-700">Price: <span className="text-green-600 font-bold text-base">₹{product.salePrice.toLocaleString('en-IN')}</span></span>
+                                    </div>
                                 </div>
-                            )}
-                            <p className="font-bold text-lg text-primary">{product.name}</p>
-                            <p className="text-sm text-gray-500 mb-2">Code: {product.id}</p>
-                            <div className="flex justify-between text-sm">
-                                <span className="font-semibold text-gray-700">Stock: <span className="text-blue-600 font-bold text-base">{product.quantity}</span></span>
-                                <span className="font-semibold text-gray-700">Price: <span className="text-green-600 font-bold text-base">₹{product.salePrice.toLocaleString('en-IN')}</span></span>
                             </div>
                         </Card>
                     )
