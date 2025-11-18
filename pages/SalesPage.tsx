@@ -212,6 +212,13 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     const [isAddingCustomer, setIsAddingCustomer] = useState(false);
     const [newCustomer, setNewCustomer] = useState(newCustomerInitialState);
     const isDirtyRef = useRef(false);
+    const topOfPageRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        // Scroll to top when the component mounts or when mode changes to ensure
+        // the customer selection is visible.
+        topOfPageRef.current?.scrollIntoView();
+    }, [mode]);
 
     // Effect to handle switching to edit mode from another page
     useEffect(() => {
@@ -679,6 +686,18 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         showToast(`Payment of ₹${paidAmount.toLocaleString('en-IN')} recorded successfully.`);
         resetForm();
     };
+    
+    const handleInitiateProductAdd = (method: 'select' | 'scan') => {
+        if (!customerId) {
+            showToast('Please select a customer first.', 'info');
+            return;
+        }
+        if (method === 'select') {
+            setIsSelectingProduct(true);
+        } else {
+            setIsScanning(true);
+        }
+    };
 
     const canCreateSale = customerId && items.length > 0 && mode === 'add';
     const canUpdateSale = customerId && items.length > 0 && mode === 'edit';
@@ -686,7 +705,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     const pageTitle = mode === 'edit' ? `Edit Sale: ${saleToEdit?.id}` : 'New Sale / Payment';
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4" ref={topOfPageRef}>
             {isAddingCustomer && 
                 <AddCustomerModal 
                     newCustomer={newCustomer}
@@ -759,10 +778,10 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
 
             <Card title="Sale Items">
                 <div className="flex flex-col sm:flex-row gap-2">
-                    <Button onClick={() => setIsSelectingProduct(true)} className="w-full sm:w-auto flex-grow" disabled={!customerId}>
+                    <Button onClick={() => handleInitiateProductAdd('select')} className="w-full sm:w-auto flex-grow">
                         <Search size={16} className="mr-2"/> Select Product
                     </Button>
-                    <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full sm:w-auto flex-grow" disabled={!customerId}>
+                    <Button onClick={() => handleInitiateProductAdd('scan')} variant="secondary" className="w-full sm:w-auto flex-grow">
                         <QrCode size={16} className="mr-2"/> Scan Product
                     </Button>
                 </div>
