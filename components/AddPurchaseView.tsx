@@ -68,7 +68,7 @@ const QRScannerModal: React.FC<{ onClose: () => void; onScanned: (text: string) 
     }, [onScanned]);
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-75 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
             <Card title="Scan Product" className="w-full max-w-md relative animate-scale-in">
                 <button onClick={onClose} className="absolute top-4 right-4 p-2"><X size={20}/></button>
                 <div id="qr-reader-purchase" className="w-full mt-4"></div>
@@ -86,7 +86,7 @@ const ProductSearchModal: React.FC<{
     const [searchTerm, setSearchTerm] = useState('');
     if (!isOpen) return null;
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
             <Card className="w-full max-w-lg animate-scale-in">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-bold">Select Existing Product</h2>
@@ -144,7 +144,7 @@ const NewProductModal: React.FC<{
     if(!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[51] p-4 animate-fade-in-fast">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[51] p-4 animate-fade-in-fast">
             <Card title="Add New Product to Purchase" className="w-full max-w-md animate-scale-in">
                  <div className="space-y-4">
                     <input type="text" placeholder="Product ID / Code (Unique)" value={newProduct.id} onChange={e => setNewProduct({...newProduct, id: e.target.value})} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" autoFocus />

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Card from './Card';
 import Button from './Button';
@@ -53,7 +54,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[51] p-4 animate-fade-in-fast">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[51] p-4 animate-fade-in-fast">
             <Card title="Add New Customer" className="w-full max-w-md animate-scale-in">
                 <div className="space-y-4">
                     <div>

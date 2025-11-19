@@ -34,7 +34,7 @@ const AddSupplierModal: React.FC<{
     if (!isOpen) return null;
 
     return (
-         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[51] p-4 animate-fade-in-fast">
+         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[51] p-4 animate-fade-in-fast">
             <Card title="Add New Supplier" className="w-full max-w-md animate-scale-in max-h-[90vh] overflow-y-auto relative">
                  <button onClick={onClose} className="absolute top-4 right-4 p-1 rounded-full text-gray-500 hover:bg-gray-100 transition-colors"><X size={20}/></button>
                  <div className="space-y-4 mt-2">

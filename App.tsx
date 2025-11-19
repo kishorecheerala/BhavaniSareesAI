@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle, Bell, Menu, Plus, UserPlus, PackagePlus, Download, X, Sun, Moon } from 'lucide-react';
 
@@ -494,7 +495,7 @@ const MainApp: React.FC = () => {
         </div>
       )}
 
-      <main {...swipeHandlers} className="flex-grow overflow-y-auto p-4 pb-20">
+      <main {...swipeHandlers} className="flex-grow overflow-y-auto p-4 pb-20" style={{ WebkitOverflowScrolling: 'touch' }}>
         <div key={currentPage} className="animate-fade-in-fast">
           {renderPage()}
         </div>

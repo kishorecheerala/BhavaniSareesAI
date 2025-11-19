@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, X, User, Package, Boxes, ShoppingCart, QrCode } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
@@ -53,7 +54,7 @@ const QRScannerModal: React.FC<{ onClose: () => void; onScanned: (text: string) 
     }, [onScanned]);
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-75 backdrop-blur-sm flex flex-col items-center justify-center z-60 p-4 animate-fade-in-fast">
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex flex-col items-center justify-center z-60 p-4 animate-fade-in-fast">
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl p-4 w-full max-w-md relative animate-scale-in">
                 <div className="flex justify-between items-center mb-2">
                      <h3 className="text-lg font-bold text-primary">Scan QR Code</h3>

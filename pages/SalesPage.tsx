@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Plus, Trash2, Share2, Search, X, IndianRupee, QrCode, Save, Edit } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
@@ -10,8 +11,6 @@ import { Html5Qrcode } from 'html5-qrcode';
 import DeleteButton from '../components/DeleteButton';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
 import { logoBase64 } from '../utils/logo';
-import AddCustomerModal from '../components/AddCustomerModal';
-import Dropdown, { DropdownOption } from '../components/Dropdown';
 
 
 const getLocalDateString = (date = new Date()) => {
@@ -35,6 +34,62 @@ interface SalesPageProps {
   setIsDirty: (isDirty: boolean) => void;
 }
 
+const newCustomerInitialState = { id: '', name: '', phone: '', address: '', area: '', reference: '' };
+
+const AddCustomerModal: React.FC<{
+    newCustomer: typeof newCustomerInitialState;
+    onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onSave: () => void;
+    onCancel: () => void;
+}> = React.memo(({ newCustomer, onInputChange, onSave, onCancel }) => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+        <Card title="Add New Customer" className="w-full max-w-md animate-scale-in">
+            <div className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Customer ID</label>
+                    <div className="flex items-center mt-1">
+                        <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-gray-400">
+                            CUST-
+                        </span>
+                        <input
+                            type="text"
+                            name="id"
+                            placeholder="Enter unique ID"
+                            value={newCustomer.id}
+                            onChange={onInputChange}
+                            className="w-full p-2 border rounded-r-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
+                        />
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
+                    <input type="text" placeholder="Full Name" name="name" value={newCustomer.name} onChange={onInputChange} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone</label>
+                    <input type="text" placeholder="Phone Number" name="phone" value={newCustomer.phone} onChange={onInputChange} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Address</label>
+                    <input type="text" placeholder="Full Address" name="address" value={newCustomer.address} onChange={onInputChange} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Area/Location</label>
+                    <input type="text" placeholder="e.g. Ameerpet" name="area" value={newCustomer.area} onChange={onInputChange} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
+                </div>
+                 <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Reference (Optional)</label>
+                    <input type="text" placeholder="Referred by..." name="reference" value={newCustomer.reference} onChange={onInputChange} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
+                </div>
+                <div className="flex gap-2">
+                    <Button onClick={onSave} className="w-full">Save Customer</Button>
+                    <Button onClick={onCancel} variant="secondary" className="w-full">Cancel</Button>
+                </div>
+            </div>
+        </Card>
+    </div>
+));
+
 const ProductSearchModal: React.FC<{
     products: Product[];
     onClose: () => void;
@@ -43,7 +98,7 @@ const ProductSearchModal: React.FC<{
     const [productSearchTerm, setProductSearchTerm] = useState('');
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
           <Card className="w-full max-w-lg animate-scale-in">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold">Select Product</h2>
@@ -122,7 +177,7 @@ const QRScannerModal: React.FC<{
     }, [onScanned]);
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-75 backdrop-blur-sm flex flex-col items-center justify-center z-50 p-4 animate-fade-in-fast">
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex flex-col items-center justify-center z-50 p-4 animate-fade-in-fast">
             <Card title="Scan Product QR Code" className="w-full max-w-md relative animate-scale-in">
                  <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
                     <X size={20}/>
@@ -156,14 +211,18 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     const [isScanning, setIsScanning] = useState(false);
     
     const [isAddingCustomer, setIsAddingCustomer] = useState(false);
+    const [newCustomer, setNewCustomer] = useState(newCustomerInitialState);
     const isDirtyRef = useRef(false);
-    const topOfPageRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        // Scroll to top when the component mounts or when mode changes to ensure
-        // the customer selection is visible.
-        topOfPageRef.current?.scrollIntoView();
-    }, [mode]);
+    const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
+    const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+    const customerDropdownRef = useRef<HTMLDivElement>(null);
+    
+    useOnClickOutside(customerDropdownRef, () => {
+        if (isCustomerDropdownOpen) {
+            setIsCustomerDropdownOpen(false);
+        }
+    });
 
     // Effect to handle switching to edit mode from another page
     useEffect(() => {
@@ -185,12 +244,13 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     useEffect(() => {
         const dateIsDirty = mode === 'add' && saleDate !== getLocalDateString();
         const formIsDirty = !!customerId || items.length > 0 || discount !== '0' || !!paymentDetails.amount || dateIsDirty;
-        const currentlyDirty = formIsDirty || isAddingCustomer;
+        const newCustomerFormIsDirty = isAddingCustomer && !!(newCustomer.id || newCustomer.name || newCustomer.phone || newCustomer.address || newCustomer.area);
+        const currentlyDirty = formIsDirty || newCustomerFormIsDirty;
         if (currentlyDirty !== isDirtyRef.current) {
             isDirtyRef.current = currentlyDirty;
             setIsDirty(currentlyDirty);
         }
-    }, [customerId, items, discount, paymentDetails.amount, isAddingCustomer, setIsDirty, saleDate, mode]);
+    }, [customerId, items, discount, paymentDetails.amount, isAddingCustomer, newCustomer, setIsDirty, saleDate, mode]);
 
 
     // On unmount, we must always clean up.
@@ -301,23 +361,13 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     }, [items, discount, state.products]);
 
     const selectedCustomer = useMemo(() => customerId ? state.customers.find(c => c.id === customerId) : null, [customerId, state.customers]);
-    
-    const customerOptions = useMemo((): DropdownOption[] =>
-        state.customers
-            .sort((a, b) => a.name.localeCompare(b.name))
-            .map(c => ({
-                value: c.id,
-                label: `${c.name} - ${c.area}`,
-                searchText: `${c.name} ${c.area}`
-            })),
-        [state.customers]
-    );
 
-    const paymentMethodOptions: DropdownOption[] = [
-        { value: 'CASH', label: 'Cash' },
-        { value: 'UPI', label: 'UPI' },
-        { value: 'CHEQUE', label: 'Cheque' }
-    ];
+    const filteredCustomers = useMemo(() => 
+        state.customers.filter(c => 
+            c.name.toLowerCase().includes(customerSearchTerm.toLowerCase()) || 
+            c.area.toLowerCase().includes(customerSearchTerm.toLowerCase())
+        ).sort((a,b) => a.name.localeCompare(b.name)),
+    [state.customers, customerSearchTerm]);
 
     const customerTotalDue = useMemo(() => {
         if (!customerId) return null;
@@ -333,131 +383,163 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         return totalBilled - totalPaid;
     }, [customerId, state.sales]);
 
+    const handleNewCustomerChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setNewCustomer(prev => ({...prev, [name]: value}));
+    }, []);
 
-    const handleAddCustomer = useCallback((customer: Customer) => {
-        dispatch({ type: 'ADD_CUSTOMER', payload: customer });
+    const handleCancelAddCustomer = useCallback(() => {
         setIsAddingCustomer(false);
-        setCustomerId(customer.id);
+        setNewCustomer(newCustomerInitialState);
+    }, []);
+
+    const handleAddCustomer = useCallback(() => {
+        const trimmedId = newCustomer.id.trim();
+        if (!trimmedId) {
+            alert('Customer ID is required.');
+            return;
+        }
+        if (!newCustomer.name || !newCustomer.phone || !newCustomer.address || !newCustomer.area) {
+            alert('Please fill all required fields (Name, Phone, Address, Area).');
+            return;
+        }
+
+        const finalId = `CUST-${trimmedId}`;
+        const isIdTaken = state.customers.some(c => c.id.toLowerCase() === finalId.toLowerCase());
+
+        if (isIdTaken) {
+            alert(`Customer ID "${finalId}" is already taken. Please choose another one.`);
+            return;
+        }
+
+        const customerWithId: Customer = {
+            name: newCustomer.name,
+            phone: newCustomer.phone,
+            address: newCustomer.address,
+            area: newCustomer.area,
+            id: finalId,
+            reference: newCustomer.reference || ''
+        };
+        dispatch({ type: 'ADD_CUSTOMER', payload: customerWithId });
+        setNewCustomer(newCustomerInitialState);
+        setIsAddingCustomer(false);
+        setCustomerId(customerWithId.id);
         showToast("Customer added successfully!");
-    }, [dispatch, showToast]);
+    }, [newCustomer, state.customers, dispatch, showToast]);
 
 
     const generateAndSharePDF = async (sale: Sale, customer: Customer, paidAmountOnSale: number) => {
       try {
-        let qrCodeBase64: string | null = null;
-        try {
-            const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(sale.id)}&size=50x50&margin=0`;
-            qrCodeBase64 = await fetchImageAsBase64(qrCodeUrl);
-        } catch (error) {
-            console.error("Failed to fetch QR code", error);
-        }
+        const doc = new jsPDF();
+        const profile = state.profile;
+        let currentY = 15;
 
-        const renderContentOnDoc = (doc: jsPDF) => {
-            const subTotal = Number(sale.totalAmount) + Number(sale.discount);
-            const totalPaidForSale = (sale.payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
-            const dueAmountOnSale = Number(sale.totalAmount) - totalPaidForSale;
-            const pageWidth = doc.internal.pageSize.getWidth();
-            const centerX = pageWidth / 2;
-            const margin = 5;
-            const maxLineWidth = pageWidth - margin * 2;
-            let y = 10;
+        // FIX: Change image format to PNG
+        doc.addImage(logoBase64, 'PNG', 14, 10, 25, 25);
 
-            doc.setFont('times', 'italic');
-            doc.setFontSize(12);
-            doc.text('Om Namo Venkatesaya', centerX, y, { align: 'center' });
-            y += 7;
-            doc.setFont('times', 'bold');
-            doc.setFontSize(20);
+        if (profile) {
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(24);
             doc.setTextColor('#0d9488');
-            doc.text(state.profile?.name || 'Business Manager', centerX, y, { align: 'center' });
-            y += 7;
-            doc.setDrawColor('#cccccc');
-            doc.line(margin, y, pageWidth - margin, y);
-            y += 6;
-            doc.setFont('Helvetica', 'normal');
-            doc.setFontSize(8);
-            const invoiceTextTopY = y - 3;
-            doc.text(`Invoice: ${sale.id}`, margin, y);
-            y += 4;
-            doc.text(`Date: ${new Date(sale.date).toLocaleString()}`, margin, y);
-            if (qrCodeBase64) {
-                const qrSize = 15;
-                doc.addImage(qrCodeBase64, 'PNG', pageWidth - margin - qrSize, invoiceTextTopY, qrSize, qrSize);
-                const qrBottom = invoiceTextTopY + qrSize;
-                if (qrBottom > y) y = qrBottom;
-            }
-            y += 5;
-            doc.setFont('Helvetica', 'bold');
-            doc.text('Billed To:', margin, y);
-            y += 4;
-            doc.setFont('Helvetica', 'normal');
-            doc.text(customer.name, margin, y);
-            y += 4;
-            const addressLines = doc.splitTextToSize(customer.address, maxLineWidth);
-            doc.text(addressLines, margin, y);
-            y += (addressLines.length * 4) + 2;
-            doc.setDrawColor('#000000');
-            doc.line(margin, y, pageWidth - margin, y);
-            y += 5;
-            doc.setFont('Helvetica', 'bold');
-            doc.text('Purchase Details', centerX, y, { align: 'center' });
-            y += 5;
-            doc.line(margin, y, pageWidth - margin, y);
-            y += 5;
-            doc.text('Item', margin, y);
-            doc.text('Total', pageWidth - margin, y, { align: 'right' });
-            y += 2;
-            doc.setDrawColor('#cccccc');
-            doc.line(margin, y, pageWidth - margin, y);
-            y += 5;
-            doc.setFont('Helvetica', 'normal');
-            sale.items.forEach(item => {
-                const itemTotal = Number(item.price) * Number(item.quantity);
-                doc.setFontSize(9);
-                const splitName = doc.splitTextToSize(item.productName, maxLineWidth - 20);
-                doc.text(splitName, margin, y);
-                doc.text(`Rs. ${itemTotal.toLocaleString('en-IN')}`, pageWidth - margin, y, { align: 'right' });
-                y += (splitName.length * 4);
-                doc.setFontSize(7);
-                doc.setTextColor('#666666');
-                doc.text(`(x${item.quantity} @ Rs. ${Number(item.price).toLocaleString('en-IN')})`, margin, y);
-                y += 6;
-                doc.setTextColor('#000000');
-            });
-            y -= 2;
-            doc.setDrawColor('#cccccc');
-            doc.line(margin, y, pageWidth - margin, y);
-            y += 5;
-            const totals = [
-                { label: 'Subtotal', value: subTotal },
-                { label: 'GST', value: Number(sale.gstAmount) },
-                { label: 'Discount', value: -Number(sale.discount) },
-                { label: 'Total', value: Number(sale.totalAmount), bold: true },
-                { label: 'Paid', value: totalPaidForSale },
-                { label: 'Due', value: dueAmountOnSale, bold: true },
-            ];
-            const totalsX = pageWidth - margin;
-            totals.forEach(({ label, value, bold = false }) => {
-                doc.setFont('Helvetica', bold ? 'bold' : 'normal');
-                doc.setFontSize(bold ? 10 : 8);
-                doc.text(label, totalsX - 25, y, { align: 'right' });
-                doc.text(`Rs. ${value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, y, { align: 'right' });
-                y += (bold ? 5 : 4);
-            });
-            return y;
-        };
-        const dummyDoc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, 500] });
-        const finalY = renderContentOnDoc(dummyDoc);
-        const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, finalY + 5] });
-        renderContentOnDoc(doc);
+            doc.text(profile.name, 105, currentY, { align: 'center' });
+            currentY += 8;
+            doc.setFontSize(10);
+            doc.setTextColor('#333333');
+            const addressLines = doc.splitTextToSize(profile.address, 180);
+            doc.text(addressLines, 105, currentY, { align: 'center' });
+            currentY += (addressLines.length * 5);
+            doc.text(`Phone: ${profile.phone} | GSTIN: ${profile.gstNumber}`, 105, currentY, { align: 'center' });
+        }
         
-        const pdfBlob = doc.output('blob');
-        const pdfFile = new File([pdfBlob], `Receipt-${sale.id}.pdf`, { type: 'application/pdf' });
-        const businessName = state.profile?.name || 'Your Business';
+        currentY = Math.max(currentY, 10 + 25) + 5;
+
+        doc.setDrawColor('#cccccc');
+        doc.line(14, currentY, 196, currentY);
+        currentY += 10;
         
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text('TAX INVOICE', 105, currentY, { align: 'center' });
+        currentY += 10;
+        
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Billed To:', 14, currentY);
+        doc.text('Invoice Details:', 120, currentY);
+        currentY += 5;
+
+        doc.setFont('helvetica', 'normal');
+        doc.text(customer.name, 14, currentY);
+        doc.text(`Invoice ID: ${sale.id}`, 120, currentY);
+        currentY += 5;
+        
+        const customerAddressLines = doc.splitTextToSize(customer.address, 80);
+        doc.text(customerAddressLines, 14, currentY);
+        doc.text(`Date: ${new Date(sale.date).toLocaleString()}`, 120, currentY);
+        currentY += (customerAddressLines.length * 5) + 5;
+        
+        autoTable(doc, {
+            startY: currentY,
+            head: [['#', 'Item Description', 'Qty', 'Rate', 'Amount']],
+            body: sale.items.map((item, index) => [
+                index + 1,
+                item.productName,
+                item.quantity,
+                `Rs. ${Number(item.price).toLocaleString('en-IN')}`,
+                `Rs. ${(Number(item.quantity) * Number(item.price)).toLocaleString('en-IN')}`
+            ]),
+            theme: 'grid',
+            headStyles: { fillColor: [13, 148, 136] },
+            columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } }
+        });
+        
+        currentY = (doc as any).lastAutoTable.finalY + 10;
+        
+        // FIX: Calculate values from the `sale` object, not stale component state. This also fixes the scope issue.
         const subTotal = sale.items.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
         const dueAmountOnSale = Number(sale.totalAmount) - paidAmountOnSale;
         
+        const totalsX = 196;
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Subtotal:', totalsX - 30, currentY, { align: 'right' });
+        doc.text(`Rs. ${subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
+        currentY += 7;
+
+        doc.text('Discount:', totalsX - 30, currentY, { align: 'right' });
+        doc.text(`- Rs. ${Number(sale.discount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
+        currentY += 7;
+
+        doc.text('GST Included:', totalsX - 30, currentY, { align: 'right' });
+        doc.text(`Rs. ${Number(sale.gstAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
+        currentY += 7;
+        
+        doc.setFont('helvetica', 'bold');
+        doc.text('Grand Total:', totalsX - 30, currentY, { align: 'right' });
+        doc.text(`Rs. ${Number(sale.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
+        currentY += 7;
+
+        doc.setFont('helvetica', 'normal');
+        doc.text('Paid:', totalsX - 30, currentY, { align: 'right' });
+        doc.text(`Rs. ${paidAmountOnSale.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
+        currentY += 7;
+
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(dueAmountOnSale > 0.01 ? '#dc2626' : '#16a34a');
+        doc.text('Amount Due:', totalsX - 30, currentY, { align: 'right' });
+        doc.text(`Rs. ${dueAmountOnSale.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, currentY, { align: 'right' });
+        
+        currentY = doc.internal.pageSize.height - 20;
+        doc.setFontSize(10);
+        doc.setTextColor('#888888');
+        doc.text('Thank you for your business!', 105, currentY, { align: 'center' });
+        
+        const pdfBlob = doc.output('blob');
+        const pdfFile = new File([pdfBlob], `Invoice-${sale.id}.pdf`, { type: 'application/pdf' });
+        const businessName = state.profile?.name || 'Your Business';
+        
+        // FIX: Use locally scoped variables for whatsAppText instead of calculations from component state to ensure data consistency.
         const whatsAppText = `Thank you for your purchase from ${businessName}!\n\n*Invoice Summary:*\nInvoice ID: ${sale.id}\nDate: ${new Date(sale.date).toLocaleString()}\n\n*Items:*\n${sale.items.map(i => `- ${i.productName} (x${i.quantity}) - Rs. ${(Number(i.price) * Number(i.quantity)).toLocaleString('en-IN')}`).join('\n')}\n\nSubtotal: Rs. ${subTotal.toLocaleString('en-IN')}\nGST: Rs. ${Number(sale.gstAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}\nDiscount: Rs. ${Number(sale.discount).toLocaleString('en-IN')}\n*Total: Rs. ${Number(sale.totalAmount).toLocaleString('en-IN')}*\nPaid: Rs. ${paidAmountOnSale.toLocaleString('en-IN')}\nDue: Rs. ${dueAmountOnSale.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\nHave a blessed day!`;
         
         if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
@@ -470,12 +552,12 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             console.warn('Could not copy text to clipboard:', err);
           }
           await navigator.share({
-            title: `${businessName} Receipt ${sale.id}`,
+            title: `${businessName} Invoice ${sale.id}`,
             text: whatsAppText,
             files: [pdfFile],
           });
         } else {
-          doc.save(`Receipt-${sale.id}.pdf`);
+          doc.save(`Invoice-${sale.id}.pdf`);
         }
       } catch (error) {
         console.error("PDF generation or sharing failed:", error);
@@ -535,12 +617,8 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                 return;
             }
 
-            const originalTime = new Date(saleToEdit.date).toTimeString().split(' ')[0];
-            const newDateWithTime = new Date(`${saleDate}T${originalTime}`);
-
             const updatedSale: Sale = {
                 ...saleToEdit, items, discount: discountAmount, gstAmount, totalAmount,
-                date: newDateWithTime.toISOString(),
             };
             dispatch({ type: 'UPDATE_SALE', payload: { oldSale: saleToEdit, updatedSale } });
             showToast('Sale updated successfully!');
@@ -598,18 +676,6 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         showToast(`Payment of ₹${paidAmount.toLocaleString('en-IN')} recorded successfully.`);
         resetForm();
     };
-    
-    const handleInitiateProductAdd = (method: 'select' | 'scan') => {
-        if (!customerId) {
-            showToast('Please select a customer first.', 'info');
-            return;
-        }
-        if (method === 'select') {
-            setIsSelectingProduct(true);
-        } else {
-            setIsScanning(true);
-        }
-    };
 
     const canCreateSale = customerId && items.length > 0 && mode === 'add';
     const canUpdateSale = customerId && items.length > 0 && mode === 'edit';
@@ -617,13 +683,13 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     const pageTitle = mode === 'edit' ? `Edit Sale: ${saleToEdit?.id}` : 'New Sale / Payment';
 
     return (
-        <div className="space-y-4" ref={topOfPageRef}>
+        <div className="space-y-4">
             {isAddingCustomer && 
                 <AddCustomerModal 
-                    isOpen={isAddingCustomer}
-                    onClose={() => setIsAddingCustomer(false)}
-                    onAdd={handleAddCustomer}
-                    existingCustomers={state.customers}
+                    newCustomer={newCustomer}
+                    onInputChange={handleNewCustomerChange}
+                    onSave={handleAddCustomer}
+                    onCancel={handleCancelAddCustomer}
                 />
             }
             {isSelectingProduct && 
@@ -646,15 +712,64 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Customer</label>
                         <div className="flex gap-2 items-center">
-                            <Dropdown
-                                options={customerOptions}
-                                value={customerId}
-                                onChange={setCustomerId}
-                                placeholder="Select a Customer"
-                                disabled={mode === 'edit' || (mode === 'add' && items.length > 0)}
-                                searchable={true}
-                                searchPlaceholder="Search by name or area..."
-                            />
+                            <div className="relative w-full" ref={customerDropdownRef}>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsCustomerDropdownOpen(prev => !prev)}
+                                    className="w-full p-2 border rounded bg-white text-left custom-select dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
+                                    disabled={mode === 'edit' || (mode === 'add' && items.length > 0)}
+                                    aria-haspopup="listbox"
+                                    aria-expanded={isCustomerDropdownOpen}
+                                >
+                                    {selectedCustomer ? `${selectedCustomer.name} - ${selectedCustomer.area}` : 'Select a Customer'}
+                                </button>
+
+                                {isCustomerDropdownOpen && (
+                                    <div className="absolute top-full left-0 w-full mt-1 bg-white dark:bg-slate-900 rounded-md shadow-lg border dark:border-slate-700 z-40 animate-fade-in-fast">
+                                        <div className="p-2 border-b dark:border-slate-700">
+                                            <input
+                                                type="text"
+                                                placeholder="Search by name or area..."
+                                                value={customerSearchTerm}
+                                                onChange={e => setCustomerSearchTerm(e.target.value)}
+                                                className="w-full p-2 border border-gray-300 rounded dark:bg-slate-800 dark:border-slate-600 dark:text-white"
+                                                autoFocus
+                                            />
+                                        </div>
+                                        <ul className="max-h-60 overflow-y-auto" role="listbox">
+                                            <li
+                                                key="select-customer-placeholder"
+                                                onClick={() => {
+                                                    setCustomerId('');
+                                                    setIsCustomerDropdownOpen(false);
+                                                    setCustomerSearchTerm('');
+                                                }}
+                                                className="px-4 py-2 hover:bg-teal-50 dark:hover:bg-slate-800 cursor-pointer text-gray-500"
+                                                role="option"
+                                            >
+                                                Select a Customer
+                                            </li>
+                                            {filteredCustomers.map(c => (
+                                                <li
+                                                    key={c.id}
+                                                    onClick={() => {
+                                                        setCustomerId(c.id);
+                                                        setIsCustomerDropdownOpen(false);
+                                                        setCustomerSearchTerm('');
+                                                    }}
+                                                    className="px-4 py-2 hover:bg-teal-50 dark:hover:bg-slate-800 cursor-pointer border-t dark:border-slate-800"
+                                                    role="option"
+                                                >
+                                                    {c.name} - {c.area}
+                                                </li>
+                                            ))}
+                                            {filteredCustomers.length === 0 && (
+                                                <li className="px-4 py-2 text-gray-400">No customers found.</li>
+                                            )}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
                             {mode === 'add' && (
                                 <Button onClick={() => setIsAddingCustomer(true)} variant="secondary" className="flex-shrink-0">
                                     <Plus size={16}/> New Customer
@@ -670,6 +785,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                             value={saleDate} 
                             onChange={e => setSaleDate(e.target.value)} 
                             className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
+                            disabled={mode === 'edit'}
                         />
                     </div>
 
@@ -689,10 +805,10 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
 
             <Card title="Sale Items">
                 <div className="flex flex-col sm:flex-row gap-2">
-                    <Button onClick={() => handleInitiateProductAdd('select')} className="w-full sm:w-auto flex-grow">
+                    <Button onClick={() => setIsSelectingProduct(true)} className="w-full sm:w-auto flex-grow" disabled={!customerId}>
                         <Search size={16} className="mr-2"/> Select Product
                     </Button>
-                    <Button onClick={() => handleInitiateProductAdd('scan')} variant="secondary" className="w-full sm:w-auto flex-grow">
+                    <Button onClick={() => setIsScanning(true)} variant="secondary" className="w-full sm:w-auto flex-grow" disabled={!customerId}>
                         <QrCode size={16} className="mr-2"/> Scan Product
                     </Button>
                 </div>
@@ -724,7 +840,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                         </div>
                         <div className="flex justify-between items-center text-gray-700 dark:text-gray-300">
                             <span>Discount:</span>
-                            <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} className="w-28 p-1 border rounded text-right dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
+                            <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} className="w-28 p-1 border rounded text-right dark:bg-slate-700 dark:border-slate-600" />
                         </div>
                         <div className="flex justify-between items-center text-gray-700 dark:text-gray-300">
                             <span>GST Included:</span>
@@ -749,15 +865,15 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Method</label>
-                                <Dropdown
-                                    options={paymentMethodOptions}
-                                    value={paymentDetails.method}
-                                    onChange={(val) => setPaymentDetails({ ...paymentDetails, method: val as any})}
-                                />
+                                <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any})} className="w-full p-2 border rounded custom-select mt-1 dark:bg-slate-700 dark:border-slate-600">
+                                    <option value="CASH">Cash</option>
+                                    <option value="UPI">UPI</option>
+                                    <option value="CHEQUE">Cheque</option>
+                                </select>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Reference (Optional)</label>
-                                <input type="text" placeholder="e.g. UPI ID, Cheque No." value={paymentDetails.reference} onChange={e => setPaymentDetails({...paymentDetails, reference: e.target.value })} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
+                                <input type="text" placeholder="e.g. UPI ID, Cheque No." value={paymentDetails.reference} onChange={e => setPaymentDetails({...paymentDetails, reference: e.target.value })} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600" />
                             </div>
                         </div>
                     ) : (
@@ -777,11 +893,11 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Method</label>
-                            <Dropdown
-                                options={paymentMethodOptions}
-                                value={paymentDetails.method}
-                                onChange={(val) => setPaymentDetails({ ...paymentDetails, method: val as any})}
-                            />
+                            <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any})} className="w-full p-2 border rounded custom-select dark:bg-slate-700 dark:border-slate-600">
+                                <option value="CASH">Cash</option>
+                                <option value="UPI">UPI</option>
+                                <option value="CHEQUE">Cheque</option>
+                            </select>
                         </div>
                     </div>
                 </Card>

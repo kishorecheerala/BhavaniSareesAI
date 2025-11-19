@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import Card from './Card';
 import Button from './Button';
@@ -67,7 +68,7 @@ const PinModal: React.FC<PinModalProps> = ({ mode, onSetPin, onCorrectPin, corre
         : 'Enter your 4-digit PIN to continue.';
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
             <Card className="w-full max-w-sm animate-scale-in">
                 <div className="text-center">
                     <Lock size={24} className="mx-auto text-primary mb-2" />
