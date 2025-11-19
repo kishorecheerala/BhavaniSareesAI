@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import Card from './Card';
 import Button from './Button';
@@ -44,15 +45,15 @@ const QuantityInputModal: React.FC<QuantityInputModalProps> = ({ isOpen, onClose
       <Card className="w-full max-w-sm animate-scale-in">
         <div className="flex justify-between items-center">
             <h2 className="text-lg font-bold text-primary">Enter Quantity</h2>
-            <button onClick={onClose} className="p-2 -mr-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
+            <button onClick={onClose} className="p-2 -mr-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
                 <X size={20}/>
             </button>
         </div>
         <div className="space-y-4 mt-4">
-          <p className="font-semibold">{product.name}</p>
-          <p className="text-sm text-gray-600">Current stock: {product.quantity}</p>
+          <p className="font-semibold dark:text-white">{product.name}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Current stock: {product.quantity}</p>
           <div>
-            <label htmlFor="quantity-input" className="block text-sm font-medium text-gray-700">Quantity</label>
+            <label htmlFor="quantity-input" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Quantity</label>
             <input
               id="quantity-input"
               ref={inputRef}
@@ -60,7 +61,7 @@ const QuantityInputModal: React.FC<QuantityInputModalProps> = ({ isOpen, onClose
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
               onKeyPress={handleKeyPress}
-              className="w-full p-2 border rounded mt-1 text-center text-lg"
+              className="w-full p-2 border rounded mt-1 text-center text-lg dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
               min="1"
             />
           </div>

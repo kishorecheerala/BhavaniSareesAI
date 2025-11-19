@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Undo2, Users, Package, Plus, Trash2, Share2, Edit, Download } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
@@ -298,12 +299,12 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
             </h1>
 
             <Card title="Process a New Return">
-                <div className="border-b mb-4">
+                <div className="border-b mb-4 dark:border-slate-700">
                     <nav className="-mb-px flex space-x-6">
-                        <button onClick={() => { resetForm(); setReturnType('CUSTOMER'); }} className={`py-2 px-1 border-b-2 font-semibold ${returnType === 'CUSTOMER' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                        <button onClick={() => { resetForm(); setReturnType('CUSTOMER'); }} className={`py-2 px-1 border-b-2 font-semibold ${returnType === 'CUSTOMER' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-slate-500'}`}>
                             Customer Return
                         </button>
-                        <button onClick={() => { resetForm(); setReturnType('SUPPLIER'); }} className={`py-2 px-1 border-b-2 font-semibold ${returnType === 'SUPPLIER' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                        <button onClick={() => { resetForm(); setReturnType('SUPPLIER'); }} className={`py-2 px-1 border-b-2 font-semibold ${returnType === 'SUPPLIER' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-slate-500'}`}>
                             Return to Supplier
                         </button>
                     </nav>
@@ -311,7 +312,7 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                 
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium">{returnType === 'CUSTOMER' ? 'Customer' : 'Supplier'}</label>
+                        <label className="block text-sm font-medium dark:text-gray-300">{returnType === 'CUSTOMER' ? 'Customer' : 'Supplier'}</label>
                         <Dropdown 
                             options={partyOptions}
                             value={partyId}
@@ -324,7 +325,7 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
 
                     {partyId && (
                         <div>
-                             <label className="block text-sm font-medium">Original Invoice</label>
+                             <label className="block text-sm font-medium dark:text-gray-300">Original Invoice</label>
                              <Dropdown 
                                 options={invoiceList.map(inv => ({ value: inv.id, label: `${inv.id} - ${new Date(inv.date).toLocaleDateString()}`}))}
                                 value={referenceId}
@@ -338,27 +339,27 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                     
                     {selectedInvoice && (
                         <>
-                           <div className="p-3 bg-teal-50 rounded-lg border text-sm space-y-1">
-                                <div className="flex justify-between"><span>Invoice Total:</span> <span className="font-semibold">₹{invoiceTotal.toLocaleString('en-IN')}</span></div>
-                                <div className="flex justify-between"><span>Amount Paid:</span> <span className="font-semibold text-green-600">₹{amountPaid.toLocaleString('en-IN')}</span></div>
-                                <div className="flex justify-between"><span>Current Due:</span> <span className="font-semibold text-red-600">₹{currentDue.toLocaleString('en-IN')}</span></div>
+                           <div className="p-3 bg-teal-50 dark:bg-teal-900/30 rounded-lg border dark:border-teal-800 text-sm space-y-1">
+                                <div className="flex justify-between dark:text-gray-300"><span>Invoice Total:</span> <span className="font-semibold dark:text-white">₹{invoiceTotal.toLocaleString('en-IN')}</span></div>
+                                <div className="flex justify-between dark:text-gray-300"><span>Amount Paid:</span> <span className="font-semibold text-green-600 dark:text-green-400">₹{amountPaid.toLocaleString('en-IN')}</span></div>
+                                <div className="flex justify-between dark:text-gray-300"><span>Current Due:</span> <span className="font-semibold text-red-600 dark:text-red-400">₹{currentDue.toLocaleString('en-IN')}</span></div>
                            </div>
                            
                            <div>
-                                <h3 className="text-md font-semibold text-gray-800 mb-2">Select Items to Return</h3>
+                                <h3 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-2">Select Items to Return</h3>
                                 <div className="space-y-2">
                                 {selectedInvoice.items.map(item => (
                                     <div key={item.productId} className="grid grid-cols-3 gap-2 items-center">
                                         <div className="col-span-2">
-                                            <p className="font-semibold text-sm">{item.productName}</p>
-                                            <p className="text-xs text-gray-500">Purchased: {item.quantity} @ ₹{item.price}</p>
+                                            <p className="font-semibold text-sm dark:text-slate-200">{item.productName}</p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">Purchased: {item.quantity} @ ₹{item.price}</p>
                                         </div>
                                         <input
                                             type="number"
                                             placeholder="Qty"
                                             value={returnedItems[item.productId] || ''}
                                             onChange={e => handleItemQuantityChange(item.productId, e.target.value)}
-                                            className="w-full p-2 border rounded text-center"
+                                            className="w-full p-2 border rounded text-center dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
                                             max={item.quantity}
                                         />
                                     </div>
@@ -368,17 +369,17 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                            
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium">{returnType === 'CUSTOMER' ? 'Amount Refunded' : 'Credit Note Value'}</label>
-                                    <input type="number" value={returnAmount} onChange={e => setReturnAmount(e.target.value)} className="w-full p-2 border rounded mt-1" placeholder={`${calculatedReturnValue.toFixed(2)}`} />
+                                    <label className="block text-sm font-medium dark:text-gray-300">{returnType === 'CUSTOMER' ? 'Amount Refunded' : 'Credit Note Value'}</label>
+                                    <input type="number" value={returnAmount} onChange={e => setReturnAmount(e.target.value)} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" placeholder={`${calculatedReturnValue.toFixed(2)}`} />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium">Return Date</label>
-                                    <input type="date" value={returnDate} onChange={e => setReturnDate(e.target.value)} className="w-full p-2 border rounded mt-1"/>
+                                    <label className="block text-sm font-medium dark:text-gray-300">Return Date</label>
+                                    <input type="date" value={returnDate} onChange={e => setReturnDate(e.target.value)} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"/>
                                 </div>
                            </div>
-                           <input type="text" placeholder="Reason (Optional)" value={reason} onChange={e => setReason(e.target.value)} className="w-full p-2 border rounded" />
+                           <input type="text" placeholder="Reason (Optional)" value={reason} onChange={e => setReason(e.target.value)} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
                            {returnType === 'SUPPLIER' &&
-                             <input type="text" placeholder="Return Notes for PDF (Debit Note)..." value={notes} onChange={e => setNotes(e.target.value)} className="w-full p-2 border rounded" />
+                             <input type="text" placeholder="Return Notes for PDF (Debit Note)..." value={notes} onChange={e => setNotes(e.target.value)} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
                            }
                         </>
                     )}
@@ -402,19 +403,19 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                                 const party = state.customers.find(c => c.id === ret.partyId);
                                 
                                 return (
-                                    <div key={ret.id} className="p-3 bg-gray-50 rounded-lg border">
+                                    <div key={ret.id} className="p-3 bg-gray-50 dark:bg-slate-700/30 rounded-lg border dark:border-slate-700">
                                         <div className="flex justify-between items-start">
                                             <div>
-                                                <p className="font-semibold">{party?.name || 'Unknown'}</p>
-                                                <p className="text-xs text-gray-500">Return ID: {ret.id}</p>
+                                                <p className="font-semibold dark:text-slate-200">{party?.name || 'Unknown'}</p>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400">Return ID: {ret.id}</p>
                                             </div>
                                             <div className="text-right">
                                                 <p className="font-semibold text-primary">₹{Number(ret.amount).toLocaleString('en-IN')}</p>
-                                                <p className="text-xs text-gray-500">{new Date(ret.returnDate).toLocaleDateString()}</p>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(ret.returnDate).toLocaleDateString()}</p>
                                             </div>
                                         </div>
-                                        <div className="mt-2 pt-2 border-t flex justify-between items-center">
-                                            <ul className="text-sm list-disc list-inside text-gray-600">
+                                        <div className="mt-2 pt-2 border-t dark:border-slate-600 flex justify-between items-center">
+                                            <ul className="text-sm list-disc list-inside text-gray-600 dark:text-gray-400">
                                                 {ret.items.map((item, idx) => (
                                                     <li key={idx}>{item.productName} (x{item.quantity})</li>
                                                 ))}
@@ -446,7 +447,7 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                                 );
                             })
                         ) : (
-                            <p className="text-gray-500 text-center">No customer returns have been processed yet.</p>
+                            <p className="text-gray-500 dark:text-gray-400 text-center">No customer returns have been processed yet.</p>
                         )}
                     </div>
                 </Card>
@@ -460,19 +461,19 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                                 const party = state.suppliers.find(s => s.id === ret.partyId);
                                 
                                 return (
-                                    <div key={ret.id} className="p-3 bg-gray-50 rounded-lg border">
+                                    <div key={ret.id} className="p-3 bg-gray-50 dark:bg-slate-700/30 rounded-lg border dark:border-slate-700">
                                         <div className="flex justify-between items-start">
                                             <div>
-                                                <p className="font-semibold">{party?.name || 'Unknown'}</p>
-                                                <p className="text-xs text-gray-500">Return ID: {ret.id}</p>
+                                                <p className="font-semibold dark:text-slate-200">{party?.name || 'Unknown'}</p>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400">Return ID: {ret.id}</p>
                                             </div>
                                             <div className="text-right">
                                                 <p className="font-semibold text-primary">₹{Number(ret.amount).toLocaleString('en-IN')}</p>
-                                                <p className="text-xs text-gray-500">{new Date(ret.returnDate).toLocaleDateString()}</p>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(ret.returnDate).toLocaleDateString()}</p>
                                             </div>
                                         </div>
-                                        <div className="mt-2 pt-2 border-t flex justify-between items-center">
-                                            <ul className="text-sm list-disc list-inside text-gray-600">
+                                        <div className="mt-2 pt-2 border-t dark:border-slate-600 flex justify-between items-center">
+                                            <ul className="text-sm list-disc list-inside text-gray-600 dark:text-gray-400">
                                                 {ret.items.map((item, idx) => (
                                                     <li key={idx}>{item.productName} (x{item.quantity})</li>
                                                 ))}
@@ -504,7 +505,7 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
                                 );
                             })
                         ) : (
-                            <p className="text-gray-500 text-center">No supplier returns have been processed yet.</p>
+                            <p className="text-gray-500 dark:text-gray-400 text-center">No supplier returns have been processed yet.</p>
                         )}
                     </div>
                 </Card>

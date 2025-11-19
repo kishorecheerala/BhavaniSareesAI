@@ -10,9 +10,6 @@ import DeleteButton from '../components/DeleteButton';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
-import { logoBase64 } from '../utils/logo';
-import PaymentModal from '../components/PaymentModal';
-import AddCustomerModal from '../components/AddCustomerModal';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -31,6 +28,76 @@ const fetchImageAsBase64 = (url: string): Promise<string> =>
         reader.readAsDataURL(blob);
     }));
 
+// Standalone PaymentModal component to prevent re-renders on parent state change
+const PaymentModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    onSubmit: () => void;
+    sale: Sale | null | undefined;
+    paymentDetails: { amount: string; method: 'CASH' | 'UPI' | 'CHEQUE'; date: string; reference: string; };
+    setPaymentDetails: React.Dispatch<React.SetStateAction<{ amount: string; method: 'CASH' | 'UPI' | 'CHEQUE'; date: string; reference: string; }>>;
+}> = ({ isOpen, onClose, onSubmit, sale, paymentDetails, setPaymentDetails }) => {
+    if (!isOpen || !sale) return null;
+    
+    const amountPaid = sale.payments.reduce((sum, p) => sum + Number(p.amount), 0);
+    const dueAmount = Number(sale.totalAmount) - amountPaid;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+            <Card title="Add Payment" className="w-full max-w-sm animate-scale-in">
+                <div className="space-y-4">
+                    <div className="p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg border dark:border-slate-600">
+                        <p className="flex justify-between text-sm">
+                            <span className="text-gray-600 dark:text-gray-400">Invoice Total:</span>
+                            <span className="font-bold dark:text-slate-200">₹{Number(sale.totalAmount).toLocaleString('en-IN')}</span>
+                        </p>
+                        <p className="flex justify-between text-sm mt-1">
+                            <span className="text-gray-600 dark:text-gray-400">Amount Due:</span>
+                            <span className="font-bold text-red-600 dark:text-red-400">₹{dueAmount.toLocaleString('en-IN')}</span>
+                        </p>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Amount</label>
+                        <input type="number" placeholder="Enter amount" value={paymentDetails.amount} onChange={e => setPaymentDetails({ ...paymentDetails, amount: e.target.value })} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" autoFocus/>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Method</label>
+                        <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any })} className="w-full p-2 border rounded custom-select dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200">
+                            <option value="CASH">Cash</option>
+                            <option value="UPI">UPI</option>
+                            <option value="CHEQUE">Cheque</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Date</label>
+                        <input 
+                            type="date" 
+                            value={paymentDetails.date} 
+                            onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} 
+                            className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Reference (Optional)</label>
+                        <input 
+                            type="text"
+                            placeholder="e.g. UPI ID, Cheque No."
+                            value={paymentDetails.reference}
+                            onChange={e => setPaymentDetails({ ...paymentDetails, reference: e.target.value })}
+                            className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
+                        />
+                    </div>
+                    <div className="flex gap-2">
+                       <Button onClick={onSubmit} className="w-full">Save Payment</Button>
+                       <Button onClick={onClose} variant="secondary" className="w-full">Cancel</Button>
+                    </div>
+                </div>
+            </Card>
+        </div>
+    );
+};
+
+
 interface CustomersPageProps {
   setIsDirty: (isDirty: boolean) => void;
   setCurrentPage: (page: Page) => void;
@@ -39,10 +106,8 @@ interface CustomersPageProps {
 const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPage }) => {
     const { state, dispatch, showToast } = useAppContext();
     const [searchTerm, setSearchTerm] = useState('');
-    
-    // Replaced local isAdding form state with modal state
-    const [isAddCustomerModalOpen, setIsAddCustomerModalOpen] = useState(false);
-    
+    const [isAdding, setIsAdding] = useState(false);
+    const [newCustomer, setNewCustomer] = useState({ id: '', name: '', phone: '', address: '', area: '', reference: '' });
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [activeSaleId, setActiveSaleId] = useState<string | null>(null);
     const [actionMenuSaleId, setActionMenuSaleId] = useState<string | null>(null);
@@ -67,7 +132,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
     useEffect(() => {
         if (state.selection && state.selection.page === 'CUSTOMERS') {
             if (state.selection.id === 'new') {
-                setIsAddCustomerModalOpen(true);
+                setIsAdding(true);
                 setSelectedCustomer(null); // Ensure we are not in detail view
             } else {
                 const customerToSelect = state.customers.find(c => c.id === state.selection.id);
@@ -80,12 +145,12 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
     }, [state.selection, state.customers, dispatch]);
 
     useEffect(() => {
-        const currentlyDirty = isEditing;
+        const currentlyDirty = (isAdding && !!(newCustomer.id || newCustomer.name || newCustomer.phone || newCustomer.address || newCustomer.area)) || isEditing;
         if (currentlyDirty !== isDirtyRef.current) {
             isDirtyRef.current = currentlyDirty;
             setIsDirty(currentlyDirty);
         }
-    }, [isEditing, setIsDirty]);
+    }, [isAdding, newCustomer, isEditing, setIsDirty]);
 
     // On unmount, we must always clean up.
     useEffect(() => {
@@ -115,8 +180,36 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
     }, [selectedCustomer]);
 
 
-    const handleAddCustomer = (customer: Customer) => {
-        dispatch({ type: 'ADD_CUSTOMER', payload: customer });
+    const handleAddCustomer = () => {
+        const trimmedId = newCustomer.id.trim();
+        if (!trimmedId) {
+            alert('Customer ID is required.');
+            return;
+        }
+        if (!newCustomer.name || !newCustomer.phone || !newCustomer.address || !newCustomer.area) {
+            alert('Please fill all required fields (Name, Phone, Address, Area).');
+            return;
+        }
+
+        const finalId = `CUST-${trimmedId}`;
+        const isIdTaken = state.customers.some(c => c.id.toLowerCase() === finalId.toLowerCase());
+        
+        if (isIdTaken) {
+            alert(`Customer ID "${finalId}" is already taken. Please choose another one.`);
+            return;
+        }
+
+        const customerWithId: Customer = { 
+            name: newCustomer.name,
+            phone: newCustomer.phone,
+            address: newCustomer.address,
+            area: newCustomer.area,
+            id: finalId,
+            reference: newCustomer.reference || ''
+        };
+        dispatch({ type: 'ADD_CUSTOMER', payload: customerWithId });
+        setNewCustomer({ id: '', name: '', phone: '', address: '', area: '', reference: '' });
+        setIsAdding(false);
         showToast("Customer added successfully!");
     };
     
@@ -205,9 +298,9 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             const centerX = pageWidth / 2;
             const margin = 5;
             const maxLineWidth = pageWidth - margin * 2;
-            // FIX: Removed logo from thermal receipt to match sample image and improve layout.
-            let y = 10;
+            let y = 5;
 
+            y = 10;
             doc.setFont('times', 'italic');
             doc.setFontSize(12);
             doc.setTextColor('#000000');
@@ -215,7 +308,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             y += 7;
             
             doc.setFont('times', 'bold');
-            doc.setFontSize(20);
+            doc.setFontSize(16);
             doc.setTextColor('#0d9488'); // Primary Color
             doc.text(state.profile?.name || 'Business Manager', centerX, y, { align: 'center' });
             y += 7;
@@ -327,13 +420,10 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         const doc = new jsPDF();
         const profile = state.profile;
         let currentY = 15;
-
-        // The logo image (an SVG) was causing a "corrupt PNG" error and has been removed to fix PDF generation.
-        // doc.addImage(logoBase64, 'PNG', 14, 10, 25, 25);
     
         if (profile) {
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(24);
+            doc.setFontSize(20);
             doc.setTextColor('#0d9488');
             doc.text(profile.name, 105, currentY, { align: 'center' });
             currentY += 8;
@@ -343,11 +433,9 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             doc.text(addressLines, 105, currentY, { align: 'center' });
             currentY += (addressLines.length * 5);
             doc.text(`Phone: ${profile.phone} | GSTIN: ${profile.gstNumber}`, 105, currentY, { align: 'center' });
+            currentY += 5;
         }
     
-        // Removed positioning logic for the logo and added padding.
-        currentY += 5;
-        
         doc.setDrawColor('#cccccc');
         doc.line(14, currentY, 196, currentY);
         currentY += 10;
@@ -443,127 +531,18 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
 
     const handleShareInvoice = async (sale: Sale) => {
         if (!selectedCustomer) return;
-        
-        let qrCodeBase64: string | null = null;
-        try {
-            const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(sale.id)}&size=50x50&margin=0`;
-            qrCodeBase64 = await fetchImageAsBase64(qrCodeUrl);
-        } catch (error) {
-            console.error("Failed to fetch QR code", error);
-        }
-
-        const renderContentOnDoc = (doc: jsPDF) => {
-            const customer = selectedCustomer;
-            const subTotal = Number(sale.totalAmount) + Number(sale.discount);
-            const paidAmountOnSale = sale.payments.reduce((sum, p) => sum + Number(p.amount), 0);
-            const dueAmountOnSale = Number(sale.totalAmount) - paidAmountOnSale;
-            const pageWidth = doc.internal.pageSize.getWidth();
-            const centerX = pageWidth / 2;
-            const margin = 5;
-            const maxLineWidth = pageWidth - margin * 2;
-            // FIX: Removed logo from thermal receipt to match sample image and improve layout.
-            let y = 10;
-
-            doc.setFont('times', 'italic');
-            doc.setFontSize(12);
-            doc.text('Om Namo Venkatesaya', centerX, y, { align: 'center' });
-            y += 7;
-            doc.setFont('times', 'bold');
-            doc.setFontSize(20);
-            doc.setTextColor('#0d9488');
-            doc.text(state.profile?.name || 'Business Manager', centerX, y, { align: 'center' });
-            y += 7;
-            doc.setDrawColor('#cccccc');
-            doc.line(margin, y, pageWidth - margin, y);
-            y += 6;
-            doc.setFont('Helvetica', 'normal');
-            doc.setFontSize(8);
-            const invoiceTextTopY = y - 3;
-            doc.text(`Invoice: ${sale.id}`, margin, y);
-            y += 4;
-            doc.text(`Date: ${new Date(sale.date).toLocaleString()}`, margin, y);
-            if (qrCodeBase64) {
-                const qrSize = 15;
-                doc.addImage(qrCodeBase64, 'PNG', pageWidth - margin - qrSize, invoiceTextTopY, qrSize, qrSize);
-                const qrBottom = invoiceTextTopY + qrSize;
-                if (qrBottom > y) y = qrBottom;
-            }
-            y += 5;
-            doc.setFont('Helvetica', 'bold');
-            doc.text('Billed To:', margin, y);
-            y += 4;
-            doc.setFont('Helvetica', 'normal');
-            doc.text(customer.name, margin, y);
-            y += 4;
-            const addressLines = doc.splitTextToSize(customer.address, maxLineWidth);
-            doc.text(addressLines, margin, y);
-            y += (addressLines.length * 4) + 2;
-            doc.setDrawColor('#000000');
-            doc.line(margin, y, pageWidth - margin, y);
-            y += 5;
-            doc.setFont('Helvetica', 'bold');
-            doc.text('Purchase Details', centerX, y, { align: 'center' });
-            y += 5;
-            doc.line(margin, y, pageWidth - margin, y);
-            y += 5;
-            doc.text('Item', margin, y);
-            doc.text('Total', pageWidth - margin, y, { align: 'right' });
-            y += 2;
-            doc.setDrawColor('#cccccc');
-            doc.line(margin, y, pageWidth - margin, y);
-            y += 5;
-            doc.setFont('Helvetica', 'normal');
-            sale.items.forEach(item => {
-                const itemTotal = Number(item.price) * Number(item.quantity);
-                doc.setFontSize(9);
-                const splitName = doc.splitTextToSize(item.productName, maxLineWidth - 20);
-                doc.text(splitName, margin, y);
-                doc.text(`Rs. ${itemTotal.toLocaleString('en-IN')}`, pageWidth - margin, y, { align: 'right' });
-                y += (splitName.length * 4);
-                doc.setFontSize(7);
-                doc.setTextColor('#666666');
-                doc.text(`(x${item.quantity} @ Rs. ${Number(item.price).toLocaleString('en-IN')})`, margin, y);
-                y += 6;
-                doc.setTextColor('#000000');
-            });
-            y -= 2;
-            doc.setDrawColor('#cccccc');
-            doc.line(margin, y, pageWidth - margin, y);
-            y += 5;
-            const totals = [
-                { label: 'Subtotal', value: subTotal },
-                { label: 'GST', value: Number(sale.gstAmount) },
-                { label: 'Discount', value: -Number(sale.discount) },
-                { label: 'Total', value: Number(sale.totalAmount), bold: true },
-                { label: 'Paid', value: paidAmountOnSale },
-                { label: 'Due', value: dueAmountOnSale, bold: true },
-            ];
-            const totalsX = pageWidth - margin;
-            totals.forEach(({ label, value, bold = false }) => {
-                doc.setFont('Helvetica', bold ? 'bold' : 'normal');
-                doc.setFontSize(bold ? 10 : 8);
-                doc.text(label, totalsX - 25, y, { align: 'right' });
-                doc.text(`Rs. ${value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, totalsX, y, { align: 'right' });
-                y += (bold ? 5 : 4);
-            });
-            return y;
-        };
-        const dummyDoc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, 500] });
-        const finalY = renderContentOnDoc(dummyDoc);
-        const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, finalY + 5] });
-        renderContentOnDoc(doc);
-        
+        const doc = await generateA4InvoicePdf(sale, selectedCustomer);
         const pdfBlob = doc.output('blob');
-        const pdfFile = new File([pdfBlob], `Receipt-${sale.id}.pdf`, { type: 'application/pdf' });
+        const pdfFile = new File([pdfBlob], `Invoice-${sale.id}.pdf`, { type: 'application/pdf' });
         const businessName = state.profile?.name || 'Invoice';
 
         if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
             await navigator.share({
-                title: `${businessName} - Receipt ${sale.id}`,
+                title: `${businessName} - Invoice ${sale.id}`,
                 files: [pdfFile],
             });
         } else {
-            doc.save(`Receipt-${sale.id}.pdf`);
+            doc.save(`Invoice-${sale.id}.pdf`);
         }
     };
 
@@ -663,10 +642,6 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         c.area.toLowerCase().includes(searchTerm.toLowerCase())
     );
     
-    const selectedSale = state.sales.find(s => s.id === paymentModalState.saleId);
-    const selectedSaleAmountPaid = selectedSale ? selectedSale.payments.reduce((sum, p) => sum + Number(p.amount), 0) : 0;
-    const selectedSaleDueAmount = selectedSale ? Number(selectedSale.totalAmount) - selectedSaleAmountPaid : 0;
-
     if (selectedCustomer && editedCustomer) {
         const customerSales = state.sales.filter(s => s.customerId === selectedCustomer.id);
         const customerReturns = state.returns.filter(r => r.type === 'CUSTOMER' && r.partyId === selectedCustomer.id);
@@ -685,17 +660,14 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                 >
                     Are you sure you want to delete this sale? This action cannot be undone and will add the items back to stock.
                 </ConfirmationModal>
-                
                 <PaymentModal
                     isOpen={paymentModalState.isOpen}
                     onClose={() => setPaymentModalState({isOpen: false, saleId: null})}
                     onSubmit={handleAddPayment}
-                    totalAmount={selectedSale ? Number(selectedSale.totalAmount) : 0}
-                    dueAmount={selectedSaleDueAmount}
+                    sale={state.sales.find(s => s.id === paymentModalState.saleId)}
                     paymentDetails={paymentDetails}
                     setPaymentDetails={setPaymentDetails}
                 />
-                
                 <Button onClick={() => setSelectedCustomer(null)}>&larr; Back to List</Button>
                 <Card>
                     <div className="flex justify-between items-start mb-4">
@@ -881,19 +853,38 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         <div className="space-y-4">
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-primary">Customers</h1>
-                <Button onClick={() => setIsAddCustomerModalOpen(true)}>
+                <Button onClick={() => setIsAdding(!isAdding)}>
                     <Plus className="w-4 h-4 mr-2" />
-                    Add Customer
+                    {isAdding ? 'Cancel' : 'Add Customer'}
                 </Button>
             </div>
 
-            {isAddCustomerModalOpen && (
-                <AddCustomerModal
-                    isOpen={isAddCustomerModalOpen}
-                    onClose={() => setIsAddCustomerModalOpen(false)}
-                    onAdd={handleAddCustomer}
-                    existingCustomers={state.customers}
-                />
+            {isAdding && (
+                <Card title="New Customer Form">
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Customer ID</label>
+                            <div className="flex items-center mt-1">
+                                <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-gray-400">
+                                    CUST-
+                                </span>
+                                <input 
+                                    type="text" 
+                                    placeholder="Enter unique ID" 
+                                    value={newCustomer.id} 
+                                    onChange={e => setNewCustomer({ ...newCustomer, id: e.target.value })} 
+                                    className="w-full p-2 border rounded-r-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" 
+                                />
+                            </div>
+                        </div>
+                        <input type="text" placeholder="Name" value={newCustomer.name} onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
+                        <input type="text" placeholder="Phone" value={newCustomer.phone} onChange={e => setNewCustomer({ ...newCustomer, phone: e.target.value })} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
+                        <input type="text" placeholder="Address" value={newCustomer.address} onChange={e => setNewCustomer({ ...newCustomer, address: e.target.value })} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
+                        <input type="text" placeholder="Area/Location" value={newCustomer.area} onChange={e => setNewCustomer({ ...newCustomer, area: e.target.value })} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
+                        <input type="text" placeholder="Reference (Optional)" value={newCustomer.reference} onChange={e => setNewCustomer({ ...newCustomer, reference: e.target.value })} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
+                        <Button onClick={handleAddCustomer} className="w-full">Save Customer</Button>
+                    </div>
+                </Card>
             )}
 
             <div className="relative">

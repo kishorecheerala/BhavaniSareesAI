@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import jsPDF from 'jspdf';
 import JsBarcode from 'jsbarcode';
@@ -216,19 +217,19 @@ export const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, product, onC
       <Card className="w-full max-w-md animate-scale-in">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-bold">Print/Download Barcode Labels</h2>
-          <button onClick={onClose} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors"><X size={20} /></button>
+          <button onClick={onClose} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"><X size={20} /></button>
         </div>
 
         <div className="space-y-4">
           <div>
-            <h3 className="text-sm font-semibold mb-2">Label Preview:</h3>
-            <div className="border-2 border-dashed border-purple-300 bg-gray-50 p-4 rounded-lg flex justify-center">
+            <h3 className="text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">Label Preview:</h3>
+            <div className="border-2 border-dashed border-purple-300 bg-gray-50 dark:bg-slate-700/50 dark:border-slate-600 p-4 rounded-lg flex justify-center">
               <canvas ref={labelPreviewCanvasRef} style={{ border: '1px solid #ddd', background: 'white' }} />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1 text-center">Number of copies</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 text-center">Number of copies</label>
             <div className="flex items-center justify-center gap-2">
                 <Button 
                     onClick={() => setNumberOfCopies(prev => Math.max(0, prev - 1))}
@@ -244,7 +245,7 @@ export const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, product, onC
                   max="100"
                   value={numberOfCopies}
                   onChange={(e) => setNumberOfCopies(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="w-24 p-2 border rounded text-center text-lg"
+                  className="w-24 p-2 border rounded text-center text-lg dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
                 />
                 <Button
                     onClick={() => setNumberOfCopies(prev => Math.min(100, prev + 1))}
@@ -257,9 +258,9 @@ export const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, product, onC
             </div>
           </div>
 
-          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded">
-            <p className="text-xs font-semibold text-yellow-800 mb-1">Important Print Settings</p>
-            <p className="text-xs text-yellow-700">
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 p-3 rounded">
+            <p className="text-xs font-semibold text-yellow-800 dark:text-yellow-200 mb-1">Important Print Settings</p>
+            <p className="text-xs text-yellow-700 dark:text-yellow-300">
               When printing, ensure printer settings use <strong>Actual Size</strong> and <strong>Paper Size: 2x1 inch</strong> (50.8x25.4mm).
             </p>
           </div>
