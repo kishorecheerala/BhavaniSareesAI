@@ -1,26 +1,51 @@
 
 import React, { useState, useMemo, useEffect, useRef, PropsWithChildren } from 'react';
-import { IndianRupee, TrendingUp, TrendingDown, Award, Lock, BarChart, Calendar, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { IndianRupee, TrendingUp, TrendingDown, Award, Lock, BarChart, Calendar, ArrowUpRight, ArrowDownRight, ShoppingBag, PieChart, Activity, DollarSign } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import Card from '../components/Card';
 import PinModal from '../components/PinModal';
 import ConfirmationModal from '../components/ConfirmationModal';
-import { Page, Sale, SaleItem } from '../types';
+import { Page, Sale, Product } from '../types';
 import Dropdown from '../components/Dropdown';
 
 interface InsightsPageProps {
     setCurrentPage: (page: Page) => void;
 }
 
-// --- Helper Components for Charts ---
+// --- Helper Logic ---
+
+const CATEGORY_MAP: Record<string, string> = {
+    'KAN': 'Kanchi Pattu',
+    'COT': 'Cotton',
+    'SILK': 'Mysore Silk',
+    'SYN': 'Synthetics',
+    'BAN': 'Banarasi',
+    'POC': 'Pochampally',
+    'GAD': 'Gadwal',
+    'CHA': 'Chanderi',
+    'TUS': 'Tussar',
+    'UPP': 'Uppada',
+};
+
+const getCategoryName = (id: string) => {
+    const parts = id.split('-');
+    if (parts.length > 1 && CATEGORY_MAP[parts[1]]) {
+        return CATEGORY_MAP[parts[1]];
+    }
+    return 'Other';
+};
+
+const COLORS = ['#0d9488', '#f59e0b', '#6366f1', '#ec4899', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444'];
+
+// --- Components ---
 
 const Tooltip = ({ x, y, children }: PropsWithChildren<{ x: number, y: number }>) => (
     <div 
-        className="absolute z-50 bg-gray-900 text-white text-xs rounded px-2 py-1 pointer-events-none shadow-lg transform -translate-x-1/2 -translate-y-full"
-        style={{ left: x, top: y - 10 }}
+        className="absolute z-50 bg-gray-900/95 backdrop-blur text-white text-xs rounded-lg px-3 py-2 pointer-events-none shadow-xl transform -translate-x-1/2 -translate-y-full border border-white/10"
+        style={{ left: x, top: y - 12 }}
     >
         {children}
-        <div className="absolute left-1/2 top-100 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+        <div className="absolute left-1/2 top-full transform -translate-x-1/2 border-4 border-transparent border-t-gray-900/95"></div>
     </div>
 );
 
@@ -29,7 +54,7 @@ const SalesProfitChart = ({ data }: { data: { label: string, sales: number, prof
     const svgRef = useRef<SVGSVGElement>(null);
     const [width, setWidth] = useState(0);
     const height = 300;
-    const padding = { top: 20, right: 0, bottom: 30, left: 40 };
+    const padding = { top: 40, right: 20, bottom: 40, left: 50 };
 
     useEffect(() => {
         if (svgRef.current) {
@@ -42,18 +67,29 @@ const SalesProfitChart = ({ data }: { data: { label: string, sales: number, prof
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    if (data.length === 0) return <div className="h-[300px] flex items-center justify-center text-gray-400">No data available</div>;
+
     const maxVal = Math.max(...data.map(d => Math.max(d.sales, d.profit))) * 1.1 || 1000;
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
-    const barWidth = (chartWidth / data.length) * 0.5;
+    const barWidth = Math.min(40, (chartWidth / data.length) * 0.6);
 
     const getY = (val: number) => chartHeight - (val / maxVal) * chartHeight + padding.top;
     const getX = (index: number) => padding.left + (index * (chartWidth / data.length)) + (chartWidth / data.length) / 2;
 
-    // Profit Line Path
-    const linePath = data.map((d, i) => 
-        `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getY(d.profit)}`
-    ).join(' ');
+    // Smooth line generator
+    const generateSmoothPath = (points: {x: number, y: number}[]) => {
+        if (points.length === 0) return "";
+        const d = points.reduce((acc, point, i, a) => {
+            if (i === 0) return `M ${point.x},${point.y}`;
+            const cpsX = a[i - 1].x + (point.x - a[i - 1].x) / 2;
+            return `${acc} C ${cpsX},${a[i - 1].y} ${cpsX},${point.y} ${point.x},${point.y}`;
+        }, "");
+        return d;
+    };
+
+    const profitPoints = data.map((d, i) => ({ x: getX(i), y: getY(d.profit) }));
+    const linePath = generateSmoothPath(profitPoints);
 
     return (
         <div className="relative h-[300px] w-full select-none">
@@ -63,9 +99,9 @@ const SalesProfitChart = ({ data }: { data: { label: string, sales: number, prof
                     const y = padding.top + chartHeight * (1 - tick);
                     return (
                         <g key={tick}>
-                            <line x1={padding.left} y1={y} x2={width} y2={y} stroke="#e5e7eb" strokeDasharray="4" className="dark:stroke-slate-700" />
-                            <text x={padding.left - 5} y={y + 4} textAnchor="end" className="text-[10px] fill-gray-400">
-                                {Math.round(maxVal * tick / 1000)}k
+                            <line x1={padding.left} y1={y} x2={width - padding.right} y2={y} stroke="#e5e7eb" strokeDasharray="4" className="dark:stroke-slate-700" />
+                            <text x={padding.left - 10} y={y + 4} textAnchor="end" className="text-[10px] fill-gray-400 font-mono">
+                                {(Math.round(maxVal * tick / 1000)) + 'k'}
                             </text>
                         </g>
                     );
@@ -75,7 +111,8 @@ const SalesProfitChart = ({ data }: { data: { label: string, sales: number, prof
                 {data.map((d, i) => {
                     const x = getX(i) - barWidth / 2;
                     const y = getY(d.sales);
-                    const h = chartHeight - (y - padding.top);
+                    const h = Math.max(0, chartHeight - (y - padding.top));
+                    const isHovered = hoverIndex === i;
                     return (
                         <g key={`bar-${i}`}>
                             <rect 
@@ -83,120 +120,190 @@ const SalesProfitChart = ({ data }: { data: { label: string, sales: number, prof
                                 y={y} 
                                 width={barWidth} 
                                 height={h} 
-                                className="fill-teal-500 hover:fill-teal-400 transition-all duration-300 rx-1"
-                                onMouseEnter={() => setHoverIndex(i)}
-                                onMouseLeave={() => setHoverIndex(null)}
+                                rx={4}
+                                className={`transition-all duration-200 ${isHovered ? 'fill-teal-400 dark:fill-teal-300' : 'fill-teal-500/80 dark:fill-teal-500'}`}
                             />
-                            <text x={getX(i)} y={height - 10} textAnchor="middle" className="text-[10px] fill-gray-500 dark:fill-gray-400 font-medium">
-                                {d.label}
-                            </text>
+                            {/* Label */}
+                             {width > 400 && (
+                                <text x={getX(i)} y={height - 15} textAnchor="middle" className={`text-[10px] font-medium transition-colors ${isHovered ? 'fill-teal-600 dark:fill-teal-300' : 'fill-gray-500 dark:fill-gray-400'}`}>
+                                    {d.label}
+                                </text>
+                             )}
                         </g>
                     );
                 })}
 
                 {/* Line (Profit) */}
-                <path d={linePath} fill="none" stroke="#f59e0b" strokeWidth="3" className="drop-shadow-sm" />
+                <path d={linePath} fill="none" stroke="#f59e0b" strokeWidth="3" strokeLinecap="round" className="drop-shadow-md" />
                 
-                {/* Line Dots */}
+                {/* Line Dots & Overlay */}
                 {data.map((d, i) => (
-                    <circle 
-                        key={`dot-${i}`} 
-                        cx={getX(i)} 
-                        cy={getY(d.profit)} 
-                        r="4" 
-                        className="fill-white stroke-amber-500 stroke-2 hover:r-6 transition-all"
-                        onMouseEnter={() => setHoverIndex(i)}
-                        onMouseLeave={() => setHoverIndex(null)}
-                    />
+                    <g key={`group-${i}`}>
+                         {/* Invisible Overlay for easier touch/hover */}
+                        <rect
+                            x={getX(i) - (chartWidth / data.length) / 2}
+                            y={padding.top}
+                            width={chartWidth / data.length}
+                            height={chartHeight}
+                            fill="transparent"
+                            onMouseEnter={() => setHoverIndex(i)}
+                            onMouseLeave={() => setHoverIndex(null)}
+                            onTouchStart={() => setHoverIndex(i)}
+                        />
+                        {/* Profit Dot */}
+                        <circle 
+                            cx={getX(i)} 
+                            cy={getY(d.profit)} 
+                            r={hoverIndex === i ? 6 : 4}
+                            className="fill-white stroke-amber-500 stroke-2 transition-all duration-200 pointer-events-none"
+                        />
+                    </g>
                 ))}
-                
-                {/* Interaction Overlay (for better mobile touch) */}
-                 {data.map((d, i) => (
-                    <rect
-                        key={`overlay-${i}`}
-                        x={getX(i) - (chartWidth / data.length) / 2}
-                        y={padding.top}
-                        width={chartWidth / data.length}
-                        height={chartHeight}
-                        fill="transparent"
-                        onMouseEnter={() => setHoverIndex(i)}
-                        onMouseLeave={() => setHoverIndex(null)}
-                        onTouchStart={() => setHoverIndex(i)}
-                    />
-                ))}
-
             </svg>
 
             {/* Tooltip */}
             {hoverIndex !== null && width > 0 && (
                 <Tooltip x={getX(hoverIndex)} y={Math.min(getY(data[hoverIndex].sales), getY(data[hoverIndex].profit))}>
-                    <div className="font-bold mb-1">{data[hoverIndex].label}</div>
-                    <div className="flex items-center gap-2 text-teal-200">
-                        <span className="w-2 h-2 rounded-full bg-teal-400"></span>
-                        Sales: ₹{data[hoverIndex].sales.toLocaleString()}
-                    </div>
-                    <div className="flex items-center gap-2 text-amber-200">
-                         <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-                         Profit: ₹{data[hoverIndex].profit.toLocaleString()}
+                    <div className="font-bold mb-2 border-b border-white/10 pb-1">{data[hoverIndex].label}</div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                        <div className="text-teal-200 text-[10px] uppercase font-semibold">Revenue</div>
+                        <div className="text-right font-mono font-bold">₹{data[hoverIndex].sales.toLocaleString()}</div>
+                        
+                        <div className="text-amber-200 text-[10px] uppercase font-semibold">Profit</div>
+                        <div className="text-right font-mono font-bold">₹{data[hoverIndex].profit.toLocaleString()}</div>
+                        
+                        <div className="text-gray-400 text-[10px] uppercase font-semibold mt-1 pt-1 border-t border-white/10">Margin</div>
+                        <div className="text-right font-mono text-xs mt-1 pt-1 border-t border-white/10">
+                            {data[hoverIndex].sales > 0 ? ((data[hoverIndex].profit / data[hoverIndex].sales) * 100).toFixed(1) : 0}%
+                        </div>
                     </div>
                 </Tooltip>
             )}
             
-             <div className="absolute top-0 right-0 flex gap-4 text-xs">
-                <div className="flex items-center gap-1"><span className="w-3 h-3 bg-teal-500 rounded-sm"></span> Sales</div>
-                <div className="flex items-center gap-1"><span className="w-3 h-3 bg-amber-500 rounded-full border-2 border-white dark:border-slate-800"></span> Profit</div>
+             <div className="absolute top-0 left-0 w-full flex justify-between px-4 items-center">
+                <h3 className="font-bold text-gray-700 dark:text-gray-300 text-sm">Monthly Performance</h3>
+                <div className="flex gap-4 text-xs">
+                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 bg-teal-500 rounded-sm"></span> Sales</div>
+                    <div className="flex items-center gap-1.5"><span className="w-3 h-3 bg-amber-500 rounded-full border-2 border-white dark:border-slate-800"></span> Profit</div>
+                </div>
             </div>
         </div>
     );
 };
 
-const DailyTrendChart = ({ data }: { data: { day: number, value: number }[] }) => {
-    const svgRef = useRef<SVGSVGElement>(null);
-    const [width, setWidth] = useState(0);
-    const height = 200;
-    const padding = 10;
+const CategoryDonutChart = ({ data }: { data: { name: string, value: number }[] }) => {
+    const total = data.reduce((sum, item) => sum + item.value, 0);
+    let cumulativePercent = 0;
+    const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-    useEffect(() => {
-        if (svgRef.current) setWidth(svgRef.current.clientWidth);
-    }, []);
+    if (total === 0) return <div className="h-[250px] flex items-center justify-center text-gray-400">No sales data</div>;
 
-    if (!data || data.length === 0) return <div className="h-48 flex items-center justify-center text-gray-400">No data for this month</div>;
-
-    const maxVal = Math.max(...data.map(d => d.value)) * 1.1 || 100;
-    // Fill gaps for days if needed, but assuming continuous day index mapping for X
-    const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
-    
-    const getX = (day: number) => (day / daysInMonth) * width;
-    const getY = (val: number) => height - (val / maxVal) * height;
-
-    // Create Path
-    let pathD = `M 0 ${height}`;
-    data.forEach(d => {
-        pathD += ` L ${getX(d.day)} ${getY(d.value)}`;
+    // Calculate chart segments
+    const segments = data.map((item, index) => {
+        const startPercent = cumulativePercent;
+        const percent = item.value / total;
+        cumulativePercent += percent;
+        
+        // SVG Arc Math
+        const x = Math.cos(2 * Math.PI * startPercent);
+        const y = Math.sin(2 * Math.PI * startPercent);
+        // Not implementing full SVG arc path drawing here for brevity as it's complex to get right without a library.
+        // Instead, utilizing the stroke-dasharray trick on circles.
+        return { ...item, percent, color: COLORS[index % COLORS.length] };
     });
-    pathD += ` L ${width} ${height} Z`; // Close path for area fill
 
-    const lineD = data.map((d, i) => `${i===0?'M':'L'} ${getX(d.day)} ${getY(d.value)}`).join(' ');
+    // Simple CSS Conic Gradient for the donut
+    const conicGradient = segments.map(s => `${s.color} 0 ${s.percent * 100}%`).join(', ');
+    let currentAngle = 0;
 
     return (
-         <div className="relative h-[200px] w-full">
-            <svg ref={svgRef} className="w-full h-full overflow-visible">
-                <defs>
-                    <linearGradient id="grad1" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.4" />
-                        <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
-                    </linearGradient>
-                </defs>
-                <path d={pathD} fill="url(#grad1)" />
-                <path d={lineD} fill="none" stroke="#8b5cf6" strokeWidth="2" />
-                 {data.filter(d => d.value > maxVal * 0.2).map((d, i) => (
-                     // Show dots only for significant values to reduce clutter
-                     <circle key={i} cx={getX(d.day)} cy={getY(d.value)} r="2" className="fill-white stroke-purple-600" />
-                 ))}
-            </svg>
-         </div>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-8 h-[300px]">
+            <div className="relative w-48 h-48">
+                 <svg viewBox="0 0 100 100" className="transform -rotate-90 w-full h-full overflow-visible">
+                    {segments.map((segment, i) => {
+                        const circumference = 2 * Math.PI * 40; // r=40
+                        const strokeDasharray = `${segment.percent * circumference} ${circumference}`;
+                        const strokeDashoffset = -currentAngle * circumference;
+                        currentAngle += segment.percent;
+                        
+                        return (
+                            <circle
+                                key={i}
+                                cx="50"
+                                cy="50"
+                                r="40"
+                                fill="transparent"
+                                stroke={segment.color}
+                                strokeWidth={hoveredIndex === i ? "14" : "10"}
+                                strokeDasharray={strokeDasharray}
+                                strokeDashoffset={strokeDashoffset}
+                                className="transition-all duration-300 cursor-pointer hover:opacity-90"
+                                onMouseEnter={() => setHoveredIndex(i)}
+                                onMouseLeave={() => setHoveredIndex(null)}
+                            />
+                        );
+                    })}
+                    {/* Center Text */}
+                    <foreignObject x="25" y="25" width="50" height="50">
+                        <div className="w-full h-full flex flex-col items-center justify-center text-gray-700 dark:text-gray-300">
+                             <span className="text-[10px] font-semibold uppercase opacity-70">Total</span>
+                             <span className="text-xs font-bold">₹{(total/1000).toFixed(0)}k</span>
+                        </div>
+                    </foreignObject>
+                </svg>
+            </div>
+
+            <div className="flex-1 w-full max-w-xs">
+                 <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                    {segments.map((segment, i) => (
+                        <div 
+                            key={i} 
+                            className={`flex items-center justify-between p-2 rounded-md transition-colors ${hoveredIndex === i ? 'bg-gray-100 dark:bg-slate-700' : ''}`}
+                            onMouseEnter={() => setHoveredIndex(i)}
+                            onMouseLeave={() => setHoveredIndex(null)}
+                        >
+                            <div className="flex items-center gap-2">
+                                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: segment.color }}></span>
+                                <span className="text-sm font-medium dark:text-gray-200 truncate max-w-[100px] sm:max-w-[140px]">{segment.name}</span>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-sm font-bold dark:text-white">{(segment.percent * 100).toFixed(1)}%</div>
+                                <div className="text-[10px] text-gray-500">₹{segment.value.toLocaleString()}</div>
+                            </div>
+                        </div>
+                    ))}
+                 </div>
+            </div>
+        </div>
     );
-}
+};
+
+const KPICard = ({ title, value, subtext, trend, icon: Icon, colorClass }: any) => (
+    <Card className={`relative overflow-hidden ${colorClass} border-l-4`}>
+        <div className="flex justify-between items-start">
+            <div>
+                <p className="text-sm font-medium opacity-80 uppercase tracking-wide">{title}</p>
+                <h3 className="text-2xl font-bold mt-1">{value}</h3>
+            </div>
+            <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                <Icon size={20} className="opacity-90" />
+            </div>
+        </div>
+        <div className="mt-4 flex items-center text-sm font-medium">
+            {trend > 0 ? (
+                <span className="flex items-center text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30 px-1.5 py-0.5 rounded">
+                    <ArrowUpRight size={14} className="mr-1" /> {Math.abs(trend).toFixed(1)}%
+                </span>
+            ) : (
+                <span className="flex items-center text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30 px-1.5 py-0.5 rounded">
+                    <ArrowDownRight size={14} className="mr-1" /> {Math.abs(trend).toFixed(1)}%
+                </span>
+            )}
+            <span className="ml-2 opacity-70 text-xs">vs last month</span>
+        </div>
+    </Card>
+);
+
 
 // --- Main Component ---
 
@@ -209,6 +316,7 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
 
     const [chartYear, setChartYear] = useState<string>(() => {
         const now = new Date();
+        // Default to current financial year (April to March)
         return String(now.getMonth() < 3 ? now.getFullYear() - 1 : now.getFullYear());
     });
 
@@ -274,10 +382,9 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                 const financialMonthIndex = month >= 3 ? month - 3 : month + 9;
                 
                 const saleAmount = Number(sale.totalAmount);
+                // Cost estimation: Using current product purchase price (approximation)
                 const costOfGoods = sale.items.reduce((sum, item) => {
                     const product = state.products.find(p => p.id === item.productId);
-                    // Assuming current purchasePrice is the cost. 
-                    // In a real app, we'd need historical CP, but this is an approximation.
                     return sum + (Number(product?.purchasePrice) || 0) * item.quantity;
                 }, 0);
 
@@ -289,69 +396,49 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
         return data;
     }, [state.sales, state.products, chartYear, isDbLoaded]);
 
-    const dailyTrendData = useMemo(() => {
-        const now = new Date();
-        const currentMonth = now.getMonth();
-        const currentYear = now.getFullYear();
-        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-        
-        // Initialize array for all days in month up to today
-        const todayDate = now.getDate();
-        const days = Array.from({ length: todayDate }, (_, i) => ({ day: i + 1, value: 0 }));
-
-        state.sales.forEach(sale => {
-            const d = new Date(sale.date);
-            if (d.getMonth() === currentMonth && d.getFullYear() === currentYear && d.getDate() <= todayDate) {
-                const dayIndex = d.getDate() - 1;
-                if (days[dayIndex]) {
-                    days[dayIndex].value += Number(sale.totalAmount);
-                }
-            }
-        });
-
-        return days;
-    }, [state.sales]);
-
-    const salesTrend = useMemo(() => {
+    // KPI Calculations
+    const kpiData = useMemo(() => {
         const now = new Date();
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
         const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
         const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
 
-        const currentMonthSales = state.sales
-            .filter(s => { const d = new Date(s.date); return d.getMonth() === currentMonth && d.getFullYear() === currentYear; })
-            .reduce((sum, s) => sum + Number(s.totalAmount), 0);
-        
-        const lastMonthSales = state.sales
-            .filter(s => { const d = new Date(s.date); return d.getMonth() === lastMonth && d.getFullYear() === lastMonthYear; })
-            .reduce((sum, s) => sum + Number(s.totalAmount), 0);
-        
-        let percentageChange = 0;
-        if (lastMonthSales > 0) {
-            percentageChange = ((currentMonthSales - lastMonthSales) / lastMonthSales) * 100;
-        } else if (currentMonthSales > 0) {
-            percentageChange = 100; 
-        }
-        
-        return { currentMonthSales, lastMonthSales, percentageChange };
+        const getMetrics = (m: number, y: number) => {
+            const monthSales = state.sales.filter(s => { const d = new Date(s.date); return d.getMonth() === m && d.getFullYear() === y; });
+            const revenue = monthSales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
+            const cost = monthSales.reduce((sum, s) => sum + s.items.reduce((is, i) => is + (state.products.find(p => p.id === i.productId)?.purchasePrice || 0) * i.quantity, 0), 0);
+            const profit = revenue - cost;
+            const orders = monthSales.length;
+            const aov = orders > 0 ? revenue / orders : 0;
+            return { revenue, profit, orders, aov };
+        };
+
+        const curr = getMetrics(currentMonth, currentYear);
+        const prev = getMetrics(lastMonth, lastMonthYear);
+
+        const calcTrend = (c: number, p: number) => p === 0 ? 100 : ((c - p) / p) * 100;
+
+        return {
+            revenue: { value: curr.revenue, trend: calcTrend(curr.revenue, prev.revenue) },
+            profit: { value: curr.profit, trend: calcTrend(curr.profit, prev.profit) },
+            orders: { value: curr.orders, trend: calcTrend(curr.orders, prev.orders) },
+            aov: { value: curr.aov, trend: calcTrend(curr.aov, prev.aov) },
+        };
+    }, [state.sales, state.products]);
+
+    const categoryData = useMemo(() => {
+        const categories: Record<string, number> = {};
+        state.sales.forEach(sale => {
+            sale.items.forEach(item => {
+                const cat = getCategoryName(item.productId);
+                categories[cat] = (categories[cat] || 0) + (item.price * item.quantity);
+            });
+        });
+        return Object.entries(categories)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value);
     }, [state.sales]);
-
-    const topCustomers = useMemo(() => {
-        const customerTotals = state.sales.reduce((acc, sale) => {
-            acc[sale.customerId] = (acc[sale.customerId] || 0) + Number(sale.totalAmount);
-            return acc;
-        }, {} as { [key: string]: number });
-
-        const sorted = Object.entries(customerTotals).sort(([, a], [, b]) => Number(b) - Number(a)).slice(0, 5);
-        const maxVal = sorted.length > 0 ? sorted[0][1] : 1;
-
-        return sorted.map(([customerId, total]) => ({
-                customer: state.customers.find(c => c.id === customerId),
-                total,
-                percent: (total / maxVal) * 100
-            }));
-    }, [state.sales, state.customers]);
 
     const topProducts = useMemo(() => {
         const productTotals = state.sales.reduce((acc, sale) => {
@@ -361,7 +448,7 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
             return acc;
         }, {} as { [key: string]: number });
         
-        const sorted = Object.entries(productTotals).sort(([, a], [, b]) => Number(b) - Number(a)).slice(0, 5);
+        const sorted = Object.entries(productTotals).sort((a, b) => b[1] - a[1]).slice(0, 5);
         const maxVal = sorted.length > 0 ? sorted[0][1] : 1;
 
         return sorted.map(([productId, quantity]) => ({
@@ -371,19 +458,21 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
             }));
     }, [state.sales, state.products]);
 
-    const totalFinancials = useMemo(() => {
-        const year = parseInt(chartYear);
-        // Approx stats for the displayed FY
-        return yearlyData.reduce((acc, curr) => ({
-            sales: acc.sales + curr.sales,
-            profit: acc.profit + curr.profit
-        }), { sales: 0, profit: 0 });
-    }, [yearlyData]);
+    const topCustomers = useMemo(() => {
+         const customerTotals = state.sales.reduce((acc, sale) => {
+            acc[sale.customerId] = (acc[sale.customerId] || 0) + Number(sale.totalAmount);
+            return acc;
+        }, {} as { [key: string]: number });
 
-    const totalCustomerDues = useMemo(() => state.sales.reduce((sum, sale) => {
-        const paid = (sale.payments || []).reduce((pSum, p) => pSum + Number(p.amount), 0);
-        return sum + (Number(sale.totalAmount) - paid);
-    }, 0), [state.sales]);
+        const sorted = Object.entries(customerTotals).sort((a, b) => b[1] - a[1]).slice(0, 5);
+        const maxVal = sorted.length > 0 ? sorted[0][1] : 1;
+
+        return sorted.map(([customerId, total]) => ({
+                customer: state.customers.find(c => c.id === customerId),
+                total,
+                percent: (total / maxVal) * 100
+            }));
+    }, [state.sales, state.customers]);
 
 
     if (pinState !== 'unlocked') {
@@ -401,10 +490,12 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                 </ConfirmationModal>
                 <h1 className="text-2xl font-bold text-primary mb-4">Business Insights</h1>
                 <Card>
-                    <div className="text-center py-8">
-                        <Lock size={48} className="mx-auto text-gray-400 mb-4" />
-                        <h2 className="text-xl font-semibold">Security PIN Required</h2>
-                        <p className="text-gray-600 dark:text-gray-400">Please set or enter your PIN to view this sensitive information.</p>
+                    <div className="text-center py-12">
+                        <div className="bg-gray-100 dark:bg-slate-700 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <Lock size={40} className="text-primary" />
+                        </div>
+                        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Insights Locked</h2>
+                        <p className="text-gray-600 dark:text-gray-400 mt-2 max-w-xs mx-auto">Protected financial data. Please enter your PIN to access detailed business analytics.</p>
                     </div>
                 </Card>
                 {pinState === 'locked' && (
@@ -428,10 +519,13 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
     }
 
     return (
-        <div className="space-y-6 animate-fade-in-fast">
-            <div className="flex justify-between items-center">
-                 <h1 className="text-2xl font-bold text-primary">Business Insights</h1>
-                 <div className="w-40">
+        <div className="space-y-6 animate-fade-in-fast pb-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                 <div>
+                    <h1 className="text-2xl font-bold text-primary">Business Overview</h1>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Performance metrics for {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}</p>
+                 </div>
+                 <div className="w-48">
                     <Dropdown
                         options={availableYearsForChart.map(year => ({ value: String(year), label: `FY ${year}-${String(year + 1).slice(2)}`}))}
                         value={chartYear}
@@ -440,115 +534,106 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                  </div>
             </div>
 
-            {/* Big Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card className="bg-gradient-to-br from-teal-50 to-teal-100 dark:from-teal-900/30 dark:to-teal-800/30 border-teal-500">
-                    <div className="flex flex-col">
-                        <span className="text-sm font-medium text-teal-800 dark:text-teal-200 uppercase tracking-wide">Total Revenue (FY)</span>
-                        <div className="flex items-baseline gap-2 mt-1">
-                            <span className="text-3xl font-bold text-teal-900 dark:text-teal-100">₹{totalFinancials.sales.toLocaleString('en-IN')}</span>
-                        </div>
-                    </div>
-                </Card>
-                <Card className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/30 border-amber-500">
-                     <div className="flex flex-col">
-                        <span className="text-sm font-medium text-amber-800 dark:text-amber-200 uppercase tracking-wide">Total Profit (Est.)</span>
-                         <div className="flex items-baseline gap-2 mt-1">
-                            <span className="text-3xl font-bold text-amber-900 dark:text-amber-100">₹{totalFinancials.profit.toLocaleString('en-IN')}</span>
-                            <span className="text-sm font-semibold text-amber-700 dark:text-amber-300">
-                                ({((totalFinancials.profit / (totalFinancials.sales || 1)) * 100).toFixed(1)}% margin)
-                            </span>
-                        </div>
-                    </div>
-                </Card>
+            {/* KPI Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <KPICard 
+                    title="Total Revenue" 
+                    value={`₹${kpiData.revenue.value.toLocaleString('en-IN')}`} 
+                    trend={kpiData.revenue.trend} 
+                    icon={IndianRupee}
+                    colorClass="bg-teal-50 dark:bg-teal-900/20 text-teal-900 dark:text-teal-100 border-teal-500"
+                />
+                <KPICard 
+                    title="Net Profit (Est.)" 
+                    value={`₹${kpiData.profit.value.toLocaleString('en-IN')}`} 
+                    trend={kpiData.profit.trend} 
+                    icon={DollarSign}
+                    colorClass="bg-amber-50 dark:bg-amber-900/20 text-amber-900 dark:text-amber-100 border-amber-500"
+                />
+                 <KPICard 
+                    title="Total Orders" 
+                    value={kpiData.orders} 
+                    trend={kpiData.orders.trend} 
+                    icon={ShoppingBag}
+                    colorClass="bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-100 border-blue-500"
+                />
+                <KPICard 
+                    title="Avg Order Value" 
+                    value={`₹${kpiData.aov.value.toLocaleString('en-IN', {maximumFractionDigits: 0})}`} 
+                    trend={kpiData.aov.trend} 
+                    icon={Activity}
+                    colorClass="bg-purple-50 dark:bg-purple-900/20 text-purple-900 dark:text-purple-100 border-purple-500"
+                />
             </div>
 
-            {/* Main Chart */}
-            <Card title={`Sales & Profit Performance (FY ${chartYear})`}>
-                <SalesProfitChart data={yearlyData} />
-            </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Main Chart Area */}
+                <div className="lg:col-span-2">
+                    <Card title={`Financial Performance (FY ${chartYear})`} className="h-full">
+                        <SalesProfitChart data={yearlyData} />
+                    </Card>
+                </div>
+                
+                {/* Category Chart */}
+                <div>
+                    <Card title="Sales by Category" className="h-full">
+                        <CategoryDonutChart data={categoryData} />
+                    </Card>
+                </div>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Daily Trend */}
-                <Card className="relative overflow-hidden">
-                    <div className="flex justify-between items-start mb-2">
-                        <div>
-                            <h3 className="font-bold text-lg text-gray-800 dark:text-gray-200">This Month's Daily Trend</h3>
-                            <p className="text-xs text-gray-500">Daily sales performance</p>
-                        </div>
-                        <div className={`flex flex-col items-end ${salesTrend.percentageChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                            <span className="text-2xl font-bold">₹{salesTrend.currentMonthSales.toLocaleString('en-IN')}</span>
-                            <div className="flex items-center text-xs font-semibold">
-                                {salesTrend.percentageChange >= 0 ? <TrendingUp size={14} className="mr-1"/> : <TrendingDown size={14} className="mr-1"/>}
-                                {Math.abs(salesTrend.percentageChange).toFixed(1)}% vs last mo.
-                            </div>
-                        </div>
-                    </div>
-                    <DailyTrendChart data={dailyTrendData} />
-                </Card>
-
-                {/* Dues Summary */}
-                <Card title="Dues Overview">
-                    <div className="flex flex-col h-full justify-center gap-6 py-4">
-                        <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-800/50">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-red-100 dark:bg-red-800 rounded-full text-red-600 dark:text-red-200">
-                                    <ArrowDownRight size={24} />
-                                </div>
-                                <div>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400">To Collect</p>
-                                    <p className="text-lg font-bold text-gray-900 dark:text-gray-100">Customer Dues</p>
-                                </div>
-                            </div>
-                            <p className="text-2xl font-bold text-red-600 dark:text-red-400">₹{totalCustomerDues.toLocaleString('en-IN')}</p>
-                        </div>
-                    </div>
-                </Card>
-
-                {/* Top Customers Bar Chart */}
-                <Card title="Top 5 Customers (All Time)">
-                    <div className="space-y-4 mt-2">
-                        {topCustomers.map(({ customer, total, percent }, index) => (
-                            <div key={customer?.id || index} className="w-full">
-                                <div className="flex justify-between text-sm mb-1">
-                                    <div className="flex items-center gap-2">
-                                        <div className={`w-5 h-5 flex items-center justify-center rounded-full text-xs font-bold ${index < 3 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-700'}`}>
+                {/* Top Products List */}
+                <Card title="Top Selling Products">
+                     <div className="space-y-5 mt-2">
+                         {topProducts.map(({ product, quantity, percent }, index) => (
+                             <div key={product?.id || index} className="relative">
+                                <div className="flex justify-between items-end mb-1">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-6 h-6 flex items-center justify-center rounded-md text-xs font-bold ${index === 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300'}`}>
                                             {index + 1}
                                         </div>
-                                        <span className="font-semibold dark:text-gray-200">{customer?.name || 'Unknown'}</span>
+                                        <div>
+                                            <div className="font-semibold text-sm dark:text-gray-200 truncate w-40 sm:w-auto">{product?.name || 'Unknown'}</div>
+                                            <div className="text-xs text-gray-500 dark:text-gray-400">{product?.id}</div>
+                                        </div>
+                                    </div>
+                                    <span className="font-bold text-gray-700 dark:text-gray-300">{quantity} Sold</span>
+                                </div>
+                                <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                                    <div className="bg-teal-500 h-2 rounded-full transition-all duration-500" style={{ width: `${percent}%` }}></div>
+                                </div>
+                            </div>
+                        ))}
+                        {topProducts.length === 0 && <p className="text-center text-gray-400 py-4">No sales data yet.</p>}
+                    </div>
+                </Card>
+
+                {/* Top Customers List */}
+                <Card title="Top Customers">
+                     <div className="space-y-5 mt-2">
+                        {topCustomers.map(({ customer, total, percent }, index) => (
+                            <div key={customer?.id || index} className="relative">
+                                <div className="flex justify-between items-end mb-1">
+                                    <div className="flex items-center gap-3">
+                                         <div className={`w-6 h-6 flex items-center justify-center rounded-md text-xs font-bold ${index === 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300'}`}>
+                                            {index + 1}
+                                        </div>
+                                        <div>
+                                            <div className="font-semibold text-sm dark:text-gray-200">{customer?.name || 'Unknown'}</div>
+                                            <div className="text-xs text-gray-500 dark:text-gray-400">{customer?.area}</div>
+                                        </div>
                                     </div>
                                     <span className="font-bold text-gray-700 dark:text-gray-300">₹{total.toLocaleString('en-IN')}</span>
                                 </div>
-                                <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
-                                    <div className="bg-blue-500 h-2.5 rounded-full" style={{ width: `${percent}%` }}></div>
+                                <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                                    <div className="bg-blue-500 h-2 rounded-full transition-all duration-500" style={{ width: `${percent}%` }}></div>
                                 </div>
                             </div>
                         ))}
+                        {topCustomers.length === 0 && <p className="text-center text-gray-400 py-4">No customer data yet.</p>}
                     </div>
                 </Card>
-
-                {/* Top Products Bar Chart */}
-                <Card title="Top 5 Products (All Time)">
-                    <div className="space-y-4 mt-2">
-                         {topProducts.map(({ product, quantity, percent }, index) => (
-                             <div key={product?.id || index} className="w-full">
-                                <div className="flex justify-between text-sm mb-1">
-                                    <div className="flex items-center gap-2">
-                                        <div className={`w-5 h-5 flex items-center justify-center rounded-full text-xs font-bold ${index < 3 ? 'bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-700'}`}>
-                                            {index + 1}
-                                        </div>
-                                        <span className="font-semibold truncate max-w-[150px] dark:text-gray-200">{product?.name || 'Unknown'}</span>
-                                    </div>
-                                    <span className="font-bold text-gray-700 dark:text-gray-300">{quantity} units</span>
-                                </div>
-                                <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
-                                    <div className="bg-emerald-500 h-2.5 rounded-full" style={{ width: `${percent}%` }}></div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </Card>
-
             </div>
         </div>
     );
