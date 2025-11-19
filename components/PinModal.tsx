@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import Card from './Card';
 import Button from './Button';
@@ -17,21 +16,48 @@ const PinModal: React.FC<PinModalProps> = ({ mode, onSetPin, onCorrectPin, corre
     const [pin, setPin] = useState('');
     const [confirmPin, setConfirmPin] = useState('');
     const [error, setError] = useState('');
-    const inputRef = useRef<HTMLInputElement>(null);
+    
+    const pinInputRef = useRef<HTMLInputElement>(null);
+    const confirmInputRef = useRef<HTMLInputElement>(null);
+    const submitButtonRef = useRef<HTMLButtonElement>(null);
 
     useEffect(() => {
         // Auto-focus the first input when the modal appears
         setTimeout(() => {
-            inputRef.current?.focus();
+            pinInputRef.current?.focus();
         }, 100);
     }, [mode]);
     
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<string>>) => {
+    const handlePinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         // Allow only 4 digits
         if (/^\d{0,4}$/.test(value)) {
-            setter(value);
+            setPin(value);
             setError('');
+            
+            if (value.length === 4) {
+                if (mode === 'setup') {
+                    confirmInputRef.current?.focus();
+                } else {
+                    // In enter mode, complete -> focus submit
+                    pinInputRef.current?.blur();
+                    submitButtonRef.current?.focus();
+                }
+            }
+        }
+    };
+
+    const handleConfirmPinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        if (/^\d{0,4}$/.test(value)) {
+            setConfirmPin(value);
+            setError('');
+            
+            if (value.length === 4) {
+                // Blur to hide keyboard and focus submit button
+                confirmInputRef.current?.blur();
+                submitButtonRef.current?.focus();
+            }
         }
     };
 
@@ -52,6 +78,8 @@ const PinModal: React.FC<PinModalProps> = ({ mode, onSetPin, onCorrectPin, corre
             } else {
                 setError('Incorrect PIN. Please try again.');
                 setPin('');
+                // Refocus
+                setTimeout(() => pinInputRef.current?.focus(), 100);
             }
         }
     };
@@ -77,33 +105,36 @@ const PinModal: React.FC<PinModalProps> = ({ mode, onSetPin, onCorrectPin, corre
                 </div>
                 <div className="space-y-4">
                     <input
-                        ref={inputRef}
+                        ref={pinInputRef}
                         type="password"
                         inputMode="numeric"
                         pattern="\d{4}"
                         maxLength={4}
                         value={pin}
-                        onChange={(e) => handleInputChange(e, setPin)}
+                        onChange={handlePinChange}
                         onKeyPress={handleKeyPress}
                         className="w-full p-3 text-center text-2xl tracking-[1em] bg-gray-100 border-2 border-gray-300 rounded-lg focus:border-primary focus:ring-primary dark:bg-slate-700 dark:border-slate-600 dark:text-white"
                         placeholder="----"
+                        autoComplete="off"
                     />
                     {mode === 'setup' && (
                         <input
+                            ref={confirmInputRef}
                             type="password"
                             inputMode="numeric"
                             pattern="\d{4}"
                             maxLength={4}
                             value={confirmPin}
-                            onChange={(e) => handleInputChange(e, setConfirmPin)}
+                            onChange={handleConfirmPinChange}
                             onKeyPress={handleKeyPress}
                             className="w-full p-3 text-center text-2xl tracking-[1em] bg-gray-100 border-2 border-gray-300 rounded-lg focus:border-primary focus:ring-primary dark:bg-slate-700 dark:border-slate-600 dark:text-white"
                             placeholder="----"
+                            autoComplete="off"
                         />
                     )}
                     {error && <p className="text-red-600 text-sm text-center">{error}</p>}
                     <div className="flex flex-col gap-2">
-                        <Button onClick={handleSubmit} className="w-full">
+                        <Button ref={submitButtonRef} onClick={handleSubmit} className="w-full">
                             {mode === 'setup' ? 'Set PIN' : 'Unlock'}
                         </Button>
                         {onCancel && (

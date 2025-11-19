@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useEffect, useRef, PropsWithChildren } from 'react';
 import { IndianRupee, TrendingUp, TrendingDown, Award, Lock, BarChart, Calendar, ArrowUpRight, ArrowDownRight, ShoppingBag, PieChart, Activity, DollarSign } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
@@ -385,7 +386,7 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                 // Cost estimation: Using current product purchase price (approximation)
                 const costOfGoods = sale.items.reduce((sum, item) => {
                     const product = state.products.find(p => p.id === item.productId);
-                    return sum + (Number(product?.purchasePrice) || 0) * item.quantity;
+                    return sum + (Number(product?.purchasePrice) || 0) * Number(item.quantity);
                 }, 0);
 
                 data[financialMonthIndex].sales += saleAmount;
@@ -407,7 +408,7 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
         const getMetrics = (m: number, y: number) => {
             const monthSales = state.sales.filter(s => { const d = new Date(s.date); return d.getMonth() === m && d.getFullYear() === y; });
             const revenue = monthSales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
-            const cost = monthSales.reduce((sum, s) => sum + s.items.reduce((is, i) => is + (state.products.find(p => p.id === i.productId)?.purchasePrice || 0) * i.quantity, 0), 0);
+            const cost = monthSales.reduce((sum, s) => sum + s.items.reduce((is, i) => is + (Number(state.products.find(p => p.id === i.productId)?.purchasePrice) || 0) * Number(i.quantity), 0), 0);
             const profit = revenue - cost;
             const orders = monthSales.length;
             const aov = orders > 0 ? revenue / orders : 0;
@@ -417,13 +418,16 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
         const curr = getMetrics(currentMonth, currentYear);
         const prev = getMetrics(lastMonth, lastMonthYear);
 
-        const calcTrend = (c: number, p: number) => p === 0 ? 100 : ((c - p) / p) * 100;
+        const calcTrend = (c: number, p: number) => {
+            if (p === 0) return c === 0 ? 0 : 100;
+            return ((c - p) / p) * 100;
+        };
 
         return {
-            revenue: { value: curr.revenue, trend: calcTrend(curr.revenue, prev.revenue) },
-            profit: { value: curr.profit, trend: calcTrend(curr.profit, prev.profit) },
-            orders: { value: curr.orders, trend: calcTrend(curr.orders, prev.orders) },
-            aov: { value: curr.aov, trend: calcTrend(curr.aov, prev.aov) },
+            revenue: { value: curr.revenue, trend: calcTrend(Number(curr.revenue), Number(prev.revenue)) },
+            profit: { value: curr.profit, trend: calcTrend(Number(curr.profit), Number(prev.profit)) },
+            orders: { value: curr.orders, trend: calcTrend(Number(curr.orders), Number(prev.orders)) },
+            aov: { value: curr.aov, trend: calcTrend(Number(curr.aov), Number(prev.aov)) },
         };
     }, [state.sales, state.products]);
 
@@ -432,7 +436,7 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
         state.sales.forEach(sale => {
             sale.items.forEach(item => {
                 const cat = getCategoryName(item.productId);
-                categories[cat] = (categories[cat] || 0) + (item.price * item.quantity);
+                categories[cat] = (categories[cat] || 0) + (Number(item.price) * Number(item.quantity));
             });
         });
         return Object.entries(categories)
@@ -552,7 +556,7 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                 />
                  <KPICard 
                     title="Total Orders" 
-                    value={kpiData.orders} 
+                    value={kpiData.orders.value} 
                     trend={kpiData.orders.trend} 
                     icon={ShoppingBag}
                     colorClass="bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-100 border-blue-500"
