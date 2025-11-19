@@ -67,11 +67,105 @@
         },
       }
     </script>
+    <script>
+      (function() {
+        try {
+          var localTheme = localStorage.getItem('theme');
+          var supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (localTheme === 'dark' || (!localTheme && supportDarkMode)) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
     <style>
       :root {
         --primary-color: #0d9488;
+        
+        /* Light Mode Defaults */
+        --sk-bg: #f8fafc;       /* slate-50 */
+        --sk-card-bg: #ffffff;  /* white */
+        --sk-text: #334155;     /* slate-700 */
+        --sk-bone-start: #f1f5f9; /* slate-100 */
+        --sk-bone-end: #e2e8f0;   /* slate-200 */
       }
 
+      html.dark {
+        /* Dark Mode Overrides */
+        --sk-bg: #0f172a;       /* slate-900 */
+        --sk-card-bg: #1e293b;  /* slate-800 */
+        --sk-text: #cbd5e1;     /* slate-300 */
+        --sk-bone-start: #334155; /* slate-700 */
+        --sk-bone-end: #475569;   /* slate-600 */
+      }
+
+      /* Critical styles for immediate theme application to prevent flicker */
+      body {
+        margin: 0;
+        background-color: var(--sk-bg);
+        color: var(--sk-text);
+      }
+
+      /* Robust Skeleton Loader Classes */
+      .sk-app {
+        background-color: var(--sk-bg);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .sk-header {
+        background-color: var(--primary-color); /* Always primary color */
+        padding: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      }
+
+      .sk-nav {
+        background-color: var(--primary-color);
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
+        z-index: 50;
+      }
+
+      .sk-card {
+        background-color: var(--sk-card-bg);
+        border-radius: 0.5rem; /* rounded-lg */
+        padding: 1.5rem; /* p-6 */
+        border-top: 4px solid #f59e0b; /* border-amber-400 */
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+      }
+      
+      /* Dark mode specific border for card to match app behavior */
+      html.dark .sk-card {
+        border-color: #f59e0b; /* Keep top border amber */
+        /* We simulate border-t-4, standard border might need adjustment if Card component has full border */
+      }
+
+      .sk-bone {
+        background-color: var(--sk-bone-start);
+        border-radius: 0.5rem;
+        animation: sk-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+
+      /* Keyframes using variables to adapt automatically */
+      @keyframes sk-pulse {
+        0%, 100% {
+          background-color: var(--sk-bone-start);
+        }
+        50% {
+          background-color: var(--sk-bone-end);
+        }
+      }
+
+      /* Custom Select styles */
       .custom-select {
         -webkit-appearance: none;
         -moz-appearance: none;
@@ -93,6 +187,7 @@
         justify-content: center;
         align-items: center;
         height: 100vh;
+        background-color: var(--sk-bg); /* Match theme */
       }
       .pre-loader-om {
         font-size: 8rem; /* 128px */
@@ -100,9 +195,6 @@
         color: var(--primary-color);
         animation: pulse-om 2s infinite ease-in-out;
         will-change: transform, opacity;
-      }
-      .dark .pre-loader-container {
-        background-color: #0f172a;
       }
       @keyframes pulse-om {
         0%, 100% {
@@ -133,7 +225,7 @@
 </script>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 </head>
-  <body class="bg-background">
+  <body class="bg-background dark:bg-slate-900 text-text dark:text-slate-300">
     <div id="root">
       <div class="pre-loader-container">
         <div class="pre-loader-om">ॐ</div>

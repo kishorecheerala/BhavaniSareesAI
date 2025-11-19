@@ -1,7 +1,3 @@
-
-
-
-
 import React, { createContext, useReducer, useContext, useEffect, ReactNode, useState } from 'react';
 import { Customer, Supplier, Product, Sale, Purchase, Return, Payment, BeforeInstallPromptEvent, Notification, ProfileData, Page, AppMetadata, AppMetadataPin, Theme } from '../types';
 import * as db from '../utils/db';
@@ -66,6 +62,17 @@ type Action =
   | { type: 'REPLACE_COLLECTION'; payload: { storeName: StoreName, data: any[] } };
 
 
+const getInitialTheme = (): Theme => {
+  try {
+    const savedTheme = localStorage.getItem('theme') as Theme | null;
+    if (savedTheme) return savedTheme;
+    if (window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
+  } catch (e) {
+    // ignore
+  }
+  return 'light';
+};
+
 const initialState: AppState = {
   customers: [],
   suppliers: [],
@@ -80,7 +87,7 @@ const initialState: AppState = {
   selection: null,
   installPromptEvent: null,
   pin: null,
-  theme: 'light',
+  theme: getInitialTheme(),
 };
 
 const appReducer = (state: AppState, action: Action): AppState => {
@@ -439,17 +446,6 @@ const AppContext = createContext<AppContextType>({
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
   const [isDbLoaded, setIsDbLoaded] = useState(false);
-
-  // Load theme from local storage or system preference
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as Theme | null;
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    if (savedTheme) {
-        dispatch({ type: 'SET_THEME', payload: savedTheme });
-    } else if (prefersDark) {
-        dispatch({ type: 'SET_THEME', payload: 'dark' });
-    }
-  }, []);
 
   // Set up the PWA install prompt listener.
   useEffect(() => {
