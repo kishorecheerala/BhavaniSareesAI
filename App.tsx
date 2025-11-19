@@ -135,8 +135,12 @@ const MainApp: React.FC = () => {
   useEffect(() => {
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
+      document.documentElement.style.backgroundColor = '#0f172a'; // slate-900
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#0f172a');
     } else {
       document.documentElement.classList.remove('dark');
+      document.documentElement.style.backgroundColor = '#f8fafc'; // slate-50
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#0d9488');
     }
     localStorage.setItem('theme', theme);
   }, [theme]);
