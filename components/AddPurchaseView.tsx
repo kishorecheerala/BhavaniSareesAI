@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Plus, Upload, IndianRupee, Search, QrCode, Info, CheckCircle, XCircle, X } from 'lucide-react';
 import { Supplier, Product, PurchaseItem, Purchase } from '../types';
@@ -7,6 +8,7 @@ import { Html5Qrcode } from 'html5-qrcode';
 import DeleteButton from './DeleteButton';
 import QuantityInputModal from './QuantityInputModal';
 import Dropdown, { DropdownOption } from './Dropdown';
+import AddSupplierModal from './AddSupplierModal';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -90,7 +92,7 @@ const ProductSearchModal: React.FC<{
                 <h2 className="text-lg font-bold">Select Existing Product</h2>
                 <button onClick={onClose}><X size={20}/></button>
             </div>
-            <input type="text" placeholder="Search products..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full p-2 border rounded-lg mb-4 dark:bg-slate-700 dark:border-slate-600" autoFocus/>
+            <input type="text" placeholder="Search products..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full p-2 border rounded-lg mb-4 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" autoFocus/>
             <div className="max-h-80 overflow-y-auto space-y-2">
                 {products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase())).map(p => (
                 <div key={p.id} onClick={() => onSelect(p)} className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-teal-50 dark:bg-slate-700/50 dark:hover:bg-slate-700">
@@ -145,12 +147,12 @@ const NewProductModal: React.FC<{
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[51] p-4 animate-fade-in-fast">
             <Card title="Add New Product to Purchase" className="w-full max-w-md animate-scale-in">
                  <div className="space-y-4">
-                    <input type="text" placeholder="Product ID / Code (Unique)" value={newProduct.id} onChange={e => setNewProduct({...newProduct, id: e.target.value})} className="w-full p-2 border rounded" autoFocus />
-                    <input type="text" placeholder="Product Name" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="w-full p-2 border rounded" />
-                    <input type="number" placeholder="Quantity" value={newProduct.quantity} onChange={e => setNewProduct({...newProduct, quantity: e.target.value})} className="w-full p-2 border rounded" />
-                    <input type="number" placeholder="Purchase Price" value={newProduct.purchasePrice} onChange={e => setNewProduct({...newProduct, purchasePrice: e.target.value})} className="w-full p-2 border rounded" />
-                    <input type="number" placeholder="Sale Value" value={newProduct.salePrice} onChange={e => setNewProduct({...newProduct, salePrice: e.target.value})} className="w-full p-2 border rounded" />
-                    <input type="number" placeholder="GST %" value={newProduct.gstPercent} onChange={e => setNewProduct({...newProduct, gstPercent: e.target.value})} className="w-full p-2 border rounded" />
+                    <input type="text" placeholder="Product ID / Code (Unique)" value={newProduct.id} onChange={e => setNewProduct({...newProduct, id: e.target.value})} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" autoFocus />
+                    <input type="text" placeholder="Product Name" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
+                    <input type="number" placeholder="Quantity" value={newProduct.quantity} onChange={e => setNewProduct({...newProduct, quantity: e.target.value})} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
+                    <input type="number" placeholder="Purchase Price" value={newProduct.purchasePrice} onChange={e => setNewProduct({...newProduct, purchasePrice: e.target.value})} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
+                    <input type="number" placeholder="Sale Value" value={newProduct.salePrice} onChange={e => setNewProduct({...newProduct, salePrice: e.target.value})} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
+                    <input type="number" placeholder="GST %" value={newProduct.gstPercent} onChange={e => setNewProduct({...newProduct, gstPercent: e.target.value})} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
                     <div className="flex gap-2">
                         <Button onClick={handleAddItemManually} className="w-full">Add Product</Button>
                         <Button onClick={onClose} variant="secondary" className="w-full">Cancel</Button>
@@ -188,7 +190,7 @@ export const PurchaseForm: React.FC<PurchaseFormProps> = ({
   const [items, setItems] = useState<PurchaseItem[]>(initialData?.items || []);
   const [purchaseDate, setPurchaseDate] = useState(initialData ? getLocalDateString(new Date(initialData.date)) : getLocalDateString());
   const [supplierInvoiceId, setSupplierInvoiceId] = useState(initialData?.supplierInvoiceId || '');
-  const [totalAmount, setTotalAmount] = useState(initialData?.totalAmount.toString() || '');
+  const [discount, setDiscount] = useState('0');
   const [amountPaid, setAmountPaid] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'UPI' | 'CHEQUE'>('CASH');
   const [paymentReference, setPaymentReference] = useState('');
@@ -201,28 +203,60 @@ export const PurchaseForm: React.FC<PurchaseFormProps> = ({
   const [isQtyModalOpen, setIsQtyModalOpen] = useState(false);
   const [productForQty, setProductForQty] = useState<Product | null>(null);
   
+  const [isAddingSupplier, setIsAddingSupplier] = useState(false);
+  
   const [csvStatus, setCsvStatus] = useState<{ type: 'info' | 'success' | 'error', message: string } | null>(null);
 
   const isDirtyRef = useRef(false);
+  
+  // Initialize discount when editing based on total discrepancy if any
+  useEffect(() => {
+    if (initialData) {
+        setSupplierId(initialData.supplierId);
+        setItems([...initialData.items]);
+        setPurchaseDate(getLocalDateString(new Date(initialData.date)));
+        setSupplierInvoiceId(initialData.supplierInvoiceId || '');
+        setPaymentDueDates(initialData.paymentDueDates || []);
+
+        // Calculate items total to infer discount
+        const itemsTotal = initialData.items.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
+        const savedTotal = Number(initialData.totalAmount);
+        const impliedDiscount = itemsTotal - savedTotal;
+        
+        if (Math.abs(impliedDiscount) > 0.01) {
+            setDiscount(impliedDiscount.toString());
+        } else {
+            setDiscount('0');
+        }
+    }
+  }, [initialData]);
+
+  // Calculate totals
+  const calculations = useMemo(() => {
+    const totalItemValue = items.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
+    const totalGst = items.reduce((sum, item) => {
+        const itemTotal = Number(item.price) * Number(item.quantity);
+        const gstPercent = Number.isFinite(item.gstPercent) ? item.gstPercent : 0;
+        // Assuming price includes GST as per previous logic, extract GST component
+        const itemGst = itemTotal - (itemTotal / (1 + (gstPercent / 100)));
+        return sum + itemGst;
+    }, 0);
+    
+    // Subtotal is total value minus GST component
+    const subTotal = totalItemValue - totalGst;
+    const discountVal = parseFloat(discount) || 0;
+    const grandTotal = totalItemValue - discountVal;
+    
+    return { subTotal, totalGst, grandTotal };
+  }, [items, discount]);
 
   useEffect(() => {
-    const dirty = !!supplierId || items.length > 0 || totalAmount !== '';
+    const dirty = !!supplierId || items.length > 0 || discount !== '0';
     if (dirty !== isDirtyRef.current) {
       isDirtyRef.current = dirty;
       setIsDirty(dirty);
     }
-  }, [supplierId, items, totalAmount, setIsDirty]);
-
-  useEffect(() => {
-    if (initialData) {
-      setSupplierId(initialData.supplierId);
-      setItems([...initialData.items]);
-      setPurchaseDate(getLocalDateString(new Date(initialData.date)));
-      setSupplierInvoiceId(initialData.supplierInvoiceId || '');
-      setTotalAmount(initialData.totalAmount.toString());
-      setPaymentDueDates(initialData.paymentDueDates || []);
-    }
-  }, [initialData]);
+  }, [supplierId, items, discount, setIsDirty]);
 
   const supplierOptions = useMemo((): DropdownOption[] => 
     suppliers
@@ -343,19 +377,22 @@ export const PurchaseForm: React.FC<PurchaseFormProps> = ({
     reader.readAsText(file);
   };
   
-  const calculatedTotal = useMemo(() => items.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0), [items]);
-  const calculatedGST = useMemo(() => items.reduce((sum, item) => {
-    const itemTotal = Number(item.price) * Number(item.quantity);
-    const gstPercent = Number.isFinite(item.gstPercent) ? item.gstPercent : 0;
-    const itemGst = itemTotal - (itemTotal / (1 + (gstPercent / 100)));
-    return sum + itemGst;
-  }, 0), [items]);
+  const handleAddSupplier = (newSupplier: Supplier) => {
+      dispatch({ type: 'ADD_SUPPLIER', payload: newSupplier });
+      setSupplierId(newSupplier.id);
+      showToast("Supplier added successfully!");
+  };
 
   const handleSubmit = () => {
-    const total = parseFloat(totalAmount);
-    if (!supplierId || items.length === 0 || !totalAmount || isNaN(total)) {
-      alert('Please select a supplier, add items, and enter a valid total amount.');
+    const total = calculations.grandTotal;
+    
+    if (!supplierId || items.length === 0) {
+      alert('Please select a supplier and add items.');
       return;
+    }
+    if (total < 0) {
+        alert('Total amount cannot be negative.');
+        return;
     }
 
     let purchaseId;
@@ -367,6 +404,10 @@ export const PurchaseForm: React.FC<PurchaseFormProps> = ({
         
         const paid = parseFloat(amountPaid);
         if (!isNaN(paid) && paid > 0) {
+            if (paid > total + 0.01) {
+                 alert(`Paid amount (₹${paid}) cannot exceed total amount (₹${total}).`);
+                 return;
+            }
             payments.push({
                 id: `PAY-${purchaseId}`,
                 amount: paid,
@@ -407,19 +448,28 @@ export const PurchaseForm: React.FC<PurchaseFormProps> = ({
       {isNewProductModalOpen && <NewProductModal isOpen={isNewProductModalOpen} onClose={() => setIsNewProductModalOpen(false)} onAdd={(item) => setItems([...items, item])} initialId={newProductInitialId} existingProducts={products} currentPurchaseItems={items} mode={mode} />}
       {isExistingProductModalOpen && <ProductSearchModal isOpen={isExistingProductModalOpen} onClose={() => setIsExistingProductModalOpen(false)} onSelect={handleSelectExistingProduct} products={products} />}
       {isQtyModalOpen && <QuantityInputModal isOpen={isQtyModalOpen} onClose={() => { setIsQtyModalOpen(false); setProductForQty(null); }} onSubmit={handleQtySubmit} product={productForQty} />}
+      
+      {isAddingSupplier && <AddSupplierModal isOpen={isAddingSupplier} onClose={() => setIsAddingSupplier(false)} onAdd={handleAddSupplier} existingSuppliers={suppliers} />}
 
       <Button onClick={onBack}>&larr; Back</Button>
       <Card title={mode === 'add' ? 'Create New Purchase' : `Edit Purchase ${initialData?.id}`}>
         <div className="space-y-4">
-            <Dropdown 
-                options={supplierOptions}
-                value={supplierId}
-                onChange={setSupplierId}
-                placeholder="Select a Supplier"
-                disabled={mode === 'edit'}
-            />
-          <input type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" />
-          <input type="text" placeholder="Supplier Invoice ID (Optional)" value={supplierInvoiceId} onChange={e => setSupplierInvoiceId(e.target.value)} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" />
+            <div className="flex gap-2 items-center">
+                <Dropdown 
+                    options={supplierOptions}
+                    value={supplierId}
+                    onChange={setSupplierId}
+                    placeholder="Select a Supplier"
+                    disabled={mode === 'edit'}
+                />
+                {mode === 'add' && (
+                    <Button onClick={() => setIsAddingSupplier(true)} variant="secondary" className="flex-shrink-0">
+                        <Plus size={16}/> New Supplier
+                    </Button>
+                )}
+            </div>
+          <input type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
+          <input type="text" placeholder="Supplier Invoice ID (Optional)" value={supplierInvoiceId} onChange={e => setSupplierInvoiceId(e.target.value)} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
         </div>
       </Card>
 
@@ -452,11 +502,11 @@ export const PurchaseForm: React.FC<PurchaseFormProps> = ({
                     <DeleteButton variant="remove" onClick={() => handleItemRemove(item.productId)} />
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm mt-1">
-                    <input type="number" value={item.quantity} onChange={e => handleItemUpdate(item.productId, 'quantity', parseFloat(e.target.value))} className="w-full p-1 border rounded dark:bg-slate-700 dark:border-slate-600" placeholder="Qty" />
-                    <input type="number" value={item.price} onChange={e => handleItemUpdate(item.productId, 'price', parseFloat(e.target.value))} className="w-full p-1 border rounded dark:bg-slate-700 dark:border-slate-600" placeholder="Purch Price" />
-                    <input type="number" value={item.saleValue} onChange={e => handleItemUpdate(item.productId, 'saleValue', parseFloat(e.target.value))} className="w-full p-1 border rounded dark:bg-slate-700 dark:border-slate-600" placeholder="Sale Value" />
-                    <input type="number" value={item.gstPercent} onChange={e => handleItemUpdate(item.productId, 'gstPercent', parseFloat(e.target.value))} className="w-full p-1 border rounded dark:bg-slate-700 dark:border-slate-600" placeholder="GST %" />
-                    <div className="p-1 flex items-center justify-end font-semibold">₹{(Number(item.quantity) * Number(item.price)).toLocaleString('en-IN')}</div>
+                    <input type="number" value={item.quantity} onChange={e => handleItemUpdate(item.productId, 'quantity', parseFloat(e.target.value))} className="w-full p-1 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" placeholder="Qty" />
+                    <input type="number" value={item.price} onChange={e => handleItemUpdate(item.productId, 'price', parseFloat(e.target.value))} className="w-full p-1 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" placeholder="Purch Price" />
+                    <input type="number" value={item.saleValue} onChange={e => handleItemUpdate(item.productId, 'saleValue', parseFloat(e.target.value))} className="w-full p-1 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" placeholder="Sale Value" />
+                    <input type="number" value={item.gstPercent} onChange={e => handleItemUpdate(item.productId, 'gstPercent', parseFloat(e.target.value))} className="w-full p-1 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" placeholder="GST %" />
+                    <div className="p-1 flex items-center justify-end font-semibold text-gray-700 dark:text-gray-300">₹{(Number(item.quantity) * Number(item.price)).toLocaleString('en-IN')}</div>
                 </div>
                 </div>
             ))}
@@ -464,28 +514,28 @@ export const PurchaseForm: React.FC<PurchaseFormProps> = ({
         </div>
       </Card>
       
-       <Card title="Final Details & Payment">
+       <Card title="Transaction Details">
             <div className="space-y-6">
                 <div className="space-y-3">
                     <div className="flex justify-between items-center text-gray-700 dark:text-gray-300">
-                        <span>Subtotal (from items):</span>
-                        <span>₹{calculatedTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        <span>Subtotal (excl. GST):</span>
+                        <span>₹{calculations.subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex justify-between items-center text-gray-700 dark:text-gray-300">
-                        <span>Total GST (from items):</span>
-                        <span>₹{calculatedGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        <span>Total GST:</span>
+                        <span>₹{calculations.totalGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-gray-700 dark:text-gray-300">
+                        <span>Discount / Adjustment:</span>
+                        <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} className="w-28 p-1 border rounded text-right dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
                     </div>
                 </div>
 
                 <div className="text-center">
-                    <label className="text-sm text-gray-500 dark:text-gray-400">Final Invoice Total (as on bill)</label>
-                    <input 
-                        type="number" 
-                        value={totalAmount} 
-                        onChange={e => setTotalAmount(e.target.value)} 
-                        placeholder="0.00"
-                        className="w-full p-2 text-center text-4xl font-bold text-primary bg-transparent border-x-0 border-t-0 border-b-2 border-primary focus:ring-0 focus:border-primary dark:text-secondary"
-                    />
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Grand Total</p>
+                    <p className="text-4xl font-bold text-primary">
+                        ₹{calculations.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </p>
                 </div>
 
                 {mode === 'add' && (
@@ -496,7 +546,7 @@ export const PurchaseForm: React.FC<PurchaseFormProps> = ({
                                 type="number" 
                                 value={amountPaid} 
                                 onChange={e => setAmountPaid(e.target.value)} 
-                                placeholder="Enter amount paid" 
+                                placeholder={`Total is ₹${calculations.grandTotal.toLocaleString('en-IN')}`} 
                                 className="w-full p-2 border-2 border-red-300 rounded-lg shadow-inner focus:ring-red-500 focus:border-red-500 mt-1 dark:bg-slate-700 dark:border-red-400 dark:text-slate-200" 
                             />
                         </div>
@@ -515,7 +565,7 @@ export const PurchaseForm: React.FC<PurchaseFormProps> = ({
                                 placeholder="e.g. UPI ID, Cheque No." 
                                 value={paymentReference}
                                 onChange={e => setPaymentReference(e.target.value)}
-                                className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600"
+                                className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
                             />
                         </div>
                     </div>
@@ -533,7 +583,7 @@ export const PurchaseForm: React.FC<PurchaseFormProps> = ({
                                     newDates[index] = e.target.value;
                                     setPaymentDueDates(newDates);
                                 }} 
-                                className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" 
+                                className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" 
                             />
                             <DeleteButton variant="remove" onClick={() => setPaymentDueDates(paymentDueDates.filter((_, i) => i !== index))} />
                         </div>

@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { IndianRupee, User, AlertTriangle, Download, Upload, ShoppingCart, Package, XCircle, CheckCircle, Info, Calendar, ShieldCheck, ShieldAlert, ShieldX, Archive, PackageCheck, TestTube2, TrendingUp, Users } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
@@ -43,7 +44,7 @@ const MetricCard: React.FC<{
 const BackupStatusCard: React.FC<{ lastBackupDate: string | null }> = ({ lastBackupDate }) => {
     if (!lastBackupDate) {
         return (
-            <Card className="bg-red-600 text-white">
+            <Card className="bg-red-600 text-white dark:bg-red-800">
                 <div className="flex items-center">
                     <ShieldX className="w-8 h-8 mr-4" />
                     <div>
@@ -67,13 +68,13 @@ const BackupStatusCard: React.FC<{ lastBackupDate: string | null }> = ({ lastBac
     const statusInfo = {
         safe: {
             icon: ShieldCheck,
-            cardClass: 'bg-green-600 text-white',
+            cardClass: 'bg-green-600 text-white dark:bg-green-700',
             title: 'Data Backup is Up-to-Date',
             text: `Last backup was today at ${backupDate.toLocaleTimeString()}.`
         },
         overdue: {
             icon: ShieldX,
-            cardClass: 'bg-red-600 text-white',
+            cardClass: 'bg-red-600 text-white dark:bg-red-800',
             title: 'Backup Overdue',
             text: diffDays > 0 ? `Your last backup was ${diffDays} day${diffDays > 1 ? 's' : ''} ago. Please back up now.` : "Your last backup was not today. Please back up now."
         },
@@ -100,9 +101,9 @@ const StatusNotification: React.FC<{ status: { type: 'info' | 'success' | 'error
 
     const baseClasses = "p-3 rounded-md mb-4 text-sm flex items-start justify-between";
     const variants = {
-        info: 'bg-blue-100 text-blue-800',
-        success: 'bg-green-100 text-green-800',
-        error: 'bg-red-100 text-red-800',
+        info: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200',
+        success: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200',
+        error: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200',
     };
     const icons = {
         info: <Info className="w-5 h-5 mr-3 flex-shrink-0" />,
@@ -162,12 +163,12 @@ const OverdueDuesCard: React.FC<{ sales: Sale[]; customers: Customer[]; onNaviga
 
     if (overdueCustomersArray.length === 0) {
         return (
-            <Card className="border-l-4 border-green-500 bg-green-50">
+            <Card className="border-l-4 border-green-500 bg-green-50 dark:bg-green-900/20 dark:border-green-600">
                 <div className="flex items-center">
-                    <ShieldCheck className="w-8 h-8 text-green-600 mr-4" />
+                    <ShieldCheck className="w-8 h-8 text-green-600 dark:text-green-400 mr-4" />
                     <div>
-                        <p className="font-bold text-green-800">No Overdue Dues</p>
-                        <p className="text-sm text-green-700">All customer payments older than 30 days are settled.</p>
+                        <p className="font-bold text-green-800 dark:text-green-200">No Overdue Dues</p>
+                        <p className="text-sm text-green-700 dark:text-green-300">All customer payments older than 30 days are settled.</p>
                     </div>
                 </div>
             </Card>
@@ -175,32 +176,32 @@ const OverdueDuesCard: React.FC<{ sales: Sale[]; customers: Customer[]; onNaviga
     }
 
     return (
-        <Card className="border-l-4 border-rose-500 bg-rose-50">
+        <Card className="border-l-4 border-rose-500 bg-rose-50 dark:bg-rose-900/20 dark:border-rose-600">
             <div className="flex items-center mb-4">
-                <AlertTriangle className="w-6 h-6 text-rose-600 mr-3" />
-                <h2 className="text-lg font-bold text-rose-800">Overdue Dues Alert</h2>
+                <AlertTriangle className="w-6 h-6 text-rose-600 dark:text-rose-400 mr-3" />
+                <h2 className="text-lg font-bold text-rose-800 dark:text-rose-200">Overdue Dues Alert</h2>
             </div>
-            <p className="text-sm text-rose-700 mb-4">The following customers have dues from sales older than 30 days. Please follow up.</p>
+            <p className="text-sm text-rose-700 dark:text-rose-300 mb-4">The following customers have dues from sales older than 30 days. Please follow up.</p>
             <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
                 {overdueCustomersArray.sort((a, b) => b.totalOverdue - a.totalOverdue).map(({ customer, totalOverdue, oldestOverdueDate }) => (
                     <div
                         key={customer.id}
-                        className="p-3 bg-white rounded-lg shadow-sm cursor-pointer hover:bg-rose-100 transition-colors flex justify-between items-center"
+                        className="p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm cursor-pointer hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-colors flex justify-between items-center border dark:border-slate-700"
                         onClick={() => onNavigate(customer.id)}
                         role="button"
                         tabIndex={0}
                         aria-label={`View details for ${customer.name}`}
                     >
                         <div className="flex items-center gap-3">
-                            <User className="w-6 h-6 text-rose-700 flex-shrink-0" />
+                            <User className="w-6 h-6 text-rose-700 dark:text-rose-400 flex-shrink-0" />
                             <div>
-                                <p className="font-bold text-rose-900">{customer.name}</p>
-                                <p className="text-xs text-gray-500">{customer.area}</p>
+                                <p className="font-bold text-rose-900 dark:text-rose-100">{customer.name}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">{customer.area}</p>
                             </div>
                         </div>
                         <div className="text-right flex-shrink-0 ml-2">
-                            <p className="font-bold text-lg text-red-600">₹{totalOverdue.toLocaleString('en-IN')}</p>
-                            <p className="text-xs text-gray-500">Oldest: {new Date(oldestOverdueDate).toLocaleDateString()}</p>
+                            <p className="font-bold text-lg text-red-600 dark:text-red-400">₹{totalOverdue.toLocaleString('en-IN')}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Oldest: {new Date(oldestOverdueDate).toLocaleDateString()}</p>
                         </div>
                     </div>
                 ))}
@@ -262,12 +263,12 @@ const UpcomingPurchaseDuesCard: React.FC<{
 
     if (upcomingDues.length === 0) {
         return (
-            <Card className="border-l-4 border-green-500 bg-green-50">
+            <Card className="border-l-4 border-green-500 bg-green-50 dark:bg-green-900/20 dark:border-green-600">
                 <div className="flex items-center">
-                    <PackageCheck className="w-8 h-8 text-green-600 mr-4" />
+                    <PackageCheck className="w-8 h-8 text-green-600 dark:text-green-400 mr-4" />
                     <div>
-                        <p className="font-bold text-green-800">No Upcoming Purchase Dues</p>
-                        <p className="text-sm text-green-700">There are no payment dues to suppliers in the next 30 days.</p>
+                        <p className="font-bold text-green-800 dark:text-green-200">No Upcoming Purchase Dues</p>
+                        <p className="text-sm text-green-700 dark:text-green-300">There are no payment dues to suppliers in the next 30 days.</p>
                     </div>
                 </div>
             </Card>
@@ -275,12 +276,12 @@ const UpcomingPurchaseDuesCard: React.FC<{
     }
 
     return (
-        <Card className="border-l-4 border-amber-500 bg-amber-50">
+        <Card className="border-l-4 border-amber-500 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-600">
             <div className="flex items-center mb-4">
-                <AlertTriangle className="w-6 h-6 text-amber-600 mr-3" />
-                <h2 className="text-lg font-bold text-amber-800">Upcoming Purchase Dues</h2>
+                <AlertTriangle className="w-6 h-6 text-amber-600 dark:text-amber-400 mr-3" />
+                <h2 className="text-lg font-bold text-amber-800 dark:text-amber-200">Upcoming Purchase Dues</h2>
             </div>
-            <p className="text-sm text-amber-700 mb-4">The following payments to suppliers are due within the next 30 days.</p>
+            <p className="text-sm text-amber-700 dark:text-amber-300 mb-4">The following payments to suppliers are due within the next 30 days.</p>
             <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
                 {upcomingDues.map((due) => {
                     const countdownText = due.daysRemaining === 0
@@ -289,23 +290,23 @@ const UpcomingPurchaseDuesCard: React.FC<{
                     return (
                         <div
                             key={`${due.purchaseId}-${due.dueDate.toISOString()}`}
-                            className="p-3 bg-white rounded-lg shadow-sm cursor-pointer hover:bg-amber-100 transition-colors flex justify-between items-center"
+                            className="p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors flex justify-between items-center border dark:border-slate-700"
                             onClick={() => onNavigate(due.supplier.id)}
                             role="button"
                             tabIndex={0}
                             aria-label={`View details for ${due.supplier.name}`}
                         >
                             <div className="flex items-center gap-3">
-                                <Package className="w-6 h-6 text-amber-700 flex-shrink-0" />
+                                <Package className="w-6 h-6 text-amber-700 dark:text-amber-400 flex-shrink-0" />
                                 <div>
-                                    <p className="font-bold text-amber-900">{due.supplier.name}</p>
-                                    <p className="text-xs text-gray-500">Invoice: {due.purchaseId}</p>
+                                    <p className="font-bold text-amber-900 dark:text-amber-100">{due.supplier.name}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">Invoice: {due.purchaseId}</p>
                                 </div>
                             </div>
                             <div className="text-right flex-shrink-0 ml-2">
-                                <p className="font-bold text-lg text-red-600">₹{due.totalPurchaseDue.toLocaleString('en-IN')}</p>
-                                <p className="text-xs font-bold text-amber-800">{countdownText}</p>
-                                <p className="text-xs text-gray-500">on {due.dueDate.toLocaleDateString()}</p>
+                                <p className="font-bold text-lg text-red-600 dark:text-red-400">₹{due.totalPurchaseDue.toLocaleString('en-IN')}</p>
+                                <p className="text-xs font-bold text-amber-800 dark:text-amber-200">{countdownText}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">on {due.dueDate.toLocaleDateString()}</p>
                             </div>
                         </div>
                     );
@@ -497,54 +498,54 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     icon={ShoppingCart} 
                     title="Total Sales (All Time)" 
                     value={totalSales} 
-                    color="bg-teal-100"
-                    iconBgColor="bg-teal-200"
-                    textColor="text-teal-900"
+                    color="bg-teal-100 dark:bg-teal-900/40"
+                    iconBgColor="bg-teal-200 dark:bg-teal-800"
+                    textColor="text-teal-900 dark:text-teal-100"
                     onClick={() => setCurrentPage('CUSTOMERS')}
                 />
                  <MetricCard 
                     icon={Package} 
                     title="Total Purchases (All Time)" 
                     value={totalPurchases} 
-                    color="bg-emerald-100"
-                    iconBgColor="bg-emerald-200"
-                    textColor="text-emerald-900"
+                    color="bg-emerald-100 dark:bg-emerald-900/40"
+                    iconBgColor="bg-emerald-200 dark:bg-emerald-800"
+                    textColor="text-emerald-900 dark:text-emerald-100"
                     onClick={() => setCurrentPage('PURCHASES')}
                 />
                 <MetricCard 
                     icon={IndianRupee} 
                     title="Customer Dues" 
                     value={totalCustomerDues} 
-                    color="bg-rose-100"
-                    iconBgColor="bg-rose-200"
-                    textColor="text-rose-900"
+                    color="bg-rose-100 dark:bg-rose-900/40"
+                    iconBgColor="bg-rose-200 dark:bg-rose-800"
+                    textColor="text-rose-900 dark:text-rose-100"
                     onClick={() => setCurrentPage('CUSTOMERS')}
                 />
                 <MetricCard 
                     icon={IndianRupee} 
                     title="Purchase Dues" 
                     value={totalPurchaseDues} 
-                    color="bg-amber-100"
-                    iconBgColor="bg-amber-200"
-                    textColor="text-amber-900"
+                    color="bg-amber-100 dark:bg-amber-900/40"
+                    iconBgColor="bg-amber-200 dark:bg-amber-800"
+                    textColor="text-amber-900 dark:text-amber-100"
                     onClick={() => setCurrentPage('PURCHASES')}
                 />
                 <MetricCard 
                     icon={Archive} 
                     title="Inventory Value" 
                     value={totalInventoryValue} 
-                    color="bg-sky-100"
-                    iconBgColor="bg-sky-200"
-                    textColor="text-sky-900"
+                    color="bg-sky-100 dark:bg-sky-900/40"
+                    iconBgColor="bg-sky-200 dark:bg-sky-800"
+                    textColor="text-sky-900 dark:text-sky-100"
                     onClick={() => setCurrentPage('PRODUCTS')}
                 />
                 <MetricCard 
                     icon={PackageCheck} 
                     title="Items in Stock" 
                     value={totalStockQuantity} 
-                    color="bg-cyan-100"
-                    iconBgColor="bg-cyan-200"
-                    textColor="text-cyan-900"
+                    color="bg-cyan-100 dark:bg-cyan-900/40"
+                    iconBgColor="bg-cyan-200 dark:bg-cyan-800"
+                    textColor="text-cyan-900 dark:text-cyan-100"
                     unit=""
                     onClick={() => setCurrentPage('PRODUCTS')}
                 />
@@ -557,7 +558,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
             <Card title="Backup & Restore">
                 <div className="space-y-4">
                     <BackupStatusCard lastBackupDate={lastBackupDate} />
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                         Your data is stored on this device. Backup regularly to prevent data loss if you clear browser data or change devices.
                     </p>
                     <StatusNotification status={restoreStatus} onClose={() => setRestoreStatus(null)} />

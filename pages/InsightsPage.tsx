@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { IndianRupee, TrendingUp, TrendingDown, Award, Lock, BarChart } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
@@ -218,7 +219,7 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                     <div className="text-center py-8">
                         <Lock size={48} className="mx-auto text-gray-400 mb-4" />
                         <h2 className="text-xl font-semibold">Security PIN Required</h2>
-                        <p className="text-gray-600">Please set or enter your PIN to view this sensitive information.</p>
+                        <p className="text-gray-600 dark:text-gray-400">Please set or enter your PIN to view this sensitive information.</p>
                     </div>
                 </Card>
                 {pinState === 'locked' && (
@@ -245,7 +246,7 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
         <div className="space-y-6">
             <h1 className="text-2xl font-bold text-primary">Business Insights</h1>
 
-            <Card title={profitCardTitle} className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-500">
+            <Card title={profitCardTitle} className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/40 dark:to-amber-800/40 border-amber-500">
                 <div className="flex flex-col sm:flex-row gap-2 mb-4">
                      <Dropdown 
                         options={[{value: "-1", label: 'All Months'}, ...monthNames.map((month, index) => ({ value: String(index), label: month }))]}
@@ -259,7 +260,7 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                         onChange={(val) => { setProfitFilterYear(val); if (val === "-1") setProfitFilterMonth("-1"); }}
                     />
                 </div>
-                <p className="text-5xl md:text-6xl font-extrabold tracking-tight text-center text-amber-900">
+                <p className="text-5xl md:text-6xl font-extrabold tracking-tight text-center text-amber-900 dark:text-amber-100">
                     ₹{filteredProfit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
             </Card>
@@ -269,7 +270,7 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                     <BarChart size={20} />
                     <span>Sales for Financial Year {chartYear}-{String(parseInt(chartYear) + 1).slice(2)}</span>
                 </div>
-            } className="bg-gradient-to-br from-indigo-50 to-purple-100 border-indigo-500">
+            } className="bg-gradient-to-br from-indigo-50 to-purple-100 dark:from-indigo-900/40 dark:to-purple-900/40 border-indigo-500">
                 <div className="flex justify-end mb-4">
                     <Dropdown
                         options={availableYearsForChart.map(year => ({ value: String(year), label: `${year}-${String(year + 1).slice(2)}`}))}
@@ -278,10 +279,10 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                     />
                 </div>
                 <div className="w-full">
-                    <div className="flex justify-end text-sm text-gray-600">
+                    <div className="flex justify-end text-sm text-gray-600 dark:text-gray-300">
                         Total Sales: <span className="font-bold ml-2">₹{yearlySalesData.totalSales.toLocaleString('en-IN')}</span>
                     </div>
-                    <div className="flex items-end justify-around h-64 mt-4 p-2 bg-white/50 rounded-lg border border-gray-200">
+                    <div className="flex items-end justify-around h-64 mt-4 p-2 bg-white/50 dark:bg-slate-800/50 rounded-lg border border-gray-200 dark:border-slate-600">
                         {yearlySalesData.monthlySales.map((sale, index) => {
                             const heightPercentage = (sale / yearlySalesData.maxSale) * 100;
                             const monthLabels = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'];
@@ -292,7 +293,7 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                                         style={{ height: `${heightPercentage}%` }}
                                         title={`${monthLabels[index]}: ₹${sale.toLocaleString('en-IN')}`}
                                     />
-                                    <span className="text-xs mt-1 text-gray-700">{monthLabels[index]}</span>
+                                    <span className="text-xs mt-1 text-gray-700 dark:text-gray-300">{monthLabels[index]}</span>
                                 </div>
                             );
                         })}
@@ -304,11 +305,11 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                 <Card title="Sales Trend">
                     <div className="flex justify-between items-center">
                         <div>
-                            <p className="text-sm text-gray-500">This Month's Sales</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">This Month's Sales</p>
                             <p className="text-3xl font-bold text-primary">₹{salesTrend.currentMonthSales.toLocaleString('en-IN')}</p>
-                            <p className="text-xs text-gray-400">vs ₹{salesTrend.lastMonthSales.toLocaleString('en-IN')} last month</p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500">vs ₹{salesTrend.lastMonthSales.toLocaleString('en-IN')} last month</p>
                         </div>
-                        <div className={`flex items-center gap-1 font-bold ${salesTrend.percentageChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <div className={`flex items-center gap-1 font-bold ${salesTrend.percentageChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                             {salesTrend.percentageChange >= 0 ? <TrendingUp size={20}/> : <TrendingDown size={20}/>}
                             <span>{salesTrend.percentageChange.toFixed(1)}%</span>
                         </div>
@@ -318,12 +319,12 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                 <Card title="Financial Summary">
                     <div className="flex justify-around text-center">
                         <div>
-                            <p className="text-sm text-gray-500">Customer Dues</p>
-                            <p className="text-3xl font-bold text-red-600">₹{totalCustomerDues.toLocaleString('en-IN')}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Customer Dues</p>
+                            <p className="text-3xl font-bold text-red-600 dark:text-red-400">₹{totalCustomerDues.toLocaleString('en-IN')}</p>
                         </div>
                         <div>
-                            <p className="text-sm text-gray-500">Purchase Dues</p>
-                            <p className="text-3xl font-bold text-amber-600">₹{totalPurchaseDues.toLocaleString('en-IN')}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Purchase Dues</p>
+                            <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">₹{totalPurchaseDues.toLocaleString('en-IN')}</p>
                         </div>
                     </div>
                 </Card>

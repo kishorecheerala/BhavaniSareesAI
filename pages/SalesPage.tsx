@@ -9,6 +9,8 @@ import autoTable from 'jspdf-autotable';
 import { Html5Qrcode } from 'html5-qrcode';
 import DeleteButton from '../components/DeleteButton';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
+import { logoBase64 } from '../utils/logo';
+import AddCustomerModal from '../components/AddCustomerModal';
 import Dropdown, { DropdownOption } from '../components/Dropdown';
 
 
@@ -32,62 +34,6 @@ const fetchImageAsBase64 = (url: string): Promise<string> =>
 interface SalesPageProps {
   setIsDirty: (isDirty: boolean) => void;
 }
-
-const newCustomerInitialState = { id: '', name: '', phone: '', address: '', area: '', reference: '' };
-
-const AddCustomerModal: React.FC<{
-    newCustomer: typeof newCustomerInitialState;
-    onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-    onSave: () => void;
-    onCancel: () => void;
-}> = React.memo(({ newCustomer, onInputChange, onSave, onCancel }) => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in-fast">
-        <Card title="Add New Customer" className="w-full max-w-md animate-scale-in">
-            <div className="space-y-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Customer ID</label>
-                    <div className="flex items-center mt-1">
-                        <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-gray-400">
-                            CUST-
-                        </span>
-                        <input
-                            type="text"
-                            name="id"
-                            placeholder="Enter unique ID"
-                            value={newCustomer.id}
-                            onChange={onInputChange}
-                            className="w-full p-2 border rounded-r-md dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
-                        />
-                    </div>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
-                    <input type="text" placeholder="Full Name" name="name" value={newCustomer.name} onChange={onInputChange} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone</label>
-                    <input type="text" placeholder="Phone Number" name="phone" value={newCustomer.phone} onChange={onInputChange} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Address</label>
-                    <input type="text" placeholder="Full Address" name="address" value={newCustomer.address} onChange={onInputChange} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Area/Location</label>
-                    <input type="text" placeholder="e.g. Ameerpet" name="area" value={newCustomer.area} onChange={onInputChange} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
-                </div>
-                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Reference (Optional)</label>
-                    <input type="text" placeholder="Referred by..." name="reference" value={newCustomer.reference} onChange={onInputChange} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
-                </div>
-                <div className="flex gap-2">
-                    <Button onClick={onSave} className="w-full">Save Customer</Button>
-                    <Button onClick={onCancel} variant="secondary" className="w-full">Cancel</Button>
-                </div>
-            </div>
-        </Card>
-    </div>
-));
 
 const ProductSearchModal: React.FC<{
     products: Product[];
@@ -210,7 +156,6 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     const [isScanning, setIsScanning] = useState(false);
     
     const [isAddingCustomer, setIsAddingCustomer] = useState(false);
-    const [newCustomer, setNewCustomer] = useState(newCustomerInitialState);
     const isDirtyRef = useRef(false);
     const topOfPageRef = useRef<HTMLDivElement>(null);
 
@@ -240,13 +185,12 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     useEffect(() => {
         const dateIsDirty = mode === 'add' && saleDate !== getLocalDateString();
         const formIsDirty = !!customerId || items.length > 0 || discount !== '0' || !!paymentDetails.amount || dateIsDirty;
-        const newCustomerFormIsDirty = isAddingCustomer && !!(newCustomer.id || newCustomer.name || newCustomer.phone || newCustomer.address || newCustomer.area);
-        const currentlyDirty = formIsDirty || newCustomerFormIsDirty;
+        const currentlyDirty = formIsDirty || isAddingCustomer;
         if (currentlyDirty !== isDirtyRef.current) {
             isDirtyRef.current = currentlyDirty;
             setIsDirty(currentlyDirty);
         }
-    }, [customerId, items, discount, paymentDetails.amount, isAddingCustomer, newCustomer, setIsDirty, saleDate, mode]);
+    }, [customerId, items, discount, paymentDetails.amount, isAddingCustomer, setIsDirty, saleDate, mode]);
 
 
     // On unmount, we must always clean up.
@@ -389,49 +333,13 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         return totalBilled - totalPaid;
     }, [customerId, state.sales]);
 
-    const handleNewCustomerChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setNewCustomer(prev => ({...prev, [name]: value}));
-    }, []);
 
-    const handleCancelAddCustomer = useCallback(() => {
+    const handleAddCustomer = useCallback((customer: Customer) => {
+        dispatch({ type: 'ADD_CUSTOMER', payload: customer });
         setIsAddingCustomer(false);
-        setNewCustomer(newCustomerInitialState);
-    }, []);
-
-    const handleAddCustomer = useCallback(() => {
-        const trimmedId = newCustomer.id.trim();
-        if (!trimmedId) {
-            alert('Customer ID is required.');
-            return;
-        }
-        if (!newCustomer.name || !newCustomer.phone || !newCustomer.address || !newCustomer.area) {
-            alert('Please fill all required fields (Name, Phone, Address, Area).');
-            return;
-        }
-
-        const finalId = `CUST-${trimmedId}`;
-        const isIdTaken = state.customers.some(c => c.id.toLowerCase() === finalId.toLowerCase());
-
-        if (isIdTaken) {
-            alert(`Customer ID "${finalId}" is already taken. Please choose another one.`);
-            return;
-        }
-
-        const customerWithId: Customer = {
-            name: newCustomer.name,
-            phone: newCustomer.phone,
-            address: newCustomer.address,
-            area: newCustomer.area,
-            id: finalId,
-            reference: newCustomer.reference || ''
-        };
-        dispatch({ type: 'ADD_CUSTOMER', payload: customerWithId });
-        setNewCustomer(newCustomerInitialState);
-        setIsAddingCustomer(false);
-        setCustomerId(customerWithId.id);
+        setCustomerId(customer.id);
         showToast("Customer added successfully!");
-    }, [newCustomer, state.customers, dispatch, showToast]);
+    }, [dispatch, showToast]);
 
 
     const generateAndSharePDF = async (sale: Sale, customer: Customer, paidAmountOnSale: number) => {
@@ -712,10 +620,10 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         <div className="space-y-4" ref={topOfPageRef}>
             {isAddingCustomer && 
                 <AddCustomerModal 
-                    newCustomer={newCustomer}
-                    onInputChange={handleNewCustomerChange}
-                    onSave={handleAddCustomer}
-                    onCancel={handleCancelAddCustomer}
+                    isOpen={isAddingCustomer}
+                    onClose={() => setIsAddingCustomer(false)}
+                    onAdd={handleAddCustomer}
+                    existingCustomers={state.customers}
                 />
             }
             {isSelectingProduct && 
@@ -816,7 +724,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                         </div>
                         <div className="flex justify-between items-center text-gray-700 dark:text-gray-300">
                             <span>Discount:</span>
-                            <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} className="w-28 p-1 border rounded text-right dark:bg-slate-700 dark:border-slate-600" />
+                            <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} className="w-28 p-1 border rounded text-right dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
                         </div>
                         <div className="flex justify-between items-center text-gray-700 dark:text-gray-300">
                             <span>GST Included:</span>
@@ -849,7 +757,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Reference (Optional)</label>
-                                <input type="text" placeholder="e.g. UPI ID, Cheque No." value={paymentDetails.reference} onChange={e => setPaymentDetails({...paymentDetails, reference: e.target.value })} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600" />
+                                <input type="text" placeholder="e.g. UPI ID, Cheque No." value={paymentDetails.reference} onChange={e => setPaymentDetails({...paymentDetails, reference: e.target.value })} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
                             </div>
                         </div>
                     ) : (

@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState } from 'react';
 import { Download, XCircle, Users, Package } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
@@ -273,17 +274,17 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ setCurrentPage }) => {
     return (
         <div className="space-y-6">
             <h1 className="text-2xl font-bold text-primary">Reports</h1>
-            <div className="border-b">
+            <div className="border-b dark:border-slate-700">
                 <nav className="-mb-px flex space-x-6 overflow-x-auto">
                     <button 
                         onClick={() => setActiveTab('customer')} 
-                        className={`py-2 px-1 border-b-2 font-semibold flex items-center gap-2 ${activeTab === 'customer' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                        className={`py-2 px-1 border-b-2 font-semibold flex items-center gap-2 ${activeTab === 'customer' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-500'}`}
                     >
                         <Users size={16} /> Customer Reports
                     </button>
                     <button 
                         onClick={() => setActiveTab('supplier')} 
-                        className={`py-2 px-1 border-b-2 font-semibold flex items-center gap-2 ${activeTab === 'supplier' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                        className={`py-2 px-1 border-b-2 font-semibold flex items-center gap-2 ${activeTab === 'supplier' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-500'}`}
                     >
                         <Package size={16} /> Supplier Reports
                     </button>
@@ -295,7 +296,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ setCurrentPage }) => {
                     <Card title="Filters">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Filter by Area</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Filter by Area</label>
                                 <div className="mt-1">
                                     <Dropdown 
                                         options={[{value: 'all', label: 'All Areas'}, ...uniqueAreas.map(area => ({ value: area, label: area }))]}
@@ -305,7 +306,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ setCurrentPage }) => {
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Filter by Dues Age</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Filter by Dues Age</label>
                                 <div className="mt-1">
                                     <Dropdown
                                         options={[
@@ -320,12 +321,12 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ setCurrentPage }) => {
                                     />
                                 </div>
                                 {duesAgeFilter === 'custom' && (
-                                    <input type="number" value={customDuesAge} onChange={e => setCustomDuesAge(e.target.value)} placeholder="Enter days" className="w-full p-2 border rounded-lg mt-2" />
+                                    <input type="number" value={customDuesAge} onChange={e => setCustomDuesAge(e.target.value)} placeholder="Enter days" className="w-full p-2 border rounded-lg mt-2 dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
                                 )}
                             </div>
                         </div>
                         <div className="text-right mt-4">
-                            <Button onClick={() => { setAreaFilter('all'); setDuesAgeFilter('all'); setCustomDuesAge(''); }} variant="secondary" className="bg-gray-200 text-gray-700 hover:bg-gray-300">
+                            <Button onClick={() => { setAreaFilter('all'); setDuesAgeFilter('all'); setCustomDuesAge(''); }} variant="secondary" className="bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600">
                                 <XCircle className="w-4 h-4 mr-2" />
                                 Clear Filters
                             </Button>
@@ -339,14 +340,14 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ setCurrentPage }) => {
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
-                                <thead className="text-left text-gray-600 bg-gray-50">
+                                <thead className="text-left text-gray-600 bg-gray-50 dark:bg-slate-700 dark:text-gray-300">
                                     <tr>
                                         <th className="p-2">Name</th><th className="p-2">Area</th><th className="p-2">Last Paid Date</th><th className="p-2 text-right">Due Amount</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody className="dark:text-slate-300">
                                     {customerDues.length > 0 ? customerDues.map(c => (
-                                        <tr key={c.id} className="border-b">
+                                        <tr key={c.id} className="border-b dark:border-slate-700">
                                             <td className="p-2 font-semibold">
                                                 <button 
                                                     onClick={() => handleCustomerClick(c.id)}
@@ -355,11 +356,11 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ setCurrentPage }) => {
                                                     {c.name}
                                                 </button>
                                             </td>
-                                            <td className="p-2">{c.area}</td><td className="p-2">{c.lastPaidDate || 'N/A'}</td><td className="p-2 text-right font-semibold text-red-600">₹{c.dueAmount.toLocaleString('en-IN')}</td>
+                                            <td className="p-2">{c.area}</td><td className="p-2">{c.lastPaidDate || 'N/A'}</td><td className="p-2 text-right font-semibold text-red-600 dark:text-red-400">₹{c.dueAmount.toLocaleString('en-IN')}</td>
                                         </tr>
-                                    )) : <tr><td colSpan={4} className="text-center p-4 text-gray-500">No dues found for the selected filters.</td></tr>}
+                                    )) : <tr><td colSpan={4} className="text-center p-4 text-gray-500 dark:text-gray-400">No dues found for the selected filters.</td></tr>}
                                 </tbody>
-                                <tfoot className="font-bold bg-gray-100">
+                                <tfoot className="font-bold bg-gray-100 dark:bg-slate-800 dark:text-slate-200">
                                     <tr>
                                         <td colSpan={3} className="p-2 text-right">Total Due</td><td className="p-2 text-right">₹{totalDuesFiltered.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                                     </tr>
@@ -375,7 +376,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ setCurrentPage }) => {
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
-                                <thead className="text-left text-gray-600 bg-gray-50">
+                                <thead className="text-left text-gray-600 bg-gray-50 dark:bg-slate-700 dark:text-gray-300">
                                     <tr>
                                         <th className="p-2">Name</th>
                                         <th className="p-2">Last Purchase Date</th>
@@ -384,9 +385,9 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ setCurrentPage }) => {
                                         <th className="p-2 text-right">Outstanding Due</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody className="dark:text-slate-300">
                                     {customerAccountSummary.map(s => (
-                                        <tr key={s.customer.id} className="border-b">
+                                        <tr key={s.customer.id} className="border-b dark:border-slate-700">
                                             <td className="p-2 font-semibold">
                                                 <button 
                                                     onClick={() => handleCustomerClick(s.customer.id)}
@@ -397,8 +398,8 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ setCurrentPage }) => {
                                             </td>
                                             <td className="p-2">{s.lastPurchaseDate || 'N/A'}</td>
                                             <td className="p-2 text-right">₹{s.totalPurchased.toLocaleString('en-IN')}</td>
-                                            <td className="p-2 text-right text-green-600">₹{s.totalPaid.toLocaleString('en-IN')}</td>
-                                            <td className="p-2 text-right font-semibold text-red-600">₹{s.outstandingDue.toLocaleString('en-IN')}</td>
+                                            <td className="p-2 text-right text-green-600 dark:text-green-400">₹{s.totalPaid.toLocaleString('en-IN')}</td>
+                                            <td className="p-2 text-right font-semibold text-red-600 dark:text-red-400">₹{s.outstandingDue.toLocaleString('en-IN')}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -412,7 +413,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ setCurrentPage }) => {
                 <div className="animate-fade-in-fast space-y-6">
                     <Card title="Filters">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Filter by Supplier</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Filter by Supplier</label>
                             <div className="mt-1">
                                 <Dropdown 
                                     options={[{value: 'all', label: 'All Suppliers'}, ...uniqueSuppliers.map(s => ({ value: s.id, label: s.name }))]}
@@ -430,15 +431,15 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ setCurrentPage }) => {
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
-                                <thead className="text-left text-gray-600 bg-gray-50">
+                                <thead className="text-left text-gray-600 bg-gray-50 dark:bg-slate-700 dark:text-gray-300">
                                     <tr><th className="p-2">Supplier</th><th className="p-2">Purchase ID</th><th className="p-2">Next Due Date</th><th className="p-2 text-right">Due Amount</th></tr>
                                 </thead>
-                                <tbody>
+                                <tbody className="dark:text-slate-300">
                                     {supplierDues.length > 0 ? supplierDues.map(p => (
-                                        <tr key={p.id} className="border-b">
-                                            <td className="p-2 font-semibold">{p.supplierName}</td><td className="p-2">{p.id}</td><td className="p-2">{p.nextDueDate || 'N/A'}</td><td className="p-2 text-right font-semibold text-red-600">₹{p.dueAmount.toLocaleString('en-IN')}</td>
+                                        <tr key={p.id} className="border-b dark:border-slate-700">
+                                            <td className="p-2 font-semibold">{p.supplierName}</td><td className="p-2">{p.id}</td><td className="p-2">{p.nextDueDate || 'N/A'}</td><td className="p-2 text-right font-semibold text-red-600 dark:text-red-400">₹{p.dueAmount.toLocaleString('en-IN')}</td>
                                         </tr>
-                                    )) : <tr><td colSpan={4} className="text-center p-4 text-gray-500">No supplier dues found.</td></tr>}
+                                    )) : <tr><td colSpan={4} className="text-center p-4 text-gray-500 dark:text-gray-400">No supplier dues found.</td></tr>}
                                 </tbody>
                             </table>
                         </div>
@@ -451,16 +452,16 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ setCurrentPage }) => {
                         </div>
                          <div className="overflow-x-auto">
                             <table className="w-full text-sm">
-                                <thead className="text-left text-gray-600 bg-gray-50">
+                                <thead className="text-left text-gray-600 bg-gray-50 dark:bg-slate-700 dark:text-gray-300">
                                     <tr><th className="p-2">Name</th><th className="p-2 text-right">Total Purchased</th><th className="p-2 text-right">Total Paid</th><th className="p-2 text-right">Outstanding Due</th></tr>
                                 </thead>
-                                <tbody>
+                                <tbody className="dark:text-slate-300">
                                     {supplierAccountSummary.map(s => (
-                                        <tr key={s.supplier.id} className="border-b">
+                                        <tr key={s.supplier.id} className="border-b dark:border-slate-700">
                                             <td className="p-2 font-semibold">{s.supplier.name}</td>
                                             <td className="p-2 text-right">₹{s.totalPurchased.toLocaleString('en-IN')}</td>
-                                            <td className="p-2 text-right text-green-600">₹{s.totalPaid.toLocaleString('en-IN')}</td>
-                                            <td className="p-2 text-right font-semibold text-red-600">₹{s.outstandingDue.toLocaleString('en-IN')}</td>
+                                            <td className="p-2 text-right text-green-600 dark:text-green-400">₹{s.totalPaid.toLocaleString('en-IN')}</td>
+                                            <td className="p-2 text-right font-semibold text-red-600 dark:text-red-400">₹{s.outstandingDue.toLocaleString('en-IN')}</td>
                                         </tr>
                                     ))}
                                 </tbody>

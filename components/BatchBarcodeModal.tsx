@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import jsPDF from 'jspdf';
 import JsBarcode from 'jsbarcode';
@@ -211,32 +212,32 @@ const BatchBarcodeModal: React.FC<BatchBarcodeModalProps> = ({ isOpen, purchaseI
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
             <Card className="w-full max-w-lg animate-scale-in">
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-lg font-bold">{title || "Print Barcode Labels for Purchase"}</h2>
-                    <button onClick={onClose} className="p-2 rounded-full text-gray-500 hover:bg-gray-100"><X size={20} /></button>
+                    <h2 className="text-lg font-bold text-primary">{title || "Print Barcode Labels for Purchase"}</h2>
+                    <button onClick={onClose} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"><X size={20} /></button>
                 </div>
 
                 <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
                     {purchaseItems.map(item => (
-                        <div key={item.productId} className="grid grid-cols-3 gap-2 items-center p-2 bg-gray-50 rounded-lg">
+                        <div key={item.productId} className="grid grid-cols-3 gap-2 items-center p-2 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
                             <div className="col-span-2">
                                 <p className="font-semibold text-sm">{item.productName}</p>
-                                <p className="text-xs text-gray-500">{item.productId}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">{item.productId}</p>
                             </div>
                             <input
                                 type="number"
                                 value={quantities[item.productId] || ''}
                                 onChange={e => handleQuantityChange(item.productId, e.target.value)}
-                                className="w-full p-2 border rounded text-center"
+                                className="w-full p-2 border rounded text-center dark:bg-slate-600 dark:border-slate-500 dark:text-slate-200"
                             />
                         </div>
                     ))}
                 </div>
                 
-                <div className="mt-4 pt-4 border-t">
+                <div className="mt-4 pt-4 border-t dark:border-slate-700">
                     <p className="text-center font-bold mb-4">Total Labels to Print: {totalLabels}</p>
-                    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded mb-4">
-                        <p className="text-xs font-semibold text-yellow-800 mb-1">Print Settings</p>
-                        <p className="text-xs text-yellow-700">
+                    <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 p-3 rounded mb-4">
+                        <p className="text-xs font-semibold text-yellow-800 dark:text-yellow-200 mb-1">Print Settings</p>
+                        <p className="text-xs text-yellow-700 dark:text-yellow-300">
                         Ensure printer settings use <strong>Actual Size</strong> and <strong>Paper Size: 2x1 inch</strong> (50.8x25.4mm).
                         </p>
                     </div>
