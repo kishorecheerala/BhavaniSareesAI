@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef, PropsWithChildren } from 'react';
-import { IndianRupee, TrendingUp, TrendingDown, Award, Lock, BarChart, Calendar, ArrowUpRight, ArrowDownRight, ShoppingBag, PieChart, Activity, DollarSign, Download, CreditCard, Wallet, CheckCircle2, AlertCircle, Lightbulb } from 'lucide-react';
+import { IndianRupee, TrendingUp, TrendingDown, Award, Lock, BarChart, Calendar, ArrowUpRight, ArrowDownRight, ShoppingBag, PieChart, Activity, DollarSign, Download, CreditCard, Wallet, CheckCircle2, AlertCircle, Lightbulb, FileText } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import Card from '../components/Card';
 import PinModal from '../components/PinModal';
@@ -317,7 +317,7 @@ const PaymentDistributionCard = ({ sales }: { sales: Sale[] }) => {
             <div className="space-y-2">
                 <ProgressBar label="UPI" amount={stats.upi} max={stats.max} color="bg-purple-500" icon={CreditCard} />
                 <ProgressBar label="Cash" amount={stats.cash} max={stats.max} color="bg-green-500" icon={Wallet} />
-                <ProgressBar label="Cheque" amount={stats.cheque} max={stats.max} color="bg-blue-500" icon={File} />
+                <ProgressBar label="Cheque" amount={stats.cheque} max={stats.max} color="bg-blue-500" icon={FileText} />
                 <div className="pt-2 border-t dark:border-slate-700">
                     <ProgressBar label="Pending (Due)" amount={stats.due} max={stats.max} color="bg-red-500" icon={AlertCircle} />
                 </div>
@@ -540,8 +540,16 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
 
         const getMetrics = (m: number, y: number) => {
             const monthSales = state.sales.filter(s => { const d = new Date(s.date); return d.getMonth() === m && d.getFullYear() === y; });
-            const revenue = monthSales.reduce((sum: number, s) => sum + Number(s.totalAmount), 0);
-            const cost = monthSales.reduce((sum: number, s) => sum + s.items.reduce((is: number, i) => is + (Number(state.products.find(p => p.id === i.productId)?.purchasePrice) || 0) * Number(i.quantity), 0), 0);
+            const revenue = monthSales.reduce((sum: number, s) => sum + Number(s.totalAmount || 0), 0);
+            const cost = monthSales.reduce((sum: number, s) => {
+                const saleCost = s.items.reduce((is: number, i) => {
+                     const product = state.products.find(p => p.id === i.productId);
+                     const purchasePrice = product ? Number(product.purchasePrice) : 0;
+                     const quantity = Number(i.quantity);
+                     return is + (purchasePrice * quantity);
+                }, 0);
+                return sum + saleCost;
+            }, 0);
             const profit = revenue - cost;
             const orders = monthSales.length;
             const aov = orders > 0 ? revenue / orders : 0;
