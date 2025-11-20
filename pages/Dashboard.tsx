@@ -1,12 +1,12 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { IndianRupee, User, AlertTriangle, Download, Upload, ShoppingCart, Package, XCircle, CheckCircle, Info, ShieldCheck, ShieldX, Archive, PackageCheck, TestTube2, Sparkles, TrendingUp, ArrowRight, Zap, BrainCircuit } from 'lucide-react';
+import { IndianRupee, User, AlertTriangle, Download, Upload, ShoppingCart, Package, XCircle, CheckCircle, Info, ShieldCheck, ShieldX, Archive, PackageCheck, TestTube2, Sparkles, TrendingUp, ArrowRight, Zap, BrainCircuit, TrendingDown, Wallet, CalendarClock, Tag, Undo2, Crown } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import * as db from '../utils/db';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { DataImportModal } from '../components/DataImportModal';
-import { Page, Customer, Sale, Purchase, Supplier, Product } from '../types';
+import { Page, Customer, Sale, Purchase, Supplier, Product, Return } from '../types';
 import { testData, testProfile } from '../utils/testData';
 
 interface DashboardProps {
@@ -42,46 +42,67 @@ const MetricCard: React.FC<{
     </div>
 );
 
-const SmartAnalystCard: React.FC<{ sales: Sale[], products: Product[], customers: Customer[] }> = ({ sales, products, customers }) => {
+const SmartAnalystCard: React.FC<{ sales: Sale[], products: Product[], customers: Customer[], purchases: Purchase[], returns: Return[] }> = ({ sales, products, customers, purchases, returns }) => {
     const insights = useMemo(() => {
         const list: { icon: React.ElementType, text: string, color: string, type: string }[] = [];
         const now = new Date();
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
         const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-        const currentDay = now.getDate();
+        const currentDay = Math.max(1, now.getDate());
 
-        // 1. Revenue Projection (Linear Regression Lite)
+        // 1. Revenue Projection
         const thisMonthSales = sales.filter(s => {
             const d = new Date(s.date);
             return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
         });
         const currentRevenue = thisMonthSales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
         
-        if (currentDay > 1) {
+        if (currentRevenue > 0) {
             const dailyRunRate = currentRevenue / currentDay;
             const projectedRevenue = dailyRunRate * daysInMonth;
-            if (projectedRevenue > 0) {
+            if (projectedRevenue > currentRevenue) {
                 list.push({
                     icon: TrendingUp,
                     type: 'Prediction',
-                    text: `Based on current trends, you are on track to hit ₹${Math.round(projectedRevenue).toLocaleString('en-IN')} revenue this month.`,
+                    text: `On track for ₹${Math.round(projectedRevenue).toLocaleString('en-IN')} revenue this month.`,
                     color: 'text-emerald-600 dark:text-emerald-400'
                 });
             }
         }
 
-        // 2. Dead Stock Detection
+        // 2. Cash Flow Pulse
+        const thisMonthPurchases = purchases.filter(p => {
+            const d = new Date(p.date);
+            return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+        }).reduce((sum, p) => sum + Number(p.totalAmount), 0);
+
+        if (currentRevenue > 0 || thisMonthPurchases > 0) {
+            const flow = currentRevenue - thisMonthPurchases;
+            if (flow < 0) {
+                 list.push({
+                    icon: TrendingDown,
+                    type: 'Cash Flow Alert',
+                    text: `Spending > Income by ₹${Math.abs(flow).toLocaleString('en-IN')} this month. Watch stock purchases.`,
+                    color: 'text-orange-600 dark:text-orange-400'
+                });
+            } else if (flow > 0 && thisMonthPurchases > 0) {
+                 list.push({
+                    icon: Wallet,
+                    type: 'Healthy Flow',
+                    text: `Net positive cash flow of ₹${flow.toLocaleString('en-IN')} so far this month.`,
+                    color: 'text-blue-600 dark:text-blue-400'
+                });
+            }
+        }
+
+        // 3. Dead Stock
         const sixtyDaysAgo = new Date();
         sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
-        
         const activeProductIds = new Set();
         sales.forEach(s => {
-            if (new Date(s.date) > sixtyDaysAgo) {
-                s.items.forEach(i => activeProductIds.add(i.productId));
-            }
+            if (new Date(s.date) > sixtyDaysAgo) s.items.forEach(i => activeProductIds.add(i.productId));
         });
-
         const deadStock = products
             .filter(p => !activeProductIds.has(p.id) && p.quantity > 5)
             .sort((a, b) => (b.quantity * b.purchasePrice) - (a.quantity * a.purchasePrice))
@@ -91,84 +112,165 @@ const SmartAnalystCard: React.FC<{ sales: Sale[], products: Product[], customers
             list.push({
                 icon: Archive,
                 type: 'Inventory Alert',
-                text: `"${deadStock[0].name}" hasn't sold in 60 days. Consider running a discount to clear ${deadStock[0].quantity} units.`,
+                text: `"${deadStock[0].name}" hasn't sold in 60 days. Consider a discount to clear ${deadStock[0].quantity} units.`,
                 color: 'text-amber-600 dark:text-amber-400'
             });
         }
 
-        // 3. High Velocity Item
-        const productVelocity: Record<string, number> = {};
+        // 4. Weekend Surge Analysis
+        let weekendSales = 0, weekdaySales = 0;
+        let weekendDays = 0, weekdayDays = 0;
+        
+        sales.forEach(s => {
+            const day = new Date(s.date).getDay();
+            const amt = Number(s.totalAmount);
+            if (day === 0 || day === 6) { // Sun or Sat
+                weekendSales += amt;
+                weekendDays++;
+            } else {
+                weekdaySales += amt;
+                weekdayDays++;
+            }
+        });
+        
+        const avgWeekend = weekendDays > 0 ? weekendSales / weekendDays : 0;
+        const avgWeekday = weekdayDays > 0 ? weekdaySales / weekdayDays : 0;
+        
+        if (avgWeekend > avgWeekday * 1.3) {
+             list.push({
+                icon: CalendarClock,
+                type: 'Strategy',
+                text: `Weekends are your power days! Sales are ${(avgWeekend/avgWeekday).toFixed(1)}x higher. Stock up on Fridays.`,
+                color: 'text-purple-600 dark:text-purple-400'
+            });
+        }
+
+        // 5. Category Trends
+        const categoryCounts: Record<string, number> = {};
         thisMonthSales.forEach(s => {
+            s.items.forEach(i => {
+                // Infer category from ID (e.g., BS-KAN-001 -> KAN) or Name
+                const cat = i.productId.split('-')[1] || 'General';
+                categoryCounts[cat] = (categoryCounts[cat] || 0) + Number(i.quantity);
+            });
+        });
+        const topCategory = Object.keys(categoryCounts).sort((a, b) => categoryCounts[b] - categoryCounts[a])[0];
+        
+        if (topCategory) {
+             const catMap: Record<string, string> = { 'KAN': 'Kanchi', 'COT': 'Cotton', 'SILK': 'Mysore Silk', 'BAN': 'Banarasi', 'GAD': 'Gadwal', 'UPP': 'Uppada' };
+             const friendlyName = catMap[topCategory] || topCategory;
+             list.push({
+                icon: Tag,
+                type: 'Trending',
+                text: `${friendlyName} is the top category this month. Ensure you have enough variety.`,
+                color: 'text-pink-600 dark:text-pink-400'
+            });
+        }
+
+        // 6. Fast Moving Item (Velocity Risk)
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const recentSales = sales.filter(s => new Date(s.date) >= sevenDaysAgo);
+        const productVelocity: Record<string, number> = {}; // sold per day
+        recentSales.forEach(s => {
             s.items.forEach(i => {
                 productVelocity[i.productId] = (productVelocity[i.productId] || 0) + Number(i.quantity);
             });
         });
-        
-        const topVelocityId = Object.keys(productVelocity).sort((a, b) => productVelocity[b] - productVelocity[a])[0];
-        if (topVelocityId) {
-            const prod = products.find(p => p.id === topVelocityId);
-            if (prod && prod.quantity < productVelocity[topVelocityId] * 2) { // If stock is less than 2x monthly sales
-                 list.push({
-                    icon: Zap,
-                    type: 'Hot Item',
-                    text: `"${prod.name}" is selling fast! You might run out of stock soon at this rate.`,
-                    color: 'text-purple-600 dark:text-purple-400'
-                });
-            }
-        }
 
-        // 4. Customer Retention
-        if (customers.length > 0) {
-             // Simple logic: Find a customer who bought a lot previously but not in last 45 days
-            const fortyFiveDaysAgo = new Date();
-            fortyFiveDaysAgo.setDate(fortyFiveDaysAgo.getDate() - 45);
-            
-            const recentBuyers = new Set(sales.filter(s => new Date(s.date) > fortyFiveDaysAgo).map(s => s.customerId));
-            
-            // Find top spender who is NOT in recent buyers
-            const customerSpend: Record<string, number> = {};
-            sales.forEach(s => {
-                customerSpend[s.customerId] = (customerSpend[s.customerId] || 0) + Number(s.totalAmount);
-            });
-
-            const atRiskWhaleId = Object.keys(customerSpend)
-                .filter(id => !recentBuyers.has(id))
-                .sort((a, b) => customerSpend[b] - customerSpend[a])[0];
-            
-            if (atRiskWhaleId) {
-                const whale = customers.find(c => c.id === atRiskWhaleId);
-                if (whale) {
-                     list.push({
-                        icon: User,
-                        type: 'Retention',
-                        text: `${whale.name} (Top Customer) hasn't visited in 45 days. Give them a call?`,
-                        color: 'text-blue-600 dark:text-blue-400'
-                    });
+        let stockoutRiskItem = null;
+        for (const [pid, qtySold] of Object.entries(productVelocity)) {
+            const product = products.find(p => p.id === pid);
+            if (product && product.quantity > 0) {
+                const dailyRate = qtySold / 7;
+                const daysLeft = product.quantity / dailyRate;
+                if (daysLeft < 7 && dailyRate > 0.5) { 
+                    stockoutRiskItem = { name: product.name, days: Math.round(daysLeft) };
+                    break; 
                 }
             }
         }
 
-        return list;
-    }, [sales, products, customers]);
+        if (stockoutRiskItem) {
+            list.push({
+                icon: Zap,
+                type: 'Velocity Alert',
+                text: `"${stockoutRiskItem.name}" is selling fast! Estimated to run out in ${stockoutRiskItem.days} days.`,
+                color: 'text-amber-600 dark:text-amber-400'
+            });
+        }
 
-    if (insights.length === 0) return null;
+        // 7. High Return Rate (Last 30 days)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const recentReturnsVal = returns
+            .filter(r => new Date(r.returnDate) >= thirtyDaysAgo && r.type === 'CUSTOMER')
+            .reduce((sum, r) => sum + Number(r.amount), 0);
+        const recentSalesVal = sales
+            .filter(s => new Date(s.date) >= thirtyDaysAgo)
+            .reduce((sum, s) => sum + Number(s.totalAmount), 0);
+
+        if (recentSalesVal > 0) {
+            const returnRate = (recentReturnsVal / recentSalesVal) * 100;
+            if (returnRate > 15) {
+                list.push({
+                    icon: Undo2,
+                    type: 'Quality Check',
+                    text: `Return rate is high (${returnRate.toFixed(1)}%) recently. Check product quality or descriptions.`,
+                    color: 'text-red-600 dark:text-red-400'
+                });
+            }
+        }
+
+        // 8. Top Customer of the Month
+        const customerSpend: Record<string, number> = {};
+        thisMonthSales.forEach(s => {
+            customerSpend[s.customerId] = (customerSpend[s.customerId] || 0) + Number(s.totalAmount);
+        });
+        const topCustomerId = Object.keys(customerSpend).sort((a, b) => customerSpend[b] - customerSpend[a])[0];
+        
+        if (topCustomerId) {
+            const topCustomer = customers.find(c => c.id === topCustomerId);
+            if (topCustomer) {
+                 list.push({
+                    icon: Crown,
+                    type: 'Top Customer',
+                    text: `${topCustomer.name} is the top spender this month (₹${customerSpend[topCustomerId].toLocaleString('en-IN')}).`,
+                    color: 'text-indigo-600 dark:text-indigo-400'
+                });
+            }
+        }
+
+
+        // Default if list is empty
+        if (list.length === 0) {
+            list.push({
+                icon: Sparkles,
+                type: 'AI Assistant',
+                text: "I'm analyzing your data. Record more sales and purchases to see advanced trends and alerts here.",
+                color: 'text-teal-600 dark:text-teal-400'
+            });
+        }
+
+        return list;
+    }, [sales, products, customers, purchases, returns]);
 
     return (
-        <div className="relative overflow-hidden rounded-xl bg-white dark:bg-slate-800 shadow-lg border border-indigo-100 dark:border-indigo-900 mb-6">
+        <div className="relative overflow-hidden rounded-xl bg-white dark:bg-slate-800 shadow-lg border border-indigo-100 dark:border-indigo-900 mb-6 transition-all hover:shadow-xl">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-indigo-500"></div>
             <div className="p-5">
                 <div className="flex items-center gap-2 mb-4">
-                    <div className="p-2 bg-indigo-100 dark:bg-indigo-900/50 rounded-full">
+                    <div className="p-2 bg-indigo-100 dark:bg-indigo-900/50 rounded-full animate-pulse-bg">
                         <BrainCircuit className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                     </div>
                     <h3 className="font-bold text-lg text-gray-800 dark:text-white">Smart Analyst</h3>
-                    <span className="text-[10px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 px-2 py-0.5 rounded-full">AI Powered</span>
+                    <span className="text-[10px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800">AI Powered</span>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {insights.map((insight, idx) => (
-                        <div key={idx} className="flex gap-3 p-3 rounded-lg bg-gray-50 dark:bg-slate-700/30 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors border border-transparent hover:border-indigo-100 dark:hover:border-indigo-800">
-                            <div className="mt-1">
+                        <div key={idx} className="flex gap-3 p-3 rounded-lg bg-gray-50 dark:bg-slate-700/30 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors border border-transparent hover:border-indigo-100 dark:hover:border-indigo-800 animate-fade-in-fast" style={{ animationDelay: `${idx * 100}ms` }}>
+                            <div className="mt-1 flex-shrink-0">
                                 <insight.icon className={`w-5 h-5 ${insight.color}`} />
                             </div>
                             <div>
@@ -438,19 +540,17 @@ const UpcomingPurchaseDuesCard: React.FC<{
                             onClick={() => onNavigate(due.supplier.id)}
                             role="button"
                             tabIndex={0}
-                            aria-label={`View details for ${due.supplier.name}`}
                         >
                             <div className="flex items-center gap-3">
                                 <Package className="w-6 h-6 text-amber-700 dark:text-amber-400 flex-shrink-0" />
                                 <div>
                                     <p className="font-bold text-amber-900 dark:text-amber-100">{due.supplier.name}</p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">Invoice: {due.purchaseId}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">Inv: {due.purchaseId}</p>
                                 </div>
                             </div>
                             <div className="text-right flex-shrink-0 ml-2">
-                                <p className="font-bold text-lg text-red-600 dark:text-red-400">₹{due.totalPurchaseDue.toLocaleString('en-IN')}</p>
-                                <p className="text-xs font-bold text-amber-800 dark:text-amber-200">{countdownText}</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">on {due.dueDate.toLocaleDateString()}</p>
+                                <p className="font-bold text-lg text-amber-600 dark:text-amber-400">{countdownText}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">Date: {due.dueDate.toLocaleDateString()}</p>
                             </div>
                         </div>
                     );
@@ -460,81 +560,106 @@ const UpcomingPurchaseDuesCard: React.FC<{
     );
 };
 
+const LowStockCard: React.FC<{ products: Product[]; onNavigate: (id: string) => void; }> = ({ products, onNavigate }) => {
+    const lowStockProducts = useMemo(() => {
+        return products.filter(p => p.quantity < 5).sort((a, b) => a.quantity - b.quantity);
+    }, [products]);
+
+    if (lowStockProducts.length === 0) {
+        return (
+            <Card className="border-l-4 border-green-500 bg-green-50 dark:bg-green-900/20 dark:border-green-600">
+                <div className="flex items-center">
+                    <PackageCheck className="w-8 h-8 text-green-600 dark:text-green-400 mr-4" />
+                    <div>
+                        <p className="font-bold text-green-800 dark:text-green-200">Stock Healthy</p>
+                        <p className="text-sm text-green-700 dark:text-green-300">All products have sufficient stock levels (5+).</p>
+                    </div>
+                </div>
+            </Card>
+        );
+    }
+
+    return (
+        <Card className="border-l-4 border-orange-500 bg-orange-50 dark:bg-orange-900/20 dark:border-orange-600">
+            <div className="flex items-center mb-4">
+                <AlertTriangle className="w-6 h-6 text-orange-600 dark:text-orange-400 mr-3" />
+                <h2 className="text-lg font-bold text-orange-800 dark:text-orange-200">Low Stock Alert</h2>
+            </div>
+            <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                {lowStockProducts.map(product => (
+                    <div
+                        key={product.id}
+                        className="p-2 bg-white dark:bg-slate-800 rounded shadow-sm flex justify-between items-center cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors border dark:border-slate-700"
+                        onClick={() => onNavigate(product.id)}
+                    >
+                        <div>
+                            <p className="font-semibold text-sm dark:text-slate-200">{product.name}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">ID: {product.id}</p>
+                        </div>
+                        <span className="font-bold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded text-xs">
+                            {product.quantity} left
+                        </span>
+                    </div>
+                ))}
+            </div>
+        </Card>
+    );
+};
 
 const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
     const { state, dispatch, showToast } = useAppContext();
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const [restoreStatus, setRestoreStatus] = useState<{ type: 'info' | 'success' | 'error', message: string } | null>(null);
-    const [lastBackupDate, setLastBackupDate] = useState<string | null>(null);
+    const { customers, sales, purchases, products, app_metadata, suppliers, returns } = state;
+    
+    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth().toString());
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-
-    useEffect(() => {
-        const fetchLastBackup = async () => {
-            const date = await db.getLastBackupDate();
-            setLastBackupDate(date);
-        };
-        fetchLastBackup();
-    }, [state.app_metadata]);
-
-    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-
-    const totalCustomerDues = state.sales.reduce((sum, sale) => {
-        const amountPaid = (sale.payments || []).reduce((paidSum, p) => paidSum + Number(p.amount), 0);
-        const due = Number(sale.totalAmount) - amountPaid;
-        return sum + (due > 0 ? due : 0);
-    }, 0);
-
-    const totalPurchaseDues = state.purchases.reduce((sum, purchase) => {
-        const amountPaid = (purchase.payments || []).reduce((paidSum, p) => paidSum + Number(p.amount), 0);
-        const due = Number(purchase.totalAmount) - amountPaid;
-        return sum + (due > 0 ? due : 0);
-    }, 0);
-
-    const totalInventoryValue = state.products.reduce((sum, product) => {
-        return sum + (Number(product.purchasePrice) * Number(product.quantity));
-    }, 0);
     
-    const totalStockQuantity = state.products.reduce((sum, product) => sum + Number(product.quantity), 0);
-    
-    const totalSales = state.sales.reduce((sum, sale) => sum + Number(sale.totalAmount), 0);
-    const totalPurchases = state.purchases.reduce((sum, purchase) => sum + Number(purchase.totalAmount), 0);
-    
-    // Projected Revenue Logic (Simplified)
-    const currentMonthRevenue = useMemo(() => {
-        const now = new Date();
-        const month = now.getMonth();
-        const year = now.getFullYear();
-        return state.sales
-            .filter(s => {
-                const d = new Date(s.date);
-                return d.getMonth() === month && d.getFullYear() === year;
-            })
-            .reduce((sum, s) => sum + Number(s.totalAmount), 0);
-    }, [state.sales]);
+    // Dummy state for "generating" report to show visual feedback
+    const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
-    const projectedRevenue = useMemo(() => {
-        const now = new Date();
-        const day = now.getDate();
-        if (day <= 1) return 0;
-        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-        return (currentMonthRevenue / day) * daysInMonth;
-    }, [currentMonthRevenue]);
+    // FIX: Cast result to AppMetadataBackup to access .date
+    const lastBackupDate = (app_metadata.find(m => m.id === 'lastBackup') as any)?.date || null;
     
+    const stats = useMemo(() => {
+        const monthIndex = parseInt(selectedMonth);
+        const currentYear = new Date().getFullYear();
+        
+        const filteredSales = sales.filter(s => {
+            const d = new Date(s.date);
+            return d.getMonth() === monthIndex && d.getFullYear() === currentYear;
+        });
+
+        const filteredPurchases = purchases.filter(p => {
+            const d = new Date(p.date);
+            return d.getMonth() === monthIndex && d.getFullYear() === currentYear;
+        });
+
+        const totalSales = filteredSales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
+        const totalPurchases = filteredPurchases.reduce((sum, p) => sum + Number(p.totalAmount), 0);
+        
+        // Customer Dues (All time, not just this month)
+        const totalCustomerDues = sales.reduce((sum, s) => {
+            const paid = (s.payments || []).reduce((pSum, p) => pSum + Number(p.amount), 0);
+            return sum + (Number(s.totalAmount) - paid);
+        }, 0);
+
+        // Supplier Dues (All time)
+        const totalSupplierDues = purchases.reduce((sum, p) => {
+            const paid = (p.payments || []).reduce((pSum, p) => pSum + Number(p.amount), 0);
+            return sum + (Number(p.totalAmount) - paid);
+        }, 0);
+
+        return { totalSales, totalPurchases, totalCustomerDues, totalSupplierDues, salesCount: filteredSales.length };
+    }, [sales, purchases, selectedMonth]);
+
     const handleBackup = async () => {
+        setIsGeneratingReport(true);
         try {
             const data = await db.exportData();
-            if ((!data.customers || data.customers.length === 0) && (!data.products || data.products.length === 0)) {
-                 showToast('No data to backup.', 'info');
-                return;
-            }
-            const dataString = JSON.stringify(data, null, 2);
-            const blob = new Blob([dataString], { type: 'application/json' });
+            const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            const date = new Date().toISOString().slice(0, 10);
             a.href = url;
-            a.download = `bhavani-sarees-backup-${date}.json`;
+            a.download = `bhavani_sarees_backup_${new Date().toISOString().split('T')[0]}.json`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -542,220 +667,151 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
             
             await db.setLastBackupDate();
             dispatch({ type: 'SET_LAST_BACKUP_DATE', payload: new Date().toISOString() });
-            
-            showToast('Backup successful! Save the downloaded file in a safe place.');
-        } catch (error) {
-            console.error('Backup failed:', error);
-            showToast('Backup failed. Please try again.', 'info');
+            showToast("Backup downloaded successfully!");
+        } catch (e) {
+            console.error("Backup failed", e);
+            showToast("Backup failed!", 'info');
+        } finally {
+            setIsGeneratingReport(false);
         }
     };
-    
-    const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-        setRestoreStatus({ type: 'info', message: 'Starting restore process...' });
-        const file = event.target.files?.[0];
 
-        if (!file) {
-            setRestoreStatus({ type: 'error', message: 'No file selected. Restore cancelled.' });
-            return;
-        }
-
-        if (!window.confirm('Are you sure you want to restore data? This will overwrite all current data in the app.')) {
-            if (fileInputRef.current) fileInputRef.current.value = "";
-            setRestoreStatus(null);
-            return;
-        }
-
-        const reader = new FileReader();
-
-        reader.onload = async (e) => {
-            try {
-                setRestoreStatus({ type: 'info', message: 'File read. Validating data...' });
-                const text = e.target?.result;
-                if (typeof text !== 'string') {
-                    throw new Error("File content is not readable as text.");
-                }
-                
-                const parsedData = JSON.parse(text);
-
-                if (!parsedData || typeof parsedData !== 'object') {
-                    throw new Error("Backup file does not contain a valid object.");
-                }
-
-                setRestoreStatus({ type: 'info', message: 'Data validated. Importing to database...' });
-                await db.importData(parsedData);
-                
-                const validatedState = {
-                    customers: Array.isArray(parsedData.customers) ? parsedData.customers : [],
-                    suppliers: Array.isArray(parsedData.suppliers) ? parsedData.suppliers : [],
-                    products: Array.isArray(parsedData.products) ? parsedData.products : [],
-                    sales: Array.isArray(parsedData.sales) ? parsedData.sales : [],
-                    purchases: Array.isArray(parsedData.purchases) ? parsedData.purchases : [],
-                    returns: Array.isArray(parsedData.returns) ? parsedData.returns : [],
-                    app_metadata: Array.isArray(parsedData.app_metadata) ? parsedData.app_metadata : [],
-                };
-                dispatch({ type: 'SET_STATE', payload: validatedState });
-                showToast('Data restored successfully!');
-                setTimeout(() => {
-                   setRestoreStatus({ type: 'success', message: 'Data restored successfully! The app is now using the new data.' });
-                }, 100);
-
-            } catch (error) {
-                console.error('Restore failed:', error);
-                setRestoreStatus({ type: 'error', message: `Restore failed: ${(error as Error).message}` });
-            } finally {
-                if (fileInputRef.current) fileInputRef.current.value = "";
-            }
-        };
-        
-        reader.onerror = (error) => {
-            console.error('FileReader error:', error);
-            setRestoreStatus({ type: 'error', message: 'Failed to read the backup file. It might be corrupted or inaccessible.' });
-            if (fileInputRef.current) fileInputRef.current.value = "";
-        };
-
-        reader.readAsText(file);
+    const handleNavigate = (page: Page, id: string) => {
+        dispatch({ type: 'SET_SELECTION', payload: { page, id } });
+        setCurrentPage(page);
     };
 
-    const handleNavigateToCustomer = (customerId: string) => {
-        dispatch({ type: 'SET_SELECTION', payload: { page: 'CUSTOMERS', id: customerId } });
-        setCurrentPage('CUSTOMERS');
-    };
-
-    const handleNavigateToSupplier = (supplierId: string) => {
-        dispatch({ type: 'SET_SELECTION', payload: { page: 'PURCHASES', id: supplierId } });
-        setCurrentPage('PURCHASES');
-    };
-
-    const handleLoadDemoData = () => {
-        if (window.confirm('Are you sure you want to load demo data? This will overwrite ALL existing data in the app.')) {
-            dispatch({ type: 'SET_STATE', payload: testData });
-            dispatch({ type: 'SET_PROFILE', payload: testProfile });
-            showToast('Demo data loaded successfully!');
-        }
-    };
+    const monthOptions = [
+        { value: '0', label: 'January' }, { value: '1', label: 'February' }, { value: '2', label: 'March' },
+        { value: '3', label: 'April' }, { value: '4', label: 'May' }, { value: '5', label: 'June' },
+        { value: '6', label: 'July' }, { value: '7', label: 'August' }, { value: '8', label: 'September' },
+        { value: '9', label: 'October' }, { value: '10', label: 'November' }, { value: '11', label: 'December' },
+    ];
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-fade-in-fast">
             <DataImportModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} />
             
-            <div className="flex justify-between items-end">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h1 className="text-2xl font-bold text-primary">Dashboard</h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <select 
+                        value={selectedMonth} 
+                        onChange={(e) => setSelectedMonth(e.target.value)} 
+                        className="p-2 border rounded-md bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white shadow-sm focus:ring-primary focus:border-primary custom-select flex-grow sm:flex-grow-0"
+                        aria-label="Select Month for Stats"
+                    >
+                        {monthOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                    </select>
+                    <Button onClick={() => setIsImportModalOpen(true)} variant="secondary" className="flex-shrink-0">
+                        <Upload className="w-4 h-4 mr-2" /> Import
+                    </Button>
+                </div>
             </div>
+            
+            {/* New Smart Analyst AI Card */}
+            <SmartAnalystCard sales={sales} products={products} customers={customers} purchases={purchases} returns={returns} />
 
-            {/* New AI Smart Analyst Section */}
-            <SmartAnalystCard sales={state.sales} products={state.products} customers={state.customers} />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <MetricCard 
-                    icon={ShoppingCart} 
-                    title="Total Sales (All Time)" 
-                    value={totalSales} 
-                    color="bg-teal-100 dark:bg-teal-900/40"
-                    iconBgColor="bg-teal-200 dark:bg-teal-800"
-                    textColor="text-teal-900 dark:text-teal-100"
-                    onClick={() => setCurrentPage('CUSTOMERS')}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <MetricCard 
+                    icon={IndianRupee} 
+                    title="Sales" 
+                    value={stats.totalSales} 
+                    subValue={`${stats.salesCount} orders this month`}
+                    color="bg-teal-50 dark:bg-teal-900/20" 
+                    iconBgColor="bg-teal-100 dark:bg-teal-800" 
+                    textColor="text-teal-700 dark:text-teal-100" 
+                    onClick={() => setCurrentPage('SALES')}
                 />
-                
-                {/* New Projected Revenue Card */}
-                 <MetricCard 
-                    icon={TrendingUp} 
-                    title="Projected Revenue (This Month)" 
-                    value={projectedRevenue > 0 ? projectedRevenue : '---'}
-                    unit="₹"
-                    subValue={projectedRevenue > 0 ? `Based on daily avg of ₹${(currentMonthRevenue / new Date().getDate()).toLocaleString('en-IN', {maximumFractionDigits: 0})}` : 'Not enough data'}
-                    color="bg-indigo-100 dark:bg-indigo-900/40"
-                    iconBgColor="bg-indigo-200 dark:bg-indigo-800"
-                    textColor="text-indigo-900 dark:text-indigo-100"
-                    onClick={() => setCurrentPage('INSIGHTS')}
-                />
-
                  <MetricCard 
                     icon={Package} 
-                    title="Total Purchases (All Time)" 
-                    value={totalPurchases} 
-                    color="bg-emerald-100 dark:bg-emerald-900/40"
-                    iconBgColor="bg-emerald-200 dark:bg-emerald-800"
-                    textColor="text-emerald-900 dark:text-emerald-100"
+                    title="Purchases" 
+                    value={stats.totalPurchases} 
+                    subValue="This month"
+                    color="bg-blue-50 dark:bg-blue-900/20" 
+                    iconBgColor="bg-blue-100 dark:bg-blue-800" 
+                    textColor="text-blue-700 dark:text-blue-100" 
                     onClick={() => setCurrentPage('PURCHASES')}
                 />
                 <MetricCard 
-                    icon={IndianRupee} 
+                    icon={User} 
                     title="Customer Dues" 
-                    value={totalCustomerDues} 
-                    color="bg-rose-100 dark:bg-rose-900/40"
-                    iconBgColor="bg-rose-200 dark:bg-rose-800"
-                    textColor="text-rose-900 dark:text-rose-100"
-                    onClick={() => setCurrentPage('CUSTOMERS')}
+                    value={stats.totalCustomerDues} 
+                    subValue="Total Pending"
+                    color="bg-purple-50 dark:bg-purple-900/20" 
+                    iconBgColor="bg-purple-100 dark:bg-purple-800" 
+                    textColor="text-purple-700 dark:text-purple-100" 
+                    onClick={() => setCurrentPage('REPORTS')}
                 />
                 <MetricCard 
-                    icon={IndianRupee} 
-                    title="Purchase Dues" 
-                    value={totalPurchaseDues} 
-                    color="bg-amber-100 dark:bg-amber-900/40"
-                    iconBgColor="bg-amber-200 dark:bg-amber-800"
-                    textColor="text-amber-900 dark:text-amber-100"
+                    icon={ShoppingCart} 
+                    title="My Dues" 
+                    value={stats.totalSupplierDues} 
+                    subValue="To Suppliers"
+                    color="bg-amber-50 dark:bg-amber-900/20" 
+                    iconBgColor="bg-amber-100 dark:bg-amber-800" 
+                    textColor="text-amber-700 dark:text-amber-100" 
                     onClick={() => setCurrentPage('PURCHASES')}
-                />
-                <MetricCard 
-                    icon={Archive} 
-                    title="Inventory Value" 
-                    value={totalInventoryValue} 
-                    color="bg-sky-100 dark:bg-sky-900/40"
-                    iconBgColor="bg-sky-200 dark:bg-sky-800"
-                    textColor="text-sky-900 dark:text-sky-100"
-                    onClick={() => setCurrentPage('PRODUCTS')}
-                />
-                <MetricCard 
-                    icon={PackageCheck} 
-                    title="Items in Stock" 
-                    value={totalStockQuantity} 
-                    color="bg-cyan-100 dark:bg-cyan-900/40"
-                    iconBgColor="bg-cyan-200 dark:bg-cyan-800"
-                    textColor="text-cyan-900 dark:text-cyan-100"
-                    unit=""
-                    onClick={() => setCurrentPage('PRODUCTS')}
                 />
             </div>
 
-            <OverdueDuesCard sales={state.sales} customers={state.customers} onNavigate={handleNavigateToCustomer} />
-            
-            <UpcomingPurchaseDuesCard purchases={state.purchases} suppliers={state.suppliers} onNavigate={handleNavigateToSupplier} />
-            
-            <Card title="Backup & Restore">
-                <div className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <OverdueDuesCard sales={sales} customers={customers} onNavigate={(id) => handleNavigate('CUSTOMERS', id)} />
+                <UpcomingPurchaseDuesCard purchases={purchases} suppliers={suppliers} onNavigate={(id) => handleNavigate('PURCHASES', id)} />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                 <LowStockCard products={products} onNavigate={(id) => handleNavigate('PRODUCTS', id)} />
+                 <div className="space-y-6">
                     <BackupStatusCard lastBackupDate={lastBackupDate} />
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Your data is stored on this device. Backup regularly to prevent data loss if you clear browser data or change devices.
-                    </p>
-                    <StatusNotification status={restoreStatus} onClose={() => setRestoreStatus(null)} />
-                    <input
-                        type="file"
-                        accept=".json"
-                        className="hidden"
-                        ref={fileInputRef}
-                        onChange={handleFileSelect}
-                    />
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <Button onClick={handleBackup} className="w-full">
-                            <Download className="w-4 h-4 mr-2" />
-                            Backup
-                        </Button>
-                        <Button onClick={() => setIsImportModalOpen(true)} variant="secondary" className="w-full">
-                            <Upload className="w-4 h-4 mr-2" />
-                            Import (CSV)
-                        </Button>
-                        <Button onClick={() => fileInputRef.current?.click()} variant="secondary" className="w-full">
-                            <Upload className="w-4 h-4 mr-2" />
-                            Restore
-                        </Button>
-                         <Button onClick={handleLoadDemoData} variant="info" className="w-full sm:col-span-3">
-                            <TestTube2 className="w-4 h-4 mr-2" />
-                            Load Demo Data
-                        </Button>
-                    </div>
-                </div>
-            </Card>
+                    <Card title="Data Management">
+                        <div className="space-y-4">
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                                Your data is stored locally on this device. Please create regular backups to prevent data loss.
+                            </p>
+                             <div className="flex flex-col sm:flex-row gap-3">
+                                <Button onClick={handleBackup} className="w-full" disabled={isGeneratingReport}>
+                                    <Download className="w-4 h-4 mr-2" /> {isGeneratingReport ? 'Preparing...' : 'Backup Data Now'}
+                                </Button>
+                                <label htmlFor="restore-backup" className="px-4 py-2 rounded-md font-semibold text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-sm flex items-center justify-center gap-2 bg-secondary hover:bg-teal-500 focus:ring-secondary cursor-pointer w-full text-center dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600">
+                                    <Upload className="w-4 h-4 mr-2" /> Restore from Backup
+                                </label>
+                                <input 
+                                    id="restore-backup" 
+                                    type="file" 
+                                    accept="application/json" 
+                                    className="hidden" 
+                                    onChange={async (e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                            if (confirm("Restoring will OVERWRITE all current data. Are you sure?")) {
+                                                try {
+                                                    const text = await file.text();
+                                                    const data = JSON.parse(text);
+                                                    await db.importData(data);
+                                                    // Reload to reflect changes from DB in context (simple way)
+                                                    window.location.reload();
+                                                } catch (err) {
+                                                    alert("Failed to restore backup. Invalid file.");
+                                                }
+                                            }
+                                            e.target.value = ''; // Reset input
+                                        }
+                                    }} 
+                                />
+                            </div>
+                             <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-md border border-yellow-200 dark:border-yellow-700">
+                                <div className="flex gap-2">
+                                    <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
+                                    <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                                        <strong>Tip:</strong> Send the backup file to your email or save it to Google Drive for safe keeping.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                 </div>
+            </div>
         </div>
     );
 };
