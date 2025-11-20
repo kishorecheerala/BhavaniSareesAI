@@ -17,6 +17,13 @@ const helpContent = {
         content: (
           <div className="space-y-2">
             <p>The dashboard provides a quick overview of your business metrics like sales, dues, and low stock items.</p>
+            <h4 className="font-semibold mt-2">Smart Analyst (AI)</h4>
+            <p className="text-sm">The top card on the dashboard uses basic AI rules to help you:</p>
+            <ul className="list-disc list-inside pl-4 text-sm">
+                <li><strong>Revenue Projection:</strong> Predicts where your sales will land by the end of the month.</li>
+                <li><strong>Stock Alerts:</strong> Warns you about items selling too fast or sitting on the shelf for too long (Dead Stock).</li>
+                <li><strong>Cash Flow:</strong> Monitors if you are spending more on purchases than you are earning from sales.</li>
+            </ul>
             <h4 className="font-semibold mt-2">Data Backup & Restore</h4>
             <ol className="list-decimal list-inside pl-4 text-sm">
               <li>Regularly click <strong>"Backup Data Now"</strong> to download a file containing all your app data.</li>
@@ -28,13 +35,32 @@ const helpContent = {
         )
       },
       {
-        title: 'Customers',
+        title: 'Business Insights & Security',
+        content: (
+          <div className="space-y-2 text-sm">
+            <p>The Insights page offers deeper analytics. It is protected by a <strong>4-digit PIN</strong> to keep your financial data private.</p>
+            <ul className="list-disc list-inside pl-4">
+                <li><strong>Strategic Insights:</strong> AI analysis of your peak trading days, customer retention rates, and bundle opportunities.</li>
+                <li><strong>Risk Analysis:</strong> Shows a breakdown of your customer base by credit risk (High, Medium, Low).</li>
+                <li><strong>Visual Charts:</strong> View trends for sales vs. profit, category distribution, and daily activity.</li>
+            </ul>
+          </div>
+        )
+      },
+      {
+        title: 'Customers & Risk Badges',
         content: (
           <div className="space-y-2 text-sm">
             <ol className="list-decimal list-inside pl-4">
                 <li>Click <strong>"Add Customer"</strong> to open the form and enter details. Customer ID must be unique.</li>
-                <li>Click on any customer in the list to view their detailed sales history and personal information.</li>
-                <li>Inside the detail view, you can <strong>edit</strong> their information or add a new <strong>payment</strong> for any outstanding invoice.</li>
+                <li><strong>Risk Badges:</strong> You will see a colored badge next to each customer name:
+                    <ul className="list-disc list-inside pl-6 mt-1">
+                        <li><span className="text-red-600 font-bold">High Risk:</span> They owe more than 50% of their purchase value and the amount is significant. Caution advised.</li>
+                        <li><span className="text-amber-600 font-bold">Medium Risk:</span> They have moderate pending dues.</li>
+                        <li><span className="text-emerald-600 font-bold">Good Standing:</span> They pay on time and have low dues.</li>
+                    </ul>
+                </li>
+                <li>Click on any customer to view their full history and record payments.</li>
             </ol>
           </div>
         )
@@ -151,19 +177,6 @@ const helpContent = {
           </div>
         )
       },
-      {
-        title: 'Notifications',
-        content: (
-          <div className="space-y-2 text-sm">
-            <p>The app provides important reminders and alerts.</p>
-            <ol className="list-decimal list-inside pl-4">
-                <li>Click the <strong>Bell</strong> icon in the top-right corner to view your notifications.</li>
-                <li>A red dot indicates you have unread notifications.</li>
-                <li>You will receive alerts for things like daily backup reminders.</li>
-            </ol>
-          </div>
-        )
-      },
     ]
   },
   te: {
@@ -174,6 +187,8 @@ const helpContent = {
         content: (
           <div className="space-y-2">
             <p>డాష్‌బోర్డ్ మీ వ్యాపారం యొక్క అమ్మకాలు, బకాయిలు మరియు తక్కువ స్టాక్ ఉన్న వస్తువుల వంటి వాటి శీఘ్ర అవలోకనాన్ని అందిస్తుంది.</p>
+             <h4 className="font-semibold mt-2">స్మార్ట్ అనలిస్ట్ (AI)</h4>
+            <p className="text-sm">AI ఉపయోగించి మీ ఆదాయాన్ని అంచనా వేయడం మరియు స్టాక్ హెచ్చరికలను ఇవ్వడం దీని పని.</p>
             <h4 className="font-semibold mt-2">డేటా బ్యాకప్ & పునరుద్ధరణ</h4>
             <ol className="list-decimal list-inside pl-4 text-sm">
               <li>మీ యాప్ డేటా మొత్తాన్ని ఒక ఫైల్‌లో డౌన్‌లోడ్ చేయడానికి <strong>"Backup Data Now"</strong> పై క్లిక్ చేయండి.</li>
@@ -185,13 +200,30 @@ const helpContent = {
         )
       },
       {
-        title: 'కస్టమర్లు',
+        title: 'వ్యాపార అంతర్దృష్టులు (Insights)',
+        content: (
+          <div className="space-y-2 text-sm">
+            <p>ఈ పేజీని చూడటానికి 4-అంకెల <strong>PIN</strong> అవసరం.</p>
+            <ul className="list-disc list-inside pl-4">
+                <li><strong>వ్యూహాత్మక అంతర్దృష్టులు:</strong> మీ వ్యాపారం ఏ రోజుల్లో ఎక్కువగా జరుగుతుందో మరియు కస్టమర్ల విధేయతను విశ్లేషిస్తుంది.</li>
+                <li><strong>ప్రమాద విశ్లేషణ (Risk Analysis):</strong> ఏ కస్టమర్లు ఎక్కువ బకాయిలు కలిగి ఉన్నారో (High Risk) మీకు చూపుతుంది.</li>
+            </ul>
+          </div>
+        )
+      },
+      {
+        title: 'కస్టమర్లు & రిస్క్ బ్యాడ్జ్‌లు',
         content: (
           <div className="space-y-2 text-sm">
             <ol className="list-decimal list-inside pl-4">
                 <li>ఫారమ్‌ను తెరిచి వివరాలను నమోదు చేయడానికి <strong>"Add Customer"</strong> పై క్లిక్ చేయండి. కస్టమర్ ID ప్రత్యేకంగా ఉండాలి.</li>
+                <li><strong>రిస్క్ బ్యాడ్జ్‌లు:</strong> కస్టమర్ పేరు పక్కన రంగు బ్యాడ్జ్ కనిపిస్తుంది:
+                     <ul className="list-disc list-inside pl-6 mt-1">
+                        <li><span className="text-red-600 font-bold">High Risk:</span> ఎక్కువ బకాయిలు ఉన్నాయి.</li>
+                        <li><span className="text-emerald-600 font-bold">Good Standing:</span> సకాలంలో చెల్లిస్తారు.</li>
+                    </ul>
+                </li>
                 <li>జాబితాలోని ఏ కస్టమర్‌పైనైనా వారి వివరణాత్మక అమ్మకాల చరిత్ర మరియు వ్యక్తిగత సమాచారాన్ని చూడటానికి క్లిక్ చేయండి.</li>
-                <li>వివరాల వీక్షణలో, మీరు వారి సమాచారాన్ని <strong>సవరించవచ్చు</strong> లేదా ఏదైనా బకాయి ఉన్న ఇన్‌వాయిస్ కోసం కొత్త <strong>చెల్లింపును</strong> జోడించవచ్చు.</li>
             </ol>
           </div>
         )
@@ -304,19 +336,6 @@ const helpContent = {
                 <li>"My Business Profile" ఎంచుకోండి.</li>
                 <li>మీ వ్యాపారం పేరు, చిరునామా, ఫోన్ మరియు GST నంబర్‌ను పూరించండి.</li>
                 <li>ఈ సమాచారం మీరు సరఫరాదారునికి వస్తువులను వాపసు చేసేటప్పుడు రూపొందించే <strong>డెబిట్ నోట్</strong> వంటి పత్రాలపై స్వయంచాలకంగా కనిపిస్తుంది.</li>
-            </ol>
-          </div>
-        )
-      },
-      {
-        title: 'నోటిఫికేషన్‌లు',
-        content: (
-          <div className="space-y-2 text-sm">
-            <p>యాప్ ముఖ్యమైన రిమైండర్‌లు మరియు హెచ్చరికలను అందిస్తుంది.</p>
-            <ol className="list-decimal list-inside pl-4">
-                <li>మీ నోటిఫికేషన్‌లను వీక్షించడానికి ఎగువ-కుడి మూలలో ఉన్న <strong>గంట</strong> ఐకాన్‌పై క్లిక్ చేయండి.</li>
-                <li>ఎరుపు చుక్క మీకు చదవని నోటిఫికేషన్‌లు ఉన్నాయని సూచిస్తుంది.</li>
-                <li>మీరు రోజువారీ బ్యాకప్ రిమైండర్‌ల వంటి వాటి కోసం హెచ్చరికలను అందుకుంటారు.</li>
             </ol>
           </div>
         )

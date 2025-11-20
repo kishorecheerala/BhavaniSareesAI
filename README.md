@@ -4,8 +4,14 @@ A comprehensive, offline-first Progressive Web App (PWA) designed to streamline 
 
 ## ✨ Key Features
 
-- **📊 Dashboard:** Get an at-a-glance overview of total sales, purchases, outstanding customer dues, purchase dues, and low-stock items. Includes a monthly sales report filter.
-- **👥 Customer Management:** Maintain a detailed directory of customers, view their complete sales and returns history, and manage their due payments.
+- **📊 Dashboard:** Get an at-a-glance overview of total sales, purchases, outstanding customer dues, and purchase dues. Now features a **Smart Analyst AI** that predicts revenue, monitors cash flow, and alerts you about dead stock.
+- **🧠 AI-Powered Insights:** Deep dive into your business health with actionable intelligence. Features include:
+    - **Revenue Prediction:** Forecasts month-end numbers based on current velocity.
+    - **Strategic Alerts:** Identifies peak trading days, bundle opportunities, and churn risks.
+    - **Visual Charts:** Interactive graphs for weekly trends, customer retention, and category performance.
+- **🛡️ Customer Risk Profiling:** Automatically analyzes customer payment history to assign a **Risk Badge** (High, Medium, Low, Safe). Helps you decide whether to offer credit to a customer.
+- **🔐 Secured Analytics:** The Business Insights section is protected by a 4-digit PIN to keep sensitive financial data safe.
+- **👥 Customer Management:** Maintain a detailed directory of customers, view their complete sales history, risk status, and manage their due payments.
 - **🛒 Sales Management:** Create new sales invoices, add products by searching or scanning QR codes, apply discounts, and record payments.
 - **🧾 PDF Invoice Generation:** Automatically generate and share a thermal-printer-friendly (80mm) PDF invoice via the native device sharing options (e.g., WhatsApp, Email).
 - **📦 Purchase & Supplier Management:** Track purchases from suppliers, manage supplier information, and record payments made to them.
@@ -39,9 +45,9 @@ The project is organized into a modular and scalable structure:
 │   └── vite.svg            # App icon
 │
 ├── src/
-│   ├── components/         # Reusable UI components (Card, Button)
+│   ├── components/         # Reusable UI components (Card, Button, Charts)
 │   ├── context/            # Global state management (AppContext.tsx)
-│   ├── pages/              # Main feature pages (Dashboard, Sales, Customers, etc.)
+│   ├── pages/              # Main feature pages (Dashboard, Sales, Customers, Insights, etc.)
 │   ├── App.tsx             # Main app component with navigation logic
 │   ├── index.tsx           # Application entry point
 │   ├── types.ts            # Centralized TypeScript type definitions
