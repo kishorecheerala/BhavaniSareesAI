@@ -238,28 +238,34 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                     title="Print Barcode Labels"
                 />
              )}
-            <div className="sticky top-[-1rem] z-10 bg-background dark:bg-slate-900 py-4 -mx-4 px-4 border-b dark:border-slate-700 mb-4">
+            <div className="sticky top-[-1rem] z-10 bg-background dark:bg-slate-900 py-4 -mx-4 px-4 border-b dark:border-slate-700 mb-4 shadow-sm">
                 <div className="flex justify-between items-center">
-                    <h1 className="text-2xl font-bold text-primary">Products & Inventory</h1>
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-2xl font-bold text-primary">Products & Inventory</h1>
+                        <span className="hidden sm:inline-block text-xs font-medium bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-300 px-2 py-1 rounded-full">
+                            {new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                    </div>
                     <div className="flex items-center gap-2">
                         {isSelectMode ? (
                             <>
                                 <Button 
                                     onClick={() => setIsBatchBarcodeModalOpen(true)} 
                                     disabled={selectedProductIds.length === 0}
+                                    className="text-xs sm:text-sm px-2 sm:px-4"
                                 >
-                                    <Printer size={16} className="mr-2" />
-                                    Print Labels ({selectedProductIds.length})
+                                    <Printer size={16} className="sm:mr-2" />
+                                    <span className="hidden sm:inline">Print Labels ({selectedProductIds.length})</span>
                                 </Button>
-                                <Button onClick={toggleSelectMode} variant="secondary">
-                                    <X size={16} className="mr-2"/>
-                                    Cancel
+                                <Button onClick={toggleSelectMode} variant="secondary" className="text-xs sm:text-sm px-2 sm:px-4">
+                                    <X size={16} className="sm:mr-2"/>
+                                    <span className="hidden sm:inline">Cancel</span>
                                 </Button>
                             </>
                         ) : (
-                            <Button onClick={toggleSelectMode}>
-                                <QrCode size={16} className="mr-2"/>
-                                Bulk QR Print
+                            <Button onClick={toggleSelectMode} className="text-xs sm:text-sm px-2 sm:px-4">
+                                <QrCode size={16} className="sm:mr-2"/>
+                                <span className="hidden sm:inline">Bulk QR Print</span>
                             </Button>
                         )}
                     </div>

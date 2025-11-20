@@ -9,7 +9,7 @@ const DB_VERSION = 4; // Bump version for schema change
 export type StoreName = 'customers' | 'suppliers' | 'products' | 'sales' | 'purchases' | 'returns' | 'app_metadata' | 'notifications' | 'profile';
 const STORE_NAMES: StoreName[] = ['customers', 'suppliers', 'products', 'sales', 'purchases', 'returns', 'app_metadata', 'notifications', 'profile'];
 
-interface BhavaniSareesDB extends DBSchema {
+interface BusinessManagerDB extends DBSchema {
   customers: { key: string; value: Customer; };
   suppliers: { key: string; value: Supplier; };
   products: { key: string; value: Product; };
@@ -21,11 +21,11 @@ interface BhavaniSareesDB extends DBSchema {
   profile: { key: string; value: ProfileData; };
 }
 
-let dbPromise: Promise<IDBPDatabase<BhavaniSareesDB>>;
+let dbPromise: Promise<IDBPDatabase<BusinessManagerDB>>;
 
-function getDb(): Promise<IDBPDatabase<BhavaniSareesDB>> {
+function getDb(): Promise<IDBPDatabase<BusinessManagerDB>> {
     if (!dbPromise) {
-        dbPromise = openDB<BhavaniSareesDB>(DB_NAME, DB_VERSION, {
+        dbPromise = openDB<BusinessManagerDB>(DB_NAME, DB_VERSION, {
             upgrade(db, oldVersion) {
                 for (const storeName of STORE_NAMES) {
                     if (!db.objectStoreNames.contains(storeName)) {
@@ -38,12 +38,12 @@ function getDb(): Promise<IDBPDatabase<BhavaniSareesDB>> {
     return dbPromise;
 }
 
-export async function getAll<T extends StoreName>(storeName: T): Promise<BhavaniSareesDB[T]['value'][]> {
+export async function getAll<T extends StoreName>(storeName: T): Promise<BusinessManagerDB[T]['value'][]> {
   const db = await getDb();
   return db.getAll(storeName);
 }
 
-export async function saveCollection<T extends StoreName>(storeName: T, data: BhavaniSareesDB[T]['value'][]) {
+export async function saveCollection<T extends StoreName>(storeName: T, data: BusinessManagerDB[T]['value'][]) {
   try {
     const db = await getDb();
     const tx = db.transaction(storeName, 'readwrite');

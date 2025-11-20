@@ -294,9 +294,16 @@ const ReturnsPage: React.FC<ReturnsPageProps> = ({ setIsDirty }) => {
 
     return (
         <div className="space-y-6">
-            <h1 className="text-2xl font-bold text-primary flex items-center gap-3">
-                <Undo2 /> Returns Management
-            </h1>
+             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="flex items-center gap-3">
+                     <h1 className="text-2xl font-bold text-primary flex items-center gap-2">
+                        <Undo2 /> Returns Management
+                    </h1>
+                    <span className="text-xs sm:text-sm font-medium bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-300 px-2 py-1 rounded-full">
+                        {new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
+                </div>
+            </div>
 
             <Card title="Process a New Return">
                 <div className="border-b mb-4 dark:border-slate-700">

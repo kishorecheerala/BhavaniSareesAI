@@ -621,7 +621,14 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                     onScanned={handleProductScanned}
                 />
             }
-            <h1 className="text-2xl font-bold text-primary">{pageTitle}</h1>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="flex items-center gap-3">
+                    <h1 className="text-2xl font-bold text-primary">{pageTitle}</h1>
+                    <span className="text-xs sm:text-sm font-medium bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-300 px-2 py-1 rounded-full">
+                        {new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
+                </div>
+            </div>
             
             <Card>
                 <div className="space-y-4">
@@ -756,7 +763,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                         </div>
                         <div className="flex justify-between items-center text-gray-700 dark:text-gray-300">
                             <span>Discount:</span>
-                            <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} className="w-28 p-1 border rounded text-right dark:bg-slate-700 dark:border-slate-600" />
+                            <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} className="w-28 p-1 border rounded text-right dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
                         </div>
                         <div className="flex justify-between items-center text-gray-700 dark:text-gray-300">
                             <span>GST Included:</span>
@@ -789,7 +796,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Reference (Optional)</label>
-                                <input type="text" placeholder="e.g. UPI ID, Cheque No." value={paymentDetails.reference} onChange={e => setPaymentDetails({...paymentDetails, reference: e.target.value })} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600" />
+                                <input type="text" placeholder="e.g. UPI ID, Cheque No." value={paymentDetails.reference} onChange={e => setPaymentDetails({...paymentDetails, reference: e.target.value })} className="w-full p-2 border rounded mt-1 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
                             </div>
                         </div>
                     ) : (

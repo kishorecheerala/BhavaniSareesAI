@@ -167,7 +167,7 @@ const SmartAnalystCard: React.FC<{ sales: Sale[], products: Product[], customers
         const categoryCounts: Record<string, number> = {};
         thisMonthSales.forEach(s => {
             s.items.forEach(i => {
-                // Infer category from ID (e.g., BS-KAN-001 -> KAN) or Name
+                // Infer category from ID (e.g., BM-KAN-001 -> KAN) or Name
                 const cat = i.productId.split('-')[1] || 'General';
                 categoryCounts[cat] = (categoryCounts[cat] || 0) + Number(i.quantity);
             });
@@ -597,7 +597,7 @@ const LowStockCard: React.FC<{ products: Product[]; onNavigate: (id: string) => 
 
 const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
     const { state, dispatch, showToast } = useAppContext();
-    const { customers, sales, purchases, products, app_metadata, suppliers, returns } = state;
+    const { customers, sales, purchases, products, app_metadata, suppliers, returns, profile } = state;
     const { showConfirm, showAlert } = useDialog();
     
     const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
@@ -805,7 +805,17 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
             )}
             
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h1 className="text-2xl font-bold text-primary">Dashboard</h1>
+                <div>
+                    <div className="flex items-center gap-3">
+                         <h1 className="text-2xl font-bold text-primary">Dashboard</h1>
+                         <span className="text-xs sm:text-sm font-medium bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-300 px-2 py-1 rounded-full">
+                            {new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        {profile?.ownerName ? `Welcome back, ${profile.ownerName}` : `Welcome back, Owner`}
+                    </p>
+                </div>
                 <div className="flex items-center gap-2 w-full sm:w-auto">
                      <select 
                         value={selectedMonth} 

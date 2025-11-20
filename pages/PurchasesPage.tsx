@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, IndianRupee, Edit, Save, X, Search, Package, Download, ChevronDown, Printer } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
@@ -629,7 +628,33 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
 
         return (
             <div className="space-y-4">
-                <h1 className="text-2xl font-bold text-primary">Purchases & Suppliers</h1>
+                {isAddSupplierModalOpen && (
+                    <AddSupplierModal 
+                        isOpen={isAddSupplierModalOpen} 
+                        onClose={() => setIsAddSupplierModalOpen(false)} 
+                        onAdd={handleAddSupplier} 
+                        existingSuppliers={state.suppliers}
+                    />
+                )}
+                {isBatchBarcodeModalOpen && lastPurchase && (
+                    <BatchBarcodeModal
+                        isOpen={isBatchBarcodeModalOpen}
+                        purchaseItems={lastPurchase.items}
+                        onClose={() => setIsBatchBarcodeModalOpen(false)}
+                        businessName={state.profile?.name || 'Your Business'}
+                        title="Print Barcode Labels (New Purchase)"
+                    />
+                )}
+                
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-2xl font-bold text-primary">Purchases & Suppliers</h1>
+                        <span className="text-xs sm:text-sm font-medium bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-300 px-2 py-1 rounded-full">
+                            {new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                    </div>
+                </div>
+
                 <div className="flex flex-col sm:flex-row gap-4">
                     <Button onClick={() => setView('add_purchase')} className="w-full">
                         <Plus className="w-4 h-4 mr-2" />
@@ -669,53 +694,28 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
                                 >
                                     <div className="flex justify-between items-start">
                                         <div>
-                                            <p className="font-bold text-lg text-primary">{supplier.name}</p>
+                                            <p className="font-semibold text-gray-800 dark:text-gray-200">{supplier.name}</p>
                                             <p className="text-sm text-gray-500 dark:text-gray-400">{supplier.location}</p>
+                                            <p className="text-xs text-gray-400 dark:text-gray-500">{supplier.phone}</p>
                                         </div>
-                                        <div className="text-right flex-shrink-0 ml-4">
-                                            <div className="flex items-center justify-end gap-1 text-green-600 dark:text-green-400">
-                                                <Package size={14}/>
-                                                <span className="font-semibold">₹{totalSpent.toLocaleString('en-IN')}</span>
-                                            </div>
-                                            <div className={`flex items-center justify-end gap-1 ${totalDue > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>
-                                                <IndianRupee size={14} />
-                                                <span className="font-semibold">₹{totalDue.toLocaleString('en-IN')}</span>
-                                            </div>
+                                        <div className="text-right">
+                                            <p className="font-bold text-gray-700 dark:text-gray-300">Spent: ₹{totalSpent.toLocaleString('en-IN')}</p>
+                                            <p className={`text-sm font-semibold ${totalDue > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                                                {totalDue > 0 ? `Due: ₹${totalDue.toLocaleString('en-IN')}` : 'Settled'}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
                             );
                         })}
+                        {filteredSuppliers.length === 0 && <p className="text-gray-500 dark:text-gray-400 text-center p-4">No suppliers found matching your search.</p>}
                     </div>
                 </Card>
             </div>
         );
-    }
-
-    return (
-        <React.Fragment>
-             <AddSupplierModal
-                isOpen={isAddSupplierModalOpen}
-                onClose={() => setIsAddSupplierModalOpen(false)}
-                onAdd={handleAddSupplier}
-                existingSuppliers={state.suppliers}
-            />
-            <BatchBarcodeModal
-                isOpen={isBatchBarcodeModalOpen}
-                onClose={() => {
-                    setIsBatchBarcodeModalOpen(false);
-                    setLastPurchase(null);
-                    // Only change view if we were in the add form
-                    if (view === 'add_purchase') {
-                        setView('list'); 
-                    }
-                }}
-                purchaseItems={lastPurchase?.items || []}
-                businessName={state.profile?.name || 'Your Business'}
-            />
-            {renderContent()}
-        </React.Fragment>
-    );
+    };
+    
+    return renderContent();
 };
 
 export default PurchasesPage;
