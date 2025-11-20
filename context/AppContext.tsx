@@ -1,3 +1,4 @@
+
 import React, { createContext, useReducer, useContext, useEffect, ReactNode, useState } from 'react';
 import { Customer, Supplier, Product, Sale, Purchase, Return, Payment, BeforeInstallPromptEvent, Notification, ProfileData, Page, AppMetadata, AppMetadataPin, Theme } from '../types';
 import * as db from '../utils/db';
@@ -33,6 +34,7 @@ type Action =
   | { type: 'SET_PROFILE'; payload: ProfileData | null }
   | { type: 'SET_PIN'; payload: string }
   | { type: 'REMOVE_PIN' }
+  | { type: 'SET_REVENUE_GOAL'; payload: number }
   | { type: 'ADD_CUSTOMER'; payload: Customer }
   | { type: 'UPDATE_CUSTOMER'; payload: Customer }
   | { type: 'ADD_SUPPLIER'; payload: Supplier }
@@ -109,6 +111,13 @@ const appReducer = (state: AppState, action: Action): AppState => {
     case 'REMOVE_PIN': {
       const metadataWithoutPin = state.app_metadata.filter(m => m.id !== 'securityPin');
       return { ...state, pin: null, app_metadata: metadataWithoutPin };
+    }
+    case 'SET_REVENUE_GOAL': {
+        const metaWithoutGoal = state.app_metadata.filter(m => m.id !== 'revenueGoal');
+        return {
+            ...state,
+            app_metadata: [...metaWithoutGoal, { id: 'revenueGoal', amount: action.payload }]
+        };
     }
     case 'ADD_CUSTOMER':
       return { ...state, customers: [...state.customers, action.payload] };

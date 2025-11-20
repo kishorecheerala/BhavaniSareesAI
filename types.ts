@@ -1,3 +1,4 @@
+
 import { ReactNode } from "react";
 
 export type Page = 'DASHBOARD' | 'CUSTOMERS' | 'SALES' | 'PURCHASES' | 'REPORTS' | 'RETURNS' | 'PRODUCTS' | 'INSIGHTS';
@@ -137,4 +138,9 @@ export interface AppMetadataBackup {
   date: string;
 }
 
-export type AppMetadata = AppMetadataPin | AppMetadataBackup;
+export interface AppMetadataRevenueGoal {
+  id: 'revenueGoal';
+  amount: number;
+}
+
+export type AppMetadata = AppMetadataPin | AppMetadataBackup | AppMetadataRevenueGoal;
