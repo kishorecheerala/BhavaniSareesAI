@@ -155,7 +155,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                 )}
                 <Button onClick={() => setSelectedProduct(null)}>&larr; Back to Products List</Button>
                 
-                <Card>
+                <Card className="animate-slide-up-fade">
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-lg font-bold text-primary">Product Details</h2>
                         {isEditing ? (
@@ -197,7 +197,7 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                     )}
                 </Card>
 
-                <Card title="Stock Adjustment">
+                <Card title="Stock Adjustment" className="animate-slide-up-fade" style={{ animationDelay: '100ms' }}>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Use this to correct the stock count after a physical inventory check.</p>
                     <div className="flex flex-col sm:flex-row gap-2 items-end">
                         <div className="w-full">
@@ -218,7 +218,8 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
                 <Button
                     onClick={() => setIsDownloadModalOpen(true)}
                     type="button"
-                    className="w-full"
+                    className="w-full animate-slide-up-fade"
+                    style={{ animationDelay: '200ms' }}
                 >
                     <Barcode className="w-5 h-5 mr-2" />
                     Print / Download Labels
@@ -286,12 +287,13 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
 
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredProducts.map(product => {
+                {filteredProducts.map((product, index) => {
                     const isSelected = selectedProductIds.includes(product.id);
                     return (
                         <Card 
                             key={product.id} 
-                            className={`cursor-pointer transition-all duration-200 ${isSelected ? 'ring-2 ring-primary shadow-xl scale-[1.02]' : 'hover:shadow-lg'}`} 
+                            className={`cursor-pointer transition-all duration-200 ${isSelected ? 'ring-2 ring-primary shadow-xl scale-[1.02]' : 'hover:shadow-lg'} animate-slide-up-fade`} 
+                            style={{ animationDelay: `${index * 50}ms` }}
                             onClick={() => handleProductClick(product)}
                         >
                             <div className="flex items-start gap-4">

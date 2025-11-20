@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, IndianRupee, Edit, Save, X, Search, Package, Download, ChevronDown, Printer } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
@@ -385,7 +386,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
                         type="purchase"
                     />
                     <Button onClick={() => setSelectedSupplier(null)}>&larr; Back to Suppliers</Button>
-                    <Card>
+                    <Card className="animate-slide-up-fade">
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-lg font-bold text-primary">Supplier Details: {selectedSupplier.name}</h2>
                             {isEditing ? (
@@ -421,7 +422,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
                             </div>
                         )}
                     </Card>
-                    <Card title="Purchase History">
+                    <Card title="Purchase History" className="animate-slide-up-fade" style={{ animationDelay: '100ms' }}>
                         {supplierPurchases.length > 0 ? (
                             <div className="space-y-2">
                                 {supplierPurchases.slice().reverse().map(purchase => {
@@ -573,7 +574,7 @@ const PurchasesPage: React.FC<PurchasesPageProps> = ({ setIsDirty, setCurrentPag
                             </div>
                         ) : <p className="text-gray-500 dark:text-gray-400">No purchases recorded for this supplier.</p>}
                     </Card>
-                    <Card title="Returns History">
+                    <Card title="Returns History" className="animate-slide-up-fade" style={{ animationDelay: '200ms' }}>
                         {supplierReturns.length > 0 ? (
                             <div className="space-y-3">
                                 {supplierReturns.slice().reverse().map(ret => (

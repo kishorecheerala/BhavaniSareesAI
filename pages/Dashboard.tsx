@@ -25,10 +25,12 @@ const MetricCard: React.FC<{
     unit?: string;
     subValue?: string;
     onClick?: () => void;
-}> = ({ icon: Icon, title, value, color, iconBgColor, textColor, unit = '₹', subValue, onClick }) => (
+    delay?: number;
+}> = ({ icon: Icon, title, value, color, iconBgColor, textColor, unit = '₹', subValue, onClick, delay }) => (
     <div
         onClick={onClick}
-        className={`rounded-lg shadow-md p-4 flex items-center transition-all duration-300 hover:shadow-xl hover:scale-[1.01] ${color} ${onClick ? 'cursor-pointer' : ''}`}
+        className={`rounded-lg shadow-md p-4 flex items-center transition-all duration-300 hover:shadow-xl hover:scale-[1.01] ${color} ${onClick ? 'cursor-pointer' : ''} animate-slide-up-fade`}
+        style={{ animationDelay: `${delay || 0}ms` }}
         role={onClick ? 'button' : undefined}
         tabIndex={onClick ? 0 : undefined}
         onKeyDown={onClick ? (e) => (e.key === 'Enter' || e.key === ' ') && onClick() : undefined}
@@ -44,8 +46,11 @@ const MetricCard: React.FC<{
     </div>
 );
 
-const FinancialColumn = ({ title, sales, purchases, highlight = false }: any) => (
-    <div className={`p-4 rounded-lg border ${highlight ? 'bg-teal-50 border-teal-200 dark:bg-teal-900/20 dark:border-teal-800 ring-2 ring-teal-500 ring-opacity-20' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700'} flex flex-col gap-3 shadow-sm`}>
+const FinancialColumn = ({ title, sales, purchases, highlight = false, delay = 0 }: any) => (
+    <div 
+        className={`p-4 rounded-lg border ${highlight ? 'bg-teal-50 border-teal-200 dark:bg-teal-900/20 dark:border-teal-800 ring-2 ring-teal-500 ring-opacity-20' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700'} flex flex-col gap-3 shadow-sm animate-pop`}
+        style={{ animationDelay: `${delay}ms` }}
+    >
         <h3 className={`text-xs font-bold uppercase tracking-wider ${highlight ? 'text-teal-700 dark:text-teal-300' : 'text-gray-500 dark:text-gray-400'}`}>{title}</h3>
         <div className="space-y-2">
             <div>
@@ -273,7 +278,7 @@ const SmartAnalystCard: React.FC<{ sales: Sale[], products: Product[], customers
     }, [sales, products, customers, purchases, returns]);
 
     return (
-        <div className="relative overflow-hidden rounded-xl bg-white dark:bg-slate-800 shadow-lg border border-indigo-100 dark:border-indigo-900 mb-6 transition-all hover:shadow-xl">
+        <div className="relative overflow-hidden rounded-xl bg-white dark:bg-slate-800 shadow-lg border border-indigo-100 dark:border-indigo-900 mb-6 transition-all hover:shadow-xl animate-slide-up-fade">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-indigo-500"></div>
             <div className="p-5">
                 <div className="flex items-center gap-2 mb-4">
@@ -286,7 +291,7 @@ const SmartAnalystCard: React.FC<{ sales: Sale[], products: Product[], customers
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {insights.map((insight, idx) => (
-                        <div key={idx} className="flex gap-3 p-3 rounded-lg bg-gray-50 dark:bg-slate-700/30 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors border border-transparent hover:border-indigo-100 dark:hover:border-indigo-800 animate-fade-in-fast" style={{ animationDelay: `${idx * 100}ms` }}>
+                        <div key={idx} className="flex gap-3 p-3 rounded-lg bg-gray-50 dark:bg-slate-700/30 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors border border-transparent hover:border-indigo-100 dark:hover:border-indigo-800 animate-slide-up-fade" style={{ animationDelay: `${idx * 100}ms` }}>
                             <div className="mt-1 flex-shrink-0">
                                 <insight.icon className={`w-5 h-5 ${insight.color}`} />
                             </div>
@@ -841,18 +846,21 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                 <FinancialColumn 
                     title="All Time" 
                     sales={stats.allTimeSales} 
-                    purchases={stats.allTimePurchases} 
+                    purchases={stats.allTimePurchases}
+                    delay={0} 
                 />
                 <FinancialColumn 
                     title={`Year (${selectedYear})`} 
                     sales={stats.yearSalesTotal} 
-                    purchases={stats.yearPurchasesTotal} 
+                    purchases={stats.yearPurchasesTotal}
+                    delay={100} 
                 />
                 <FinancialColumn 
                     title={currentPeriodLabel} 
                     sales={stats.monthSalesTotal} 
                     purchases={stats.monthPurchasesTotal}
                     highlight={true}
+                    delay={200}
                 />
             </div>
 
@@ -869,6 +877,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     iconBgColor="bg-teal-100 dark:bg-teal-800" 
                     textColor="text-teal-700 dark:text-teal-100" 
                     onClick={() => setCurrentPage('SALES')}
+                    delay={0}
                 />
                  <MetricCard 
                     icon={Package} 
@@ -879,6 +888,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     iconBgColor="bg-blue-100 dark:bg-blue-800" 
                     textColor="text-blue-700 dark:text-blue-100" 
                     onClick={() => setCurrentPage('PURCHASES')}
+                    delay={100}
                 />
                 <MetricCard 
                     icon={User} 
@@ -889,6 +899,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     iconBgColor="bg-purple-100 dark:bg-purple-800" 
                     textColor="text-purple-700 dark:text-purple-100" 
                     onClick={() => setCurrentPage('REPORTS')}
+                    delay={200}
                 />
                 <MetricCard 
                     icon={ShoppingCart} 
@@ -899,6 +910,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     iconBgColor="bg-amber-100 dark:bg-amber-800" 
                     textColor="text-amber-700 dark:text-amber-100" 
                     onClick={() => setCurrentPage('PURCHASES')}
+                    delay={300}
                 />
             </div>
 

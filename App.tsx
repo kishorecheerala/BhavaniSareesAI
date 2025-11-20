@@ -497,7 +497,7 @@ const MainApp: React.FC = () => {
       )}
 
       <main {...swipeHandlers} className="flex-grow overflow-y-auto p-4 pb-20" style={{ WebkitOverflowScrolling: 'touch' }}>
-        <div key={currentPage} className="animate-fade-in-fast">
+        <div key={currentPage} className="animate-slide-up-fade">
           {renderPage()}
         </div>
       </main>

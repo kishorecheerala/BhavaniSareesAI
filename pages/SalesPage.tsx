@@ -737,7 +737,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                 </div>
                 <div className="mt-4 space-y-2">
                     {items.map(item => (
-                        <div key={item.productId} className="p-2 bg-gray-50 dark:bg-slate-700/50 rounded animate-fade-in-fast border dark:border-slate-700">
+                        <div key={item.productId} className="p-2 bg-gray-50 dark:bg-slate-700/50 rounded animate-slide-in-right border dark:border-slate-700">
                             <div className="flex justify-between items-start">
                                 <p className="font-semibold flex-grow">{item.productName}</p>
                                 <DeleteButton variant="remove" onClick={() => handleRemoveItem(item.productId)} />
