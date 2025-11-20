@@ -4,7 +4,8 @@ import {
   TrendingUp, TrendingDown, DollarSign, ShoppingCart, 
   Calendar, Download, ArrowUp, ArrowDown, 
   CreditCard, Wallet, FileText, Activity, Users, Lightbulb, Target, Zap, Scale, ShieldCheck,
-  PackagePlus, UserMinus, PieChart as PieIcon, BarChart2, AlertTriangle, ShieldAlert
+  PackagePlus, UserMinus, PieChart as PieIcon, BarChart2, AlertTriangle, ShieldAlert,
+  Trophy, Medal, Timer, ArrowRight
 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import Card from '../components/Card';
@@ -12,7 +13,7 @@ import Button from '../components/Button';
 import PinModal from '../components/PinModal';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Page, Sale, Customer } from '../types';
+import { Page, Sale, Customer, Product } from '../types';
 
 interface InsightsPageProps {
     setCurrentPage: (page: Page) => void;
@@ -67,6 +68,184 @@ const StrategicInsightCard: React.FC<{
         )}
     </div>
 );
+
+// --- New Growth Components ---
+
+const RevenueTargetCard: React.FC<{ currentRevenue: number, previousRevenue: number }> = ({ currentRevenue, previousRevenue }) => {
+    // Set a growth target of 10% over previous month, or 50k if no previous data
+    const target = previousRevenue > 0 ? previousRevenue * 1.10 : 50000; 
+    const percentage = Math.min(100, Math.max(0, (currentRevenue / target) * 100));
+    const remaining = Math.max(0, target - currentRevenue);
+    
+    // Circular Progress Logic
+    const radius = 35;
+    const circumference = 2 * Math.PI * radius;
+    const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+    return (
+        <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-xl p-5 text-white shadow-lg relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-10">
+                <Target size={100} />
+            </div>
+            
+            <div className="flex justify-between items-start relative z-10">
+                <div>
+                    <h3 className="text-indigo-100 font-medium text-sm mb-1">Monthly Revenue Goal</h3>
+                    <p className="text-3xl font-bold">₹{currentRevenue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
+                    <p className="text-indigo-200 text-xs mt-1">Target: ₹{target.toLocaleString('en-IN', { maximumFractionDigits: 0 })} (+10% growth)</p>
+                </div>
+                
+                <div className="relative flex items-center justify-center">
+                    <svg className="transform -rotate-90 w-24 h-24">
+                        <circle cx="48" cy="48" r={radius} stroke="currentColor" strokeWidth="8" fill="transparent" className="text-indigo-800" />
+                        <circle 
+                            cx="48" 
+                            cy="48" 
+                            r={radius} 
+                            stroke="currentColor" 
+                            strokeWidth="8" 
+                            fill="transparent" 
+                            className="text-white transition-all duration-1000 ease-out"
+                            strokeDasharray={circumference} 
+                            strokeDashoffset={strokeDashoffset}
+                            strokeLinecap="round"
+                        />
+                    </svg>
+                    <span className="absolute text-sm font-bold">{percentage.toFixed(0)}%</span>
+                </div>
+            </div>
+            
+            <div className="mt-4 bg-white/10 rounded-lg p-3 relative z-10 backdrop-blur-sm">
+                {remaining > 0 ? (
+                    <p className="text-sm flex items-center gap-2">
+                        <Activity size={16} className="animate-pulse" />
+                        <span>You need <strong>₹{remaining.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</strong> more to hit your target!</span>
+                    </p>
+                ) : (
+                    <p className="text-sm flex items-center gap-2 text-green-300">
+                        <Trophy size={16} />
+                        <span>Target Smashed! Outstanding performance!</span>
+                    </p>
+                )}
+            </div>
+        </div>
+    );
+};
+
+const ChampionsCard: React.FC<{ sales: Sale[], customers: Customer[] }> = ({ sales, customers }) => {
+    const topCustomers = useMemo(() => {
+        const customerSpend: Record<string, number> = {};
+        sales.forEach(s => {
+            customerSpend[s.customerId] = (customerSpend[s.customerId] || 0) + Number(s.totalAmount);
+        });
+        
+        return Object.entries(customerSpend)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 3)
+            .map(([id, spend]) => {
+                const c = customers.find(cust => cust.id === id);
+                return { name: c?.name || 'Unknown', spend, area: c?.area || '' };
+            });
+    }, [sales, customers]);
+
+    return (
+        <Card title="Customer Champions (All Time)" className="h-full">
+            <div className="space-y-4 mt-2">
+                {topCustomers.map((c, idx) => {
+                    let icon, color, bg;
+                    if (idx === 0) { icon = Trophy; color = 'text-yellow-600'; bg = 'bg-yellow-100 dark:bg-yellow-900/30'; }
+                    else if (idx === 1) { icon = Medal; color = 'text-slate-500'; bg = 'bg-slate-100 dark:bg-slate-700'; }
+                    else { icon = Medal; color = 'text-amber-700'; bg = 'bg-orange-100 dark:bg-orange-900/30'; }
+                    const Icon = icon;
+
+                    return (
+                        <div key={idx} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <div className={`p-2 rounded-full ${bg} ${color}`}>
+                                    <Icon size={18} />
+                                </div>
+                                <div>
+                                    <p className="font-bold text-sm text-gray-800 dark:text-gray-200">{c.name}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">{c.area}</p>
+                                </div>
+                            </div>
+                            <p className="font-bold text-primary">₹{c.spend.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
+                        </div>
+                    );
+                })}
+                {topCustomers.length === 0 && <p className="text-gray-500 text-sm text-center py-4">No customer data available yet.</p>}
+            </div>
+        </Card>
+    );
+};
+
+const InventoryVelocityCard: React.FC<{ sales: Sale[], products: Product[] }> = ({ sales, products }) => {
+    const velocityData = useMemo(() => {
+        const productSoldQty: Record<string, number> = {};
+        // Analyze last 60 days
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - 60);
+        
+        sales.forEach(s => {
+            if (new Date(s.date) >= cutoffDate) {
+                s.items.forEach(i => {
+                    productSoldQty[i.productId] = (productSoldQty[i.productId] || 0) + Number(i.quantity);
+                });
+            }
+        });
+
+        const sorted = Object.entries(productSoldQty).sort(([, a], [, b]) => b - a);
+        const fastMovers = sorted.slice(0, 3).map(([id, qty]) => ({ id, qty, name: products.find(p => p.id === id)?.name || id }));
+        
+        // Slow movers: Products with stock > 5 but 0 sales in 60 days
+        const slowMovers = products
+            .filter(p => p.quantity > 5 && !productSoldQty[p.id])
+            .slice(0, 3)
+            .map(p => ({ id: p.id, name: p.name, stock: p.quantity }));
+
+        return { fastMovers, slowMovers };
+    }, [sales, products]);
+
+    return (
+        <Card title="Inventory Health (Last 60 Days)">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-lg border border-emerald-100 dark:border-emerald-900/50">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Zap size={16} className="text-emerald-600" />
+                        <h4 className="text-sm font-bold text-emerald-800 dark:text-emerald-200">Fast Movers</h4>
+                    </div>
+                    {velocityData.fastMovers.length > 0 ? (
+                        <ul className="space-y-2">
+                            {velocityData.fastMovers.map(item => (
+                                <li key={item.id} className="text-xs flex justify-between items-center text-gray-700 dark:text-gray-300">
+                                    <span className="truncate w-2/3">{item.name}</span>
+                                    <span className="font-bold bg-white dark:bg-slate-700 px-1.5 py-0.5 rounded text-emerald-600">{item.qty} sold</span>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : <p className="text-xs text-gray-500">No sales yet.</p>}
+                </div>
+
+                <div className="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg border border-orange-100 dark:border-orange-900/50">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Timer size={16} className="text-orange-600" />
+                        <h4 className="text-sm font-bold text-orange-800 dark:text-orange-200">Slow Movers</h4>
+                    </div>
+                    {velocityData.slowMovers.length > 0 ? (
+                        <ul className="space-y-2">
+                            {velocityData.slowMovers.map(item => (
+                                <li key={item.id} className="text-xs flex justify-between items-center text-gray-700 dark:text-gray-300">
+                                    <span className="truncate w-2/3">{item.name}</span>
+                                    <span className="font-bold bg-white dark:bg-slate-700 px-1.5 py-0.5 rounded text-orange-600">{item.stock} in stock</span>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : <p className="text-xs text-gray-500">Inventory is moving well!</p>}
+                </div>
+            </div>
+        </Card>
+    );
+};
 
 // --- Visual Chart Components ---
 
@@ -700,6 +879,16 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                 </div>
             </div>
 
+            {/* Growth Tracking Section - New Improvements */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <RevenueTargetCard 
+                    currentRevenue={currentMetrics.revenue} 
+                    previousRevenue={previousMetrics.revenue}
+                />
+                <ChampionsCard sales={sales} customers={customers} />
+                <InventoryVelocityCard sales={sales} products={products} />
+            </div>
+
             <SmartInsightsSection filteredSales={filteredSales} allSales={sales} customers={customers} />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -709,7 +898,7 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                 <KPICard title="Avg Order Value" value={currentMetrics.aov} prevValue={previousMetrics.aov} icon={Activity} prefix="₹" />
             </div>
             
-            {/* New Risk Section */}
+            {/* Risk Section */}
             <RiskAnalysisCard customers={customers} sales={sales} onNavigate={handleNavigateCustomer} />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

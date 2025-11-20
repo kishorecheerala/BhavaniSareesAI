@@ -9,6 +9,7 @@ import { DataImportModal } from '../components/DataImportModal';
 import { Page, Customer, Sale, Purchase, Supplier, Product, Return, AppMetadataBackup } from '../types';
 import { testData, testProfile } from '../utils/testData';
 import { useDialog } from '../context/DialogContext';
+import PinModal from '../components/PinModal';
 
 interface DashboardProps {
     setCurrentPage: (page: Page) => void;
@@ -586,6 +587,10 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth().toString());
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     
+    // State for secure PIN verification
+    const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+    const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+
     // Dummy state for "generating" report to show visual feedback
     const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
@@ -623,6 +628,23 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
 
         return { totalSales, totalPurchases, totalCustomerDues, totalSupplierDues, salesCount: filteredSales.length };
     }, [sales, purchases, selectedMonth]);
+
+    const runSecureAction = (action: () => void) => {
+        if (state.pin) {
+            setPendingAction(() => action);
+            setIsPinModalOpen(true);
+        } else {
+            action();
+        }
+    };
+
+    const handlePinSuccess = () => {
+        setIsPinModalOpen(false);
+        if (pendingAction) {
+            pendingAction();
+            setPendingAction(null);
+        }
+    };
 
     const handleBackup = async () => {
         setIsGeneratingReport(true);
@@ -679,9 +701,11 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
         setCurrentPage(page);
     };
     
-    const handleFileRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (file) {
+        if (!file) return;
+        
+        const processRestore = async () => {
             const confirmed = await showConfirm("Restoring will OVERWRITE all current data. Are you sure you want to restore from this backup?", {
                 title: "Restore Backup",
                 confirmText: "Yes, Restore",
@@ -698,8 +722,10 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     showAlert("Failed to restore backup. The file might be invalid or corrupted.");
                 }
             }
-            e.target.value = ''; // Reset input
-        }
+        };
+
+        runSecureAction(processRestore);
+        e.target.value = ''; // Reset input to allow re-selection
     };
 
     const monthOptions = [
@@ -713,6 +739,18 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
         <div className="space-y-6 animate-fade-in-fast">
             <DataImportModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} />
             
+            {isPinModalOpen && (
+                <PinModal
+                    mode="enter"
+                    correctPin={state.pin}
+                    onCorrectPin={handlePinSuccess}
+                    onCancel={() => {
+                        setIsPinModalOpen(false);
+                        setPendingAction(null);
+                    }}
+                />
+            )}
+            
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h1 className="text-2xl font-bold text-primary">Dashboard</h1>
                 <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -724,9 +762,6 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     >
                         {monthOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                     </select>
-                    <Button onClick={() => setIsImportModalOpen(true)} variant="secondary" className="flex-shrink-0">
-                        <Upload className="w-4 h-4 mr-2" /> Import
-                    </Button>
                 </div>
             </div>
             
@@ -790,7 +825,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                             <p className="text-sm text-gray-600 dark:text-gray-400">
                                 Your data is stored locally on this device. Please create regular backups to prevent data loss.
                             </p>
-                             <div className="flex flex-col sm:flex-row gap-3">
+                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <Button onClick={handleBackup} className="w-full" disabled={isGeneratingReport}>
                                     <Download className="w-4 h-4 mr-2" /> {isGeneratingReport ? 'Preparing...' : 'Backup Data Now'}
                                 </Button>
@@ -804,7 +839,10 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                                     className="hidden" 
                                     onChange={handleFileRestore} 
                                 />
-                                <Button onClick={handleLoadTestData} className="w-full bg-purple-600 hover:bg-purple-700 focus:ring-purple-600" disabled={isGeneratingReport}>
+                                <Button onClick={() => runSecureAction(() => setIsImportModalOpen(true))} variant="secondary" className="w-full">
+                                    <Upload className="w-4 h-4 mr-2" /> Import Bulk Data from CSV
+                                </Button>
+                                <Button onClick={() => runSecureAction(handleLoadTestData)} className="w-full bg-purple-600 hover:bg-purple-700 focus:ring-purple-600" disabled={isGeneratingReport}>
                                     <TestTube2 className="w-4 h-4 mr-2" /> Load Test Data
                                 </Button>
                             </div>
