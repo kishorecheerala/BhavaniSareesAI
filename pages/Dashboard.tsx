@@ -647,6 +647,25 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
         }
     };
 
+    const handleLoadTestData = async () => {
+        if (window.confirm("This will OVERWRITE your current data with sample test data. Are you sure you want to proceed?")) {
+            setIsGeneratingReport(true);
+            try {
+                // Prepare data object for importData
+                // testData matches the structure expected by importData (mostly)
+                await db.importData(testData as any);
+                await db.saveCollection('profile', [testProfile]);
+                
+                // Force reload to re-initialize state from IndexedDB
+                window.location.reload();
+            } catch (error) {
+                console.error("Failed to load test data:", error);
+                showToast("Failed to load test data.", 'info');
+                setIsGeneratingReport(false);
+            }
+        }
+    };
+
     const handleNavigate = (page: Page, id: string) => {
         dispatch({ type: 'SET_SELECTION', payload: { page, id } });
         setCurrentPage(page);
@@ -770,6 +789,9 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                                         }
                                     }} 
                                 />
+                                <Button onClick={handleLoadTestData} className="w-full bg-purple-600 hover:bg-purple-700 focus:ring-purple-600" disabled={isGeneratingReport}>
+                                    <TestTube2 className="w-4 h-4 mr-2" /> Load Test Data
+                                </Button>
                             </div>
                              <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-md border border-yellow-200 dark:border-yellow-700">
                                 <div className="flex gap-2">

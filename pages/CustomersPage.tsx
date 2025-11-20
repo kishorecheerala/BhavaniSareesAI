@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Plus, User, Phone, MapPin, Search, Edit, Save, X, Trash2, IndianRupee, ShoppingCart, Download, Share2, ChevronDown, AlertTriangle, ShieldCheck, Shield } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, User, Phone, MapPin, Search, Edit, Save, X, IndianRupee, ShoppingCart, Share2, ChevronDown } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Customer, Payment, Sale, Page } from '../types';
 import Card from '../components/Card';
@@ -10,6 +10,7 @@ import DeleteButton from '../components/DeleteButton';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
+import PaymentModal from '../components/PaymentModal';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -49,85 +50,15 @@ const getCustomerRisk = (sales: Sale[], customerId: string): 'High' | 'Medium' |
 const RiskBadge: React.FC<{ risk: 'High' | 'Medium' | 'Low' | 'Safe' }> = ({ risk }) => {
     switch (risk) {
         case 'High':
-            return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200"><AlertTriangle size={10} className="mr-1" /> High Risk</span>;
+            return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200">High Risk</span>;
         case 'Medium':
-            return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200"><AlertTriangle size={10} className="mr-1" /> Medium Risk</span>;
+            return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">Medium Risk</span>;
         case 'Low':
-            return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200"><ShieldCheck size={10} className="mr-1" /> Good Standing</span>;
+            return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200">Good Standing</span>;
         default:
-             return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"><Shield size={10} className="mr-1" /> No Dues</span>;
+             return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">No Dues</span>;
     }
 };
-
-// Standalone PaymentModal component to prevent re-renders on parent state change
-const PaymentModal: React.FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    onSubmit: () => void;
-    sale: Sale | null | undefined;
-    paymentDetails: { amount: string; method: 'CASH' | 'UPI' | 'CHEQUE'; date: string; reference: string; };
-    setPaymentDetails: React.Dispatch<React.SetStateAction<{ amount: string; method: 'CASH' | 'UPI' | 'CHEQUE'; date: string; reference: string; }>>;
-}> = ({ isOpen, onClose, onSubmit, sale, paymentDetails, setPaymentDetails }) => {
-    if (!isOpen || !sale) return null;
-    
-    const amountPaid = sale.payments.reduce((sum, p) => sum + Number(p.amount), 0);
-    const dueAmount = Number(sale.totalAmount) - amountPaid;
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
-            <Card title="Add Payment" className="w-full max-w-sm animate-scale-in">
-                <div className="space-y-4">
-                    <div className="p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg border dark:border-slate-600">
-                        <p className="flex justify-between text-sm">
-                            <span className="text-gray-600 dark:text-gray-400">Invoice Total:</span>
-                            <span className="font-bold dark:text-slate-200">₹{Number(sale.totalAmount).toLocaleString('en-IN')}</span>
-                        </p>
-                        <p className="flex justify-between text-sm mt-1">
-                            <span className="text-gray-600 dark:text-gray-400">Amount Due:</span>
-                            <span className="font-bold text-red-600 dark:text-red-400">₹{dueAmount.toLocaleString('en-IN')}</span>
-                        </p>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Amount</label>
-                        <input type="number" placeholder="Enter amount" value={paymentDetails.amount} onChange={e => setPaymentDetails({ ...paymentDetails, amount: e.target.value })} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" autoFocus/>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Method</label>
-                        <select value={paymentDetails.method} onChange={e => setPaymentDetails({ ...paymentDetails, method: e.target.value as any })} className="w-full p-2 border rounded custom-select dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200">
-                            <option value="CASH">Cash</option>
-                            <option value="UPI">UPI</option>
-                            <option value="CHEQUE">Cheque</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Date</label>
-                        <input 
-                            type="date" 
-                            value={paymentDetails.date} 
-                            onChange={e => setPaymentDetails({ ...paymentDetails, date: e.target.value })} 
-                            className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Reference (Optional)</label>
-                        <input 
-                            type="text"
-                            placeholder="e.g. UPI ID, Cheque No."
-                            value={paymentDetails.reference}
-                            onChange={e => setPaymentDetails({ ...paymentDetails, reference: e.target.value })}
-                            className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
-                        />
-                    </div>
-                    <div className="flex gap-2">
-                       <Button onClick={onSubmit} className="w-full">Save Payment</Button>
-                       <Button onClick={onClose} variant="secondary" className="w-full">Cancel</Button>
-                    </div>
-                </div>
-            </Card>
-        </div>
-    );
-};
-
 
 interface CustomersPageProps {
   setIsDirty: (isDirty: boolean) => void;
@@ -682,6 +613,11 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
             setEditedCustomer({ ...editedCustomer, [e.target.name]: e.target.value });
         };
 
+        const saleForPayment = state.sales.find(s => s.id === paymentModalState.saleId);
+        const paymentModalTotal = saleForPayment ? Number(saleForPayment.totalAmount) : 0;
+        const paymentModalPaid = saleForPayment ? saleForPayment.payments.reduce((sum, p) => sum + Number(p.amount), 0) : 0;
+        const paymentModalDue = paymentModalTotal - paymentModalPaid;
+
         return (
             <div className="space-y-4">
                 <ConfirmationModal
@@ -696,7 +632,8 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                     isOpen={paymentModalState.isOpen}
                     onClose={() => setPaymentModalState({isOpen: false, saleId: null})}
                     onSubmit={handleAddPayment}
-                    sale={state.sales.find(s => s.id === paymentModalState.saleId)}
+                    totalAmount={paymentModalTotal}
+                    dueAmount={paymentModalDue}
                     paymentDetails={paymentDetails}
                     setPaymentDetails={setPaymentDetails}
                 />
