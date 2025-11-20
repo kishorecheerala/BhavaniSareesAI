@@ -29,37 +29,37 @@ const MetricCard: React.FC<{
 }> = ({ icon: Icon, title, value, color, iconBgColor, textColor, unit = '₹', subValue, onClick, delay }) => (
     <div
         onClick={onClick}
-        className={`rounded-lg shadow-md p-4 flex items-center transition-all duration-300 hover:shadow-xl hover:scale-[1.01] ${color} ${onClick ? 'cursor-pointer' : ''} animate-slide-up-fade`}
+        className={`rounded-lg shadow-md p-5 flex items-center transition-all duration-300 hover:shadow-xl hover:scale-[1.01] ${color} ${onClick ? 'cursor-pointer' : ''} animate-slide-up-fade`}
         style={{ animationDelay: `${delay || 0}ms` }}
         role={onClick ? 'button' : undefined}
         tabIndex={onClick ? 0 : undefined}
         onKeyDown={onClick ? (e) => (e.key === 'Enter' || e.key === ' ') && onClick() : undefined}
     >
-        <div className={`p-3 ${iconBgColor} rounded-full flex-shrink-0`}>
+        <div className={`p-4 ${iconBgColor} rounded-full flex-shrink-0`}>
             <Icon className={`w-8 h-8 ${textColor}`} />
         </div>
-        <div className="ml-4 flex-grow">
-            <p className={`font-semibold text-lg ${textColor}`}>{title}</p>
-            <p className={`text-2xl font-bold ${textColor} break-all`}>{unit}{typeof value === 'number' ? value.toLocaleString('en-IN') : value}</p>
-            {subValue && <p className={`text-xs font-medium mt-1 opacity-80 ${textColor}`}>{subValue}</p>}
+        <div className="ml-5 flex-grow">
+            <p className={`font-bold text-xl ${textColor}`}>{title}</p>
+            <p className={`text-3xl font-extrabold ${textColor} break-all mt-1`}>{unit}{typeof value === 'number' ? value.toLocaleString('en-IN') : value}</p>
+            {subValue && <p className={`text-sm font-medium mt-1 opacity-90 ${textColor}`}>{subValue}</p>}
         </div>
     </div>
 );
 
 const FinancialColumn = ({ title, sales, purchases, highlight = false, delay = 0 }: any) => (
     <div 
-        className={`p-4 rounded-lg border ${highlight ? 'bg-teal-50 border-teal-200 dark:bg-teal-900/20 dark:border-teal-800 ring-2 ring-teal-500 ring-opacity-20' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700'} flex flex-col gap-3 shadow-sm animate-pop`}
+        className={`p-5 flex flex-col justify-center gap-3 h-full animate-pop ${highlight ? 'bg-teal-50/50 dark:bg-teal-900/10' : ''}`}
         style={{ animationDelay: `${delay}ms` }}
     >
-        <h3 className={`text-xs font-bold uppercase tracking-wider ${highlight ? 'text-teal-700 dark:text-teal-300' : 'text-gray-500 dark:text-gray-400'}`}>{title}</h3>
-        <div className="space-y-2">
+        <h3 className={`text-sm font-extrabold uppercase tracking-wider border-b pb-2 mb-1 ${highlight ? 'text-teal-800 border-teal-200 dark:text-teal-300 dark:border-teal-800' : 'text-gray-500 border-gray-200 dark:text-gray-400 dark:border-slate-700'}`}>{title}</h3>
+        <div className="space-y-4">
             <div>
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5">Sales</p>
-                <p className={`text-lg font-bold ${highlight ? 'text-teal-700 dark:text-teal-300' : 'text-gray-800 dark:text-white'}`}>₹{sales.toLocaleString('en-IN')}</p>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">Sales</p>
+                <p className={`text-2xl sm:text-3xl font-bold ${highlight ? 'text-teal-700 dark:text-teal-300' : 'text-gray-800 dark:text-white'}`}>₹{sales.toLocaleString('en-IN')}</p>
             </div>
             <div>
-                 <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5">Purchases</p>
-                 <p className={`text-sm font-semibold ${highlight ? 'text-teal-600/80 dark:text-teal-400/80' : 'text-gray-600 dark:text-gray-400'}`}>₹{purchases.toLocaleString('en-IN')}</p>
+                 <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">Purchases</p>
+                 <p className={`text-lg sm:text-xl font-semibold ${highlight ? 'text-teal-600/90 dark:text-teal-400/90' : 'text-gray-600 dark:text-gray-300'}`}>₹{purchases.toLocaleString('en-IN')}</p>
             </div>
         </div>
     </div>
@@ -278,14 +278,14 @@ const SmartAnalystCard: React.FC<{ sales: Sale[], products: Product[], customers
     }, [sales, products, customers, purchases, returns]);
 
     return (
-        <div className="relative overflow-hidden rounded-xl bg-white dark:bg-slate-800 shadow-lg border border-indigo-100 dark:border-indigo-900 mb-6 transition-all hover:shadow-xl animate-slide-up-fade">
+        <div className="relative overflow-hidden rounded-xl bg-white dark:bg-slate-800 shadow-lg border border-indigo-100 dark:border-indigo-900 transition-all hover:shadow-xl animate-slide-up-fade">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-indigo-500"></div>
             <div className="p-5">
                 <div className="flex items-center gap-2 mb-4">
                     <div className="p-2 bg-indigo-100 dark:bg-indigo-900/50 rounded-full animate-pulse-bg">
-                        <BrainCircuit className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                        <BrainCircuit className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
                     </div>
-                    <h3 className="font-bold text-lg text-gray-800 dark:text-white">Smart Analyst</h3>
+                    <h3 className="font-bold text-xl text-gray-800 dark:text-white">Smart Analyst</h3>
                     <span className="text-[10px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800">AI Powered</span>
                 </div>
                 
@@ -297,7 +297,7 @@ const SmartAnalystCard: React.FC<{ sales: Sale[], products: Product[], customers
                             </div>
                             <div>
                                 <p className={`text-xs font-bold uppercase mb-0.5 ${insight.color}`}>{insight.type}</p>
-                                <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                                <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
                                     {insight.text}
                                 </p>
                             </div>
@@ -809,66 +809,93 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                 />
             )}
             
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <div className="flex items-center gap-3">
-                         <h1 className="text-2xl font-bold text-primary">Dashboard</h1>
-                         <span className="text-xs sm:text-sm font-bold bg-gradient-to-r from-teal-600 to-emerald-600 text-white px-3 py-1 rounded-full shadow-md border border-teal-500/30">
-                            {new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+            {/* Header Section with Welcome, Title, and Date */}
+            <div className="flex flex-col gap-4">
+                <div className="grid grid-cols-3 items-center relative">
+                    
+                    {/* Left: Welcome Message (First) */}
+                    <div className="flex justify-start z-10">
+                         <span className="text-xs sm:text-sm font-medium px-2 sm:px-4 py-1 sm:py-1.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700/50 shadow-sm transition-transform hover:scale-105 cursor-default whitespace-nowrap flex items-center gap-1 max-w-full">
+                            <span className="hidden sm:inline">Welcome back,</span>
+                            <span className="sm:hidden">Hi,</span>
+                            <strong className="truncate">{profile?.ownerName || 'Owner'}</strong>
                         </span>
                     </div>
-                    <div className="mt-1 flex items-center">
-                        <span className="text-sm text-gray-500 dark:text-gray-400 mr-1">Welcome back,</span>
-                        <span className="text-sm font-bold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800 shadow-sm">
-                            {profile?.ownerName || 'Owner'}
+
+                    {/* Center: Dashboard Title (Second) */}
+                    <div className="flex justify-center">
+                        <h1 className="text-xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-emerald-600 dark:from-teal-400 dark:to-emerald-400 tracking-tight drop-shadow-sm">
+                            Dashboard
+                        </h1>
+                    </div>
+
+                    {/* Right: Date (Third/Edge) */}
+                    <div className="flex justify-end z-10">
+                         <span className="text-xs sm:text-sm font-bold bg-gradient-to-r from-teal-600 to-emerald-600 text-white px-2 sm:px-4 py-1 sm:py-1.5 rounded-full shadow-md border border-teal-500/30 flex items-center gap-1 sm:gap-2 whitespace-nowrap">
+                            <CalendarClock className="w-3 h-3 sm:w-4 sm:h-4 text-white/80" />
+                            <span className="hidden sm:inline">{new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                            <span className="sm:hidden">{new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
                         </span>
                     </div>
-                </div>
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                     <select 
-                        value={selectedMonth} 
-                        onChange={(e) => setSelectedMonth(e.target.value)} 
-                        className="p-2 border rounded-md bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white shadow-sm focus:ring-primary focus:border-primary custom-select flex-grow sm:flex-grow-0"
-                        aria-label="Select Month for Stats"
-                    >
-                        {monthOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                    </select>
-                    <select 
-                        value={selectedYear} 
-                        onChange={(e) => setSelectedYear(e.target.value)} 
-                        className="p-2 border rounded-md bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white shadow-sm focus:ring-primary focus:border-primary custom-select flex-grow sm:flex-grow-0"
-                        aria-label="Select Year for Stats"
-                    >
-                        {getYears.map(y => <option key={y} value={y}>{y}</option>)}
-                    </select>
                 </div>
             </div>
             
-            {/* New Financial Performance Matrix */}
-            <div className="grid grid-cols-3 gap-2 sm:gap-4">
-                <FinancialColumn 
-                    title="All Time" 
-                    sales={stats.allTimeSales} 
-                    purchases={stats.allTimePurchases}
-                    delay={0} 
-                />
-                <FinancialColumn 
-                    title={`Year (${selectedYear})`} 
-                    sales={stats.yearSalesTotal} 
-                    purchases={stats.yearPurchasesTotal}
-                    delay={100} 
-                />
-                <FinancialColumn 
-                    title={currentPeriodLabel} 
-                    sales={stats.monthSalesTotal} 
-                    purchases={stats.monthPurchasesTotal}
-                    highlight={true}
-                    delay={200}
-                />
-            </div>
-
-            {/* New Smart Analyst AI Card */}
+            {/* New Smart Analyst AI Card (Moved Top) */}
             <SmartAnalystCard sales={sales} products={products} customers={customers} purchases={purchases} returns={returns} />
+            
+            {/* Combined Financial Performance Matrix */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-100 dark:border-slate-700 overflow-hidden">
+                {/* Header of Combined Card */}
+                <div className="bg-gray-50 dark:bg-slate-800/50 p-4 border-b border-gray-100 dark:border-slate-700 flex flex-col sm:flex-row justify-between items-center gap-3">
+                    <h2 className="text-lg font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2">
+                        <TrendingUp className="w-5 h-5 text-teal-600" />
+                        Financial Overview
+                    </h2>
+                    {/* Selectors moved inside card header */}
+                    <div className="flex items-center gap-2 bg-white dark:bg-slate-700/50 p-1 rounded-lg shadow-sm border border-gray-200 dark:border-slate-600">
+                         <select 
+                            value={selectedMonth} 
+                            onChange={(e) => setSelectedMonth(e.target.value)} 
+                            className="p-1.5 border-none bg-transparent text-sm font-semibold text-gray-700 dark:text-gray-200 focus:ring-0 cursor-pointer hover:text-primary transition-colors"
+                            aria-label="Select Month for Stats"
+                        >
+                            {monthOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                        </select>
+                        <div className="h-4 w-px bg-gray-300 dark:bg-slate-500"></div>
+                        <select 
+                            value={selectedYear} 
+                            onChange={(e) => setSelectedYear(e.target.value)} 
+                            className="p-1.5 border-none bg-transparent text-sm font-semibold text-gray-700 dark:text-gray-200 focus:ring-0 cursor-pointer hover:text-primary transition-colors"
+                            aria-label="Select Year for Stats"
+                        >
+                            {getYears.map(y => <option key={y} value={y}>{y}</option>)}
+                        </select>
+                    </div>
+                </div>
+
+                {/* Unified Grid of Financial Columns */}
+                <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x dark:divide-slate-700">
+                    <FinancialColumn 
+                        title="All Time" 
+                        sales={stats.allTimeSales} 
+                        purchases={stats.allTimePurchases}
+                        delay={0} 
+                    />
+                    <FinancialColumn 
+                        title={`Year (${selectedYear})`} 
+                        sales={stats.yearSalesTotal} 
+                        purchases={stats.yearPurchasesTotal}
+                        delay={100} 
+                    />
+                    <FinancialColumn 
+                        title={currentPeriodLabel} 
+                        sales={stats.monthSalesTotal} 
+                        purchases={stats.monthPurchasesTotal}
+                        highlight={true}
+                        delay={200}
+                    />
+                </div>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <MetricCard 
