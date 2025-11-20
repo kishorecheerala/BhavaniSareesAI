@@ -29,7 +29,7 @@ const calculateRisk = (customer: Customer, allSales: Sale[]) => {
 
     if (due <= 100) return 'Safe'; // Negligible due
 
-    const dueRatio = due / totalRevenue;
+    const dueRatio = totalRevenue > 0 ? due / totalRevenue : 0;
 
     // Logic: High risk if owing > 50% AND due > 5000
     if (dueRatio > 0.5 && due > 5000) return 'High';
@@ -216,7 +216,7 @@ const RiskAnalysisCard: React.FC<{ customers: Customer[], sales: Sale[], onNavig
                         <div className="flex items-center gap-2"><div className="w-3 h-3 bg-slate-400 rounded-sm"></div><span>Safe ({riskData.stats.Safe})</span></div>
                     </div>
                 </div>
-                <p className="text-xs text-center text-gray-500 mt-2">High Risk = Owe >50% of purchase value & >₹5k</p>
+                <p className="text-xs text-center text-gray-500 mt-2">High Risk = Owe &gt;50% of purchase value &amp; &gt;₹5k</p>
             </Card>
             <Card title="High Risk Accounts (Top 5)">
                 {riskData.highRiskList.length === 0 ? (

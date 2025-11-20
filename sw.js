@@ -1,6 +1,7 @@
 
 
-const CACHE_NAME = 'bhavani-sarees-cache-v9';
+
+const CACHE_NAME = 'bhavani-sarees-cache-v10';
 
 // The essential files that make up the app's shell.
 const APP_SHELL_URLS = [
