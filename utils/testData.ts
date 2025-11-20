@@ -1,3 +1,4 @@
+
 import { AppState } from '../context/AppContext';
 import { ProfileData, Customer, Supplier, Product, Purchase, Sale, Return } from '../types';
 
@@ -16,9 +17,10 @@ const daysFromNow = (days: number): string => {
 
 export const testProfile: ProfileData = {
   id: 'userProfile',
-  name: 'Bhavani Sarees',
+  name: 'My Business',
+  ownerName: 'Owner Name',
   phone: '9876543210',
-  address: '123 Saree Street, Weavers Colony, Hyderabad, 500081',
+  address: '123 Market Street, City, 500001',
   gstNumber: '36ABCDE1234F1Z5',
 };
 

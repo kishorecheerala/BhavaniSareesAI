@@ -1,7 +1,5 @@
 
-
-
-const CACHE_NAME = 'bhavani-sarees-cache-v10';
+const CACHE_NAME = 'biz-manager-cache-v1';
 
 // The essential files that make up the app's shell.
 const APP_SHELL_URLS = [

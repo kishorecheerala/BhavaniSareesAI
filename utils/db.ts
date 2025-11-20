@@ -1,11 +1,9 @@
 
-
-
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { Customer, Supplier, Product, Sale, Purchase, Return, Notification, ProfileData, AppMetadata } from '../types';
 import { AppState } from '../context/AppContext';
 
-const DB_NAME = 'bhavani-sarees-db';
+const DB_NAME = 'business-manager-db';
 const DB_VERSION = 4; // Bump version for schema change
 
 export type StoreName = 'customers' | 'suppliers' | 'products' | 'sales' | 'purchases' | 'returns' | 'app_metadata' | 'notifications' | 'profile';

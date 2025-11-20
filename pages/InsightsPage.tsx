@@ -53,8 +53,8 @@ const AIDailyBriefing: React.FC<{
     sales: Sale[], 
     revenueGoal: number, 
     currentRevenue: number,
-    userName: string
-}> = ({ sales, revenueGoal, currentRevenue, userName }) => {
+    ownerName: string
+}> = ({ sales, revenueGoal, currentRevenue, ownerName }) => {
     const briefing = useMemo(() => {
         const today = new Date();
         const currentMonth = today.getMonth();
@@ -69,8 +69,10 @@ const AIDailyBriefing: React.FC<{
         let headline = "";
         let advice = "";
 
+        const firstName = ownerName.split(' ')[0] || 'Boss';
+
         if (currentRevenue === 0) {
-            headline = `Ready to start the month, ${userName.split(' ')[0]}?`;
+            headline = `Ready to start the month, ${firstName}?`;
             advice = "Record your first sale to get the analytics engine running.";
             sentiment = 'neutral';
         } else if (progress >= 1) {
@@ -89,7 +91,7 @@ const AIDailyBriefing: React.FC<{
         }
 
         return { headline, advice, sentiment };
-    }, [sales, revenueGoal, currentRevenue, userName]);
+    }, [sales, revenueGoal, currentRevenue, ownerName]);
 
     const bgColors = {
         positive: 'bg-gradient-to-r from-emerald-500 to-teal-600',
@@ -1009,7 +1011,7 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                 sales={sales}
                 revenueGoal={revenueGoal || 50000} 
                 currentRevenue={currentMetrics.revenue}
-                userName={profile?.name || 'Owner'}
+                ownerName={profile?.ownerName || 'Owner'}
             />
             
             {/* New Financial Performance Matrix */}

@@ -708,7 +708,9 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `bhavani_sarees_backup_${new Date().toISOString().split('T')[0]}.json`;
+            // Use dynamic name based on profile or default to 'business_manager'
+            const filename = (state.profile?.name || 'business_manager').toLowerCase().replace(/\s+/g, '_');
+            a.download = `${filename}_backup_${new Date().toISOString().split('T')[0]}.json`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);

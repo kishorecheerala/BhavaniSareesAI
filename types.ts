@@ -121,7 +121,8 @@ export interface Notification {
 
 export interface ProfileData {
   id: 'userProfile'; // a fixed ID for the single profile object
-  name: string;
+  name: string; // Business Name
+  ownerName: string; // Owner Name for greetings
   phone: string;
   address: string;
   gstNumber: string;
