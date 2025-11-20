@@ -621,8 +621,15 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
         return Array.from(years).sort().reverse();
     }, [sales]);
 
+    const monthOptions = [
+        { value: 'all', label: 'Full Year' },
+        { value: '0', label: 'January' }, { value: '1', label: 'February' }, { value: '2', label: 'March' },
+        { value: '3', label: 'April' }, { value: '4', label: 'May' }, { value: '5', label: 'June' },
+        { value: '6', label: 'July' }, { value: '7', label: 'August' }, { value: '8', label: 'September' },
+        { value: '9', label: 'October' }, { value: '10', label: 'November' }, { value: '11', label: 'December' },
+    ];
+
     const stats = useMemo(() => {
-        const monthIndex = parseInt(selectedMonth);
         const yearInt = parseInt(selectedYear);
         
         // 1. All Time
@@ -635,9 +642,18 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
         const yearSalesTotal = filteredYearSales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
         const yearPurchasesTotal = filteredYearPurchases.reduce((sum, p) => sum + Number(p.totalAmount), 0);
 
-        // 3. Monthly
-        const filteredMonthSales = filteredYearSales.filter(s => new Date(s.date).getMonth() === monthIndex);
-        const filteredMonthPurchases = filteredYearPurchases.filter(p => new Date(p.date).getMonth() === monthIndex);
+        // 3. Monthly (or All Months if selected)
+        let filteredMonthSales = [];
+        let filteredMonthPurchases = [];
+
+        if (selectedMonth === 'all') {
+             filteredMonthSales = filteredYearSales;
+             filteredMonthPurchases = filteredYearPurchases;
+        } else {
+             const monthIndex = parseInt(selectedMonth);
+             filteredMonthSales = filteredYearSales.filter(s => new Date(s.date).getMonth() === monthIndex);
+             filteredMonthPurchases = filteredYearPurchases.filter(p => new Date(p.date).getMonth() === monthIndex);
+        }
         
         const monthSalesTotal = filteredMonthSales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
         const monthPurchasesTotal = filteredMonthPurchases.reduce((sum, p) => sum + Number(p.totalAmount), 0);
@@ -766,12 +782,9 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
         e.target.value = ''; // Reset input to allow re-selection
     };
 
-    const monthOptions = [
-        { value: '0', label: 'January' }, { value: '1', label: 'February' }, { value: '2', label: 'March' },
-        { value: '3', label: 'April' }, { value: '4', label: 'May' }, { value: '5', label: 'June' },
-        { value: '6', label: 'July' }, { value: '7', label: 'August' }, { value: '8', label: 'September' },
-        { value: '9', label: 'October' }, { value: '10', label: 'November' }, { value: '11', label: 'December' },
-    ];
+    const currentPeriodLabel = selectedMonth === 'all' 
+        ? `Full Year ${selectedYear}` 
+        : `${monthOptions.find(m => m.value === selectedMonth)?.label.substring(0, 3)} ${selectedYear}`;
 
     return (
         <div className="space-y-6 animate-fade-in-fast">
@@ -824,7 +837,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     purchases={stats.yearPurchasesTotal} 
                 />
                 <FinancialColumn 
-                    title={`${monthOptions[parseInt(selectedMonth)].label.substring(0,3)} ${selectedYear}`} 
+                    title={currentPeriodLabel} 
                     sales={stats.monthSalesTotal} 
                     purchases={stats.monthPurchasesTotal}
                     highlight={true}
@@ -839,7 +852,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     icon={IndianRupee} 
                     title="Sales" 
                     value={stats.monthSalesTotal} 
-                    subValue={`${stats.salesCount} orders this month`}
+                    subValue={`${stats.salesCount} orders this period`}
                     color="bg-teal-50 dark:bg-teal-900/20" 
                     iconBgColor="bg-teal-100 dark:bg-teal-800" 
                     textColor="text-teal-700 dark:text-teal-100" 
@@ -849,7 +862,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     icon={Package} 
                     title="Purchases" 
                     value={stats.monthPurchasesTotal} 
-                    subValue="This month"
+                    subValue="This period"
                     color="bg-blue-50 dark:bg-blue-900/20" 
                     iconBgColor="bg-blue-100 dark:bg-blue-800" 
                     textColor="text-blue-700 dark:text-blue-100" 

@@ -19,7 +19,7 @@ interface InsightsPageProps {
     setCurrentPage: (page: Page) => void;
 }
 
-// --- Helper for Risk ---
+// --- Helper Functions ---
 const calculateRisk = (customer: Customer, allSales: Sale[]) => {
     const custSales = allSales.filter(s => s.customerId === customer.id);
     if (custSales.length === 0) return 'Safe';
@@ -38,6 +38,13 @@ const calculateRisk = (customer: Customer, allSales: Sale[]) => {
     if (dueRatio > 0.3) return 'Medium';
     
     return 'Low';
+};
+
+const formatCurrencyCompact = (value: number) => {
+    if (value >= 10000000) return `₹${(value / 10000000).toFixed(1)}Cr`;
+    if (value >= 100000) return `₹${(value / 100000).toFixed(1)}L`;
+    if (value >= 1000) return `₹${(value / 1000).toFixed(1)}k`;
+    return `₹${value.toLocaleString('en-IN')}`;
 };
 
 // --- AI Components ---
@@ -491,8 +498,8 @@ const DayOfWeekChart: React.FC<{ filteredSales: Sale[] }> = ({ filteredSales }) 
         return days.map((day, i) => ({
             day,
             value: revenue[i],
-            // Ensure minimal visibility for non-zero values
-            height: revenue[i] > 0 ? Math.max((revenue[i] / maxVal) * 100, 5) : 0
+            // Scaling height to max 85% to leave room for labels on top
+            height: revenue[i] > 0 ? Math.max((revenue[i] / maxVal) * 85, 5) : 0
         }));
     }, [filteredSales]);
 
@@ -501,9 +508,9 @@ const DayOfWeekChart: React.FC<{ filteredSales: Sale[] }> = ({ filteredSales }) 
             {dayData.map((d, i) => (
                 <div key={i} className="flex-1 flex flex-col items-center group relative h-full justify-end">
                      {d.value > 0 && (
-                        <div className="absolute bottom-[calc(100%+5px)] hidden group-hover:block bg-black text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-10">
-                            ₹{d.value.toLocaleString()}
-                        </div>
+                        <span className="mb-1 text-[10px] font-medium text-gray-600 dark:text-gray-300">
+                            {formatCurrencyCompact(d.value)}
+                        </span>
                     )}
                     <div 
                         className={`w-full rounded-t-md transition-all duration-500 ${d.value > 0 ? 'bg-indigo-500 dark:bg-indigo-400 group-hover:bg-indigo-600' : 'bg-gray-100 dark:bg-slate-700'}`}
@@ -1093,22 +1100,28 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <Card title={selectedMonth === 'all' ? 'Monthly Sales Trend' : 'Daily Sales Trend'} className="lg:col-span-2">
-                    <div className="h-64 flex items-end gap-2 pt-4 overflow-x-auto">
+                    <div className="h-64 flex items-end gap-2 pt-4 overflow-x-auto pb-2">
                         {chartData.map((d, i) => {
-                            const height = maxChartValue > 0 ? (d.sales / maxChartValue) * 100 : 0;
+                            // Use 80% max height to leave room for labels
+                            const height = maxChartValue > 0 ? (d.sales / maxChartValue) * 80 : 0;
                             return (
                                 <div key={i} className="flex-1 min-w-[20px] flex flex-col items-center group relative h-full justify-end">
                                      {d.sales > 0 && (
-                                        <div className="absolute bottom-[calc(100%+5px)] hidden group-hover:block z-20 bg-black text-white text-xs p-2 rounded whitespace-nowrap shadow-lg">
-                                            <p className="font-bold">{d.label}</p>
-                                            <p>Sales: ₹{d.sales.toLocaleString()}</p>
-                                            <p>Profit: ₹{d.profit.toLocaleString()}</p>
-                                        </div>
+                                        <span className="mb-1 text-[9px] sm:text-[10px] font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                                            {formatCurrencyCompact(d.sales)}
+                                        </span>
                                     )}
                                     <div 
                                         className="w-full bg-teal-500 hover:bg-teal-600 dark:bg-teal-600 dark:hover:bg-teal-500 rounded-t transition-all relative" 
                                         style={{ height: `${Math.max(height, 2)}%` }}
-                                    ></div>
+                                    >
+                                         {/* Keep full details tooltip on hover for desktop users */}
+                                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-20 bg-black text-white text-xs p-2 rounded whitespace-nowrap shadow-lg pointer-events-none">
+                                            <p className="font-bold">{d.label}</p>
+                                            <p>Sales: ₹{d.sales.toLocaleString()}</p>
+                                            <p>Profit: ₹{d.profit.toLocaleString()}</p>
+                                        </div>
+                                    </div>
                                     <span className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 truncate w-full text-center">{d.label}</span>
                                 </div>
                             );
