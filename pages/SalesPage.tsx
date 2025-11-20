@@ -13,6 +13,7 @@ import { useOnClickOutside } from '../hooks/useOnClickOutside';
 import { logoBase64 } from '../utils/logo';
 import AddCustomerModal from '../components/AddCustomerModal';
 import Dropdown from '../components/Dropdown';
+import { useDialog } from '../context/DialogContext';
 
 
 const getLocalDateString = (date = new Date()) => {
@@ -137,6 +138,7 @@ const QRScannerModal: React.FC<{
 
 const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
     const { state, dispatch, showToast } = useAppContext();
+    const { showAlert } = useDialog();
     
     const [mode, setMode] = useState<'add' | 'edit'>('add');
     const [saleToEdit, setSaleToEdit] = useState<Sale | null>(null);
@@ -236,13 +238,13 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
 
         if (existingItem) {
             if (existingItem.quantity + 1 > availableStock) {
-                 alert(`Not enough stock for ${product.name}. Only ${availableStock} available for this sale.`);
+                 showAlert(`Not enough stock for ${product.name}. Only ${availableStock} available for this sale.`);
                  return;
             }
             setItems(items.map(i => i.productId === newItem.productId ? { ...i, quantity: i.quantity + 1 } : i));
         } else {
              if (1 > availableStock) {
-                 alert(`Not enough stock for ${product.name}. Only ${availableStock} available for this sale.`);
+                 showAlert(`Not enough stock for ${product.name}. Only ${availableStock} available for this sale.`);
                  return;
             }
             setItems([...items, newItem]);
@@ -257,7 +259,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         if (product) {
             handleSelectProduct(product);
         } else {
-            alert("Product not found in inventory.");
+            showAlert("Product not found in inventory.");
         }
     };
 
@@ -272,7 +274,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
                     const originalQtyInSale = mode === 'edit' ? saleToEdit?.items.find(i => i.productId === productId)?.quantity || 0 : 0;
                     const availableStock = (Number(product?.quantity) || 0) + originalQtyInSale;
                     if (numValue > availableStock) {
-                        alert(`Not enough stock for ${item.productName}. Only ${availableStock} available for this sale.`);
+                        showAlert(`Not enough stock for ${item.productName}. Only ${availableStock} available for this sale.`);
                         return { ...item, quantity: availableStock };
                     }
                 }
@@ -469,19 +471,19 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         }
       } catch (error) {
         console.error("PDF generation or sharing failed:", error);
-        alert(`Sale created successfully, but the PDF invoice could not be generated or shared. Error: ${(error as Error).message}`);
+        showAlert(`Sale created successfully, but the PDF invoice could not be generated or shared. Error: ${(error as Error).message}`);
       }
     };
 
     const handleSubmitSale = async () => {
         if (!customerId || items.length === 0) {
-            alert("Please select a customer and add at least one item.");
+            showAlert("Please select a customer and add at least one item.");
             return;
         }
 
         const customer = state.customers.find(c => c.id === customerId);
         if(!customer) {
-            alert("Could not find the selected customer.");
+            showAlert("Could not find the selected customer.");
             return;
         }
         
@@ -490,7 +492,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
         if (mode === 'add') {
             const paidAmount = parseFloat(paymentDetails.amount) || 0;
             if (paidAmount > totalAmount + 0.01) {
-                alert(`Paid amount (₹${paidAmount.toLocaleString('en-IN')}) cannot be greater than the total amount (₹${totalAmount.toLocaleString('en-IN')}).`);
+                showAlert(`Paid amount (₹${paidAmount.toLocaleString('en-IN')}) cannot be greater than the total amount (₹${totalAmount.toLocaleString('en-IN')}).`);
                 return;
             }
             const payments: Payment[] = [];
@@ -521,7 +523,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             const totalPaid = existingPayments.reduce((sum, p) => sum + Number(p.amount), 0);
 
             if (totalAmount < totalPaid - 0.01) {
-                alert(`The new total amount (₹${totalAmount.toLocaleString('en-IN')}) cannot be less than the amount already paid (₹${totalPaid.toLocaleString('en-IN')}).`);
+                showAlert(`The new total amount (₹${totalAmount.toLocaleString('en-IN')}) cannot be less than the amount already paid (₹${totalPaid.toLocaleString('en-IN')}).`);
                 return;
             }
 
@@ -537,13 +539,13 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
 
      const handleRecordStandalonePayment = () => {
         if (!customerId) {
-            alert('Please select a customer to record a payment for.');
+            showAlert('Please select a customer to record a payment for.');
             return;
         }
 
         const paidAmount = parseFloat(paymentDetails.amount || '0');
         if (paidAmount <= 0) {
-            alert('Please enter a valid payment amount.');
+            showAlert('Please enter a valid payment amount.');
             return;
         }
 
@@ -555,7 +557,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ setIsDirty }) => {
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
         if (outstandingSales.length === 0) {
-            alert('This customer has no outstanding dues.');
+            showAlert('This customer has no outstanding dues.');
             return;
         }
         

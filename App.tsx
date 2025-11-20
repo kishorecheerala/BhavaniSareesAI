@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Home, Users, ShoppingCart, Package, FileText, Undo2, Boxes, Search, HelpCircle, Bell, Menu, Plus, UserPlus, PackagePlus, Download, X, Sun, Moon } from 'lucide-react';
 
 import { AppProvider, useAppContext } from './context/AppContext';
+import { DialogProvider } from './context/DialogContext';
 import Dashboard from './pages/Dashboard';
 import CustomersPage from './pages/CustomersPage';
 import SalesPage from './pages/SalesPage';
@@ -560,7 +561,9 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => (
     <AppProvider>
-        <AppContent />
+        <DialogProvider>
+            <AppContent />
+        </DialogProvider>
     </AppProvider>
 );
 

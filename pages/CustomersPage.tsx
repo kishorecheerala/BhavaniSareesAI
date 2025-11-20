@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, User, Phone, MapPin, Search, Edit, Save, X, IndianRupee, ShoppingCart, Share2, ChevronDown } from 'lucide-react';
+import { Plus, User, Phone, MapPin, Search, Edit, Save, X, Trash2, IndianRupee, ShoppingCart, Download, Share2, ChevronDown } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Customer, Payment, Sale, Page } from '../types';
 import Card from '../components/Card';
@@ -10,6 +10,7 @@ import DeleteButton from '../components/DeleteButton';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useOnClickOutside } from '../hooks/useOnClickOutside';
+import { useDialog } from '../context/DialogContext';
 import PaymentModal from '../components/PaymentModal';
 
 const getLocalDateString = (date = new Date()) => {
@@ -67,6 +68,7 @@ interface CustomersPageProps {
 
 const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPage }) => {
     const { state, dispatch, showToast } = useAppContext();
+    const { showConfirm, showAlert } = useDialog();
     const [searchTerm, setSearchTerm] = useState('');
     const [isAdding, setIsAdding] = useState(false);
     const [newCustomer, setNewCustomer] = useState({ id: '', name: '', phone: '', address: '', area: '', reference: '' });
@@ -145,11 +147,11 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
     const handleAddCustomer = () => {
         const trimmedId = newCustomer.id.trim();
         if (!trimmedId) {
-            alert('Customer ID is required.');
+            showAlert('Customer ID is required.');
             return;
         }
         if (!newCustomer.name || !newCustomer.phone || !newCustomer.address || !newCustomer.area) {
-            alert('Please fill all required fields (Name, Phone, Address, Area).');
+            showAlert('Please fill all required fields (Name, Phone, Address, Area).');
             return;
         }
 
@@ -157,7 +159,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         const isIdTaken = state.customers.some(c => c.id.toLowerCase() === finalId.toLowerCase());
         
         if (isIdTaken) {
-            alert(`Customer ID "${finalId}" is already taken. Please choose another one.`);
+            showAlert(`Customer ID "${finalId}" is already taken. Please choose another one.`);
             return;
         }
 
@@ -175,9 +177,10 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         showToast("Customer added successfully!");
     };
     
-    const handleUpdateCustomer = () => {
+    const handleUpdateCustomer = async () => {
         if (editedCustomer) {
-            if (window.confirm('Are you sure you want to save these changes to the customer details?')) {
+            const confirmed = await showConfirm('Are you sure you want to save these changes to the customer details?');
+            if (confirmed) {
                 dispatch({ type: 'UPDATE_CUSTOMER', payload: editedCustomer });
                 setSelectedCustomer(editedCustomer);
                 setIsEditing(false);
@@ -211,7 +214,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
     const handleAddPayment = () => {
         const sale = state.sales.find(s => s.id === paymentModalState.saleId);
         if (!sale || !paymentDetails.amount) {
-            alert("Please enter a valid amount.");
+            showAlert("Please enter a valid amount.");
             return;
         }
         
@@ -220,7 +223,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         const newPaymentAmount = parseFloat(paymentDetails.amount);
 
         if(newPaymentAmount > dueAmount + 0.01) { // Epsilon for float
-            alert(`Payment of ₹${newPaymentAmount.toLocaleString('en-IN')} exceeds due amount of ₹${dueAmount.toLocaleString('en-IN')}.`);
+            showAlert(`Payment of ₹${newPaymentAmount.toLocaleString('en-IN')} exceeds due amount of ₹${dueAmount.toLocaleString('en-IN')}.`);
             return;
         }
 
@@ -518,7 +521,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
         });
 
         if (overdueSales.length === 0) {
-            alert(`${selectedCustomer.name} has no outstanding dues.`);
+            showAlert(`${selectedCustomer.name} has no outstanding dues.`);
             return;
         }
 

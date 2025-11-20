@@ -8,6 +8,7 @@ import Button from '../components/Button';
 import { DataImportModal } from '../components/DataImportModal';
 import { Page, Customer, Sale, Purchase, Supplier, Product, Return, AppMetadataBackup } from '../types';
 import { testData, testProfile } from '../utils/testData';
+import { useDialog } from '../context/DialogContext';
 
 interface DashboardProps {
     setCurrentPage: (page: Page) => void;
@@ -580,6 +581,7 @@ const LowStockCard: React.FC<{ products: Product[]; onNavigate: (id: string) => 
 const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
     const { state, dispatch, showToast } = useAppContext();
     const { customers, sales, purchases, products, app_metadata, suppliers, returns } = state;
+    const { showConfirm, showAlert } = useDialog();
     
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth().toString());
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -648,7 +650,13 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
     };
 
     const handleLoadTestData = async () => {
-        if (window.confirm("This will OVERWRITE your current data with sample test data. Are you sure you want to proceed?")) {
+        const confirmed = await showConfirm("This will OVERWRITE your current data with sample test data. Are you sure you want to proceed?", {
+            title: "Load Test Data",
+            confirmText: "Yes, Overwrite",
+            variant: "danger"
+        });
+        
+        if (confirmed) {
             setIsGeneratingReport(true);
             try {
                 // Prepare data object for importData
@@ -669,6 +677,29 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
     const handleNavigate = (page: Page, id: string) => {
         dispatch({ type: 'SET_SELECTION', payload: { page, id } });
         setCurrentPage(page);
+    };
+    
+    const handleFileRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const confirmed = await showConfirm("Restoring will OVERWRITE all current data. Are you sure you want to restore from this backup?", {
+                title: "Restore Backup",
+                confirmText: "Yes, Restore",
+                variant: "danger"
+            });
+            
+            if (confirmed) {
+                try {
+                    const text = await file.text();
+                    const data = JSON.parse(text);
+                    await db.importData(data);
+                    window.location.reload();
+                } catch (err) {
+                    showAlert("Failed to restore backup. The file might be invalid or corrupted.");
+                }
+            }
+            e.target.value = ''; // Reset input
+        }
     };
 
     const monthOptions = [
@@ -771,23 +802,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                                     type="file" 
                                     accept="application/json" 
                                     className="hidden" 
-                                    onChange={async (e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) {
-                                            if (confirm("Restoring will OVERWRITE all current data. Are you sure?")) {
-                                                try {
-                                                    const text = await file.text();
-                                                    const data = JSON.parse(text);
-                                                    await db.importData(data);
-                                                    // Reload to reflect changes from DB in context (simple way)
-                                                    window.location.reload();
-                                                } catch (err) {
-                                                    alert("Failed to restore backup. Invalid file.");
-                                                }
-                                            }
-                                            e.target.value = ''; // Reset input
-                                        }
-                                    }} 
+                                    onChange={handleFileRestore} 
                                 />
                                 <Button onClick={handleLoadTestData} className="w-full bg-purple-600 hover:bg-purple-700 focus:ring-purple-600" disabled={isGeneratingReport}>
                                     <TestTube2 className="w-4 h-4 mr-2" /> Load Test Data
