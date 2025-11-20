@@ -5,7 +5,7 @@ import {
   Calendar, Download, ArrowUp, ArrowDown, 
   CreditCard, Wallet, FileText, Activity, Users, Lightbulb, Target, Zap, Scale, ShieldCheck,
   PackagePlus, UserMinus, PieChart as PieIcon, BarChart2, AlertTriangle, ShieldAlert,
-  Trophy, Medal, Timer, ArrowRight, Edit, Sparkles, AlertCircle, Lock
+  Trophy, Medal, Timer, ArrowRight, Edit, Sparkles, AlertCircle, Lock, Package
 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import Card from '../components/Card';
@@ -13,7 +13,7 @@ import Button from '../components/Button';
 import PinModal from '../components/PinModal';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Page, Sale, Customer, Product, AppMetadataRevenueGoal } from '../types';
+import { Page, Sale, Customer, Product, AppMetadataRevenueGoal, Purchase } from '../types';
 
 interface InsightsPageProps {
     setCurrentPage: (page: Page) => void;
@@ -152,7 +152,7 @@ const SmartInsightsSection: React.FC<{ sales: Sale[], products: Product[], custo
             return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
         });
         
-        // 1. "Cash Trap" Detection (High value stock, low movement)
+        // 1. "Cash Trap" Detection
         const productSalesLast30Days: Record<string, number> = {};
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -168,7 +168,7 @@ const SmartInsightsSection: React.FC<{ sales: Sale[], products: Product[], custo
         const cashTraps = products.filter(p => {
             const salesCount = productSalesLast30Days[p.id] || 0;
             const stockValue = p.quantity * p.purchasePrice;
-            return p.quantity >= 3 && salesCount === 0 && stockValue > 3000; // Criteria: No sales in 30 days, stock value > 3k
+            return p.quantity >= 3 && salesCount === 0 && stockValue > 3000;
         }).sort((a, b) => (b.quantity * b.purchasePrice) - (a.quantity * a.purchasePrice));
 
         if (cashTraps.length > 0) {
@@ -184,11 +184,11 @@ const SmartInsightsSection: React.FC<{ sales: Sale[], products: Product[], custo
             });
         }
 
-        // 2. "Hidden Gem" (High Margin, Low Volume)
+        // 2. "Hidden Gem"
         const gems = products.filter(p => {
             const margin = ((p.salePrice - p.purchasePrice) / p.purchasePrice) * 100;
             const salesCount = productSalesLast30Days[p.id] || 0;
-            return margin > 40 && salesCount > 0 && salesCount < 5; // Healthy margin but low volume
+            return margin > 40 && salesCount > 0 && salesCount < 5;
         }).sort((a, b) => b.salePrice - a.salePrice);
 
         if (gems.length > 0) {
@@ -203,9 +203,7 @@ const SmartInsightsSection: React.FC<{ sales: Sale[], products: Product[], custo
             });
         }
 
-        // 3. Stockout Opportunity Cost (Simplified)
-        // Identify items that went to 0 stock recently and had high velocity before
-        // (This is complex without stock history logs, so we approximate: 0 stock items with high historic sales)
+        // 3. Stockout Opportunity Cost
         const outOfStockHighVelocity = products.filter(p => p.quantity === 0 && (productSalesLast30Days[p.id] || 0) > 2);
         if (outOfStockHighVelocity.length > 0) {
             const lostItem = outOfStockHighVelocity[0];
@@ -220,11 +218,7 @@ const SmartInsightsSection: React.FC<{ sales: Sale[], products: Product[], custo
             });
         }
 
-        // 4. Customer Cohort Analysis
-        // Compare this month's New Customer % vs Previous Month
-        // (Skipped for brevity to focus on inventory/finance which is more actionable for small biz)
-        
-        // 4. Peak Time (Day of Week)
+        // 4. Peak Time
         if (thisMonthSales.length > 5) {
             const dayRevenue = [0, 0, 0, 0, 0, 0, 0];
             const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -241,7 +235,7 @@ const SmartInsightsSection: React.FC<{ sales: Sale[], products: Product[], custo
             });
         }
 
-        // Default filler if list is small
+        // Default filler
         if (list.length < 2) {
              list.push({
                 icon: Activity,
@@ -278,7 +272,6 @@ const RevenueTargetCard: React.FC<{
     customGoal?: number,
     onEditGoal: () => void
 }> = ({ currentRevenue, previousRevenue, customGoal, onEditGoal }) => {
-    // Priority: Custom Goal > 10% over previous month > Default 50k
     const target = customGoal && customGoal > 0 ? customGoal : (previousRevenue > 0 ? previousRevenue * 1.10 : 50000);
     const percentage = Math.min(100, Math.max(0, (currentRevenue / target) * 100));
     const remaining = Math.max(0, target - currentRevenue);
@@ -322,15 +315,11 @@ const RevenueTargetCard: React.FC<{
                     </div>
                 </div>
                 
-                {/* Right side: Concentric Progress Circle */}
                 <div className="relative flex items-center justify-center w-32 h-32 flex-shrink-0 ml-2">
-                    {/* Background Target Icon - Perfectly Aligned Center */}
                     <div className="absolute inset-0 flex items-center justify-center opacity-10 dark:opacity-20 pointer-events-none">
                         <Target size={64} className="text-indigo-500" strokeWidth={1.5} />
                     </div>
-                    
                     <svg className="transform -rotate-90 w-full h-full drop-shadow-xl relative z-10">
-                        {/* Track Circle */}
                         <circle 
                             cx="50%" 
                             cy="50%" 
@@ -340,7 +329,6 @@ const RevenueTargetCard: React.FC<{
                             fill="transparent" 
                             className="text-gray-100 dark:text-slate-700" 
                         />
-                        {/* Progress Circle */}
                         <circle 
                             cx="50%" 
                             cy="50%" 
@@ -354,8 +342,6 @@ const RevenueTargetCard: React.FC<{
                             strokeLinecap="round"
                         />
                     </svg>
-                    
-                    {/* Percentage Text */}
                     <div className="absolute inset-0 flex flex-col items-center justify-center z-20">
                         <span className="text-xl font-bold text-gray-700 dark:text-white">{percentage.toFixed(0)}%</span>
                     </div>
@@ -415,7 +401,6 @@ const ChampionsCard: React.FC<{ sales: Sale[], customers: Customer[] }> = ({ sal
 const InventoryVelocityCard: React.FC<{ sales: Sale[], products: Product[] }> = ({ sales, products }) => {
     const velocityData = useMemo(() => {
         const productSoldQty: Record<string, number> = {};
-        // Analyze last 60 days
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - 60);
         
@@ -430,7 +415,6 @@ const InventoryVelocityCard: React.FC<{ sales: Sale[], products: Product[] }> = 
         const sorted = Object.entries(productSoldQty).sort(([, a], [, b]) => b - a);
         const fastMovers = sorted.slice(0, 3).map(([id, qty]) => ({ id, qty, name: products.find(p => p.id === id)?.name || id }));
         
-        // Slow movers: Products with stock > 5 but 0 sales in 60 days
         const slowMovers = products
             .filter(p => p.quantity > 5 && !productSoldQty[p.id])
             .slice(0, 3)
@@ -482,38 +466,48 @@ const InventoryVelocityCard: React.FC<{ sales: Sale[], products: Product[] }> = 
 
 // --- Visual Chart Components ---
 
-const DayOfWeekChart: React.FC<{ sales: Sale[] }> = ({ sales }) => {
+const DayOfWeekChart: React.FC<{ filteredSales: Sale[] }> = ({ filteredSales }) => {
     const dayData = useMemo(() => {
+        if (!filteredSales || filteredSales.length === 0) {
+             // Return empty placeholder if no data
+             const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+             return days.map(day => ({ day, value: 0, height: 0 }));
+        }
+
         const counts = Array(7).fill(0);
         const revenue = Array(7).fill(0);
         const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         
-        sales.forEach(s => {
-            const d = new Date(s.date).getDay();
-            counts[d]++;
-            revenue[d] += Number(s.totalAmount);
+        filteredSales.forEach(s => {
+            const date = new Date(s.date);
+            if (!isNaN(date.getTime())) {
+                const d = date.getDay();
+                counts[d]++;
+                revenue[d] += Number(s.totalAmount);
+            }
         });
 
         const maxVal = Math.max(...revenue, 1);
         return days.map((day, i) => ({
             day,
             value: revenue[i],
-            height: (revenue[i] / maxVal) * 100
+            // Ensure minimal visibility for non-zero values
+            height: revenue[i] > 0 ? Math.max((revenue[i] / maxVal) * 100, 5) : 0
         }));
-    }, [sales]);
+    }, [filteredSales]);
 
     return (
         <div className="h-48 flex items-end justify-between gap-2 pt-6">
             {dayData.map((d, i) => (
-                <div key={i} className="flex-1 flex flex-col items-center group relative">
+                <div key={i} className="flex-1 flex flex-col items-center group relative h-full justify-end">
                      {d.value > 0 && (
-                        <div className="absolute bottom-full mb-1 hidden group-hover:block bg-black text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-10">
+                        <div className="absolute bottom-[calc(100%+5px)] hidden group-hover:block bg-black text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-10">
                             ₹{d.value.toLocaleString()}
                         </div>
                     )}
                     <div 
                         className={`w-full rounded-t-md transition-all duration-500 ${d.value > 0 ? 'bg-indigo-500 dark:bg-indigo-400 group-hover:bg-indigo-600' : 'bg-gray-100 dark:bg-slate-700'}`}
-                        style={{ height: `${Math.max(d.height, 5)}%` }} 
+                        style={{ height: `${d.height}%` }} 
                     />
                     <span className="text-[10px] text-gray-500 dark:text-gray-400 mt-2 font-medium">{d.day}</span>
                 </div>
@@ -524,6 +518,8 @@ const DayOfWeekChart: React.FC<{ sales: Sale[] }> = ({ sales }) => {
 
 const RetentionChart: React.FC<{ filteredSales: Sale[], allSales: Sale[] }> = ({ filteredSales, allSales }) => {
     const data = useMemo(() => {
+        if (filteredSales.length === 0) return { new: 0, returning: 0, newPct: 0, retPct: 0 };
+        
         const currentCustomerIds = new Set(filteredSales.map(s => s.customerId));
         let newCustomers = 0;
         let returningCustomers = 0;
@@ -532,7 +528,9 @@ const RetentionChart: React.FC<{ filteredSales: Sale[], allSales: Sale[] }> = ({
             const customerHistory = allSales.filter(s => s.customerId === custId).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
             if (customerHistory.length === 0) return;
 
-            const isNew = filteredSales.some(s => s.id === customerHistory[0].id);
+            // Check if their first ever sale is within the filtered sales list
+            const firstSale = customerHistory[0];
+            const isNew = filteredSales.some(s => s.id === firstSale.id);
             
             if (isNew) newCustomers++;
             else returningCustomers++;
@@ -607,7 +605,6 @@ const RiskAnalysisCard: React.FC<{ customers: Customer[], sales: Sale[], onNavig
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card title="Customer Risk Distribution">
                 <div className="flex items-center justify-center gap-8 h-48">
-                    {/* Simplified Donut Chart Representation */}
                      <div className="relative w-32 h-32 rounded-full bg-gray-100 dark:bg-slate-700 overflow-hidden flex items-center justify-center">
                         <div className="absolute inset-0" style={{
                             background: `conic-gradient(
@@ -659,7 +656,7 @@ const RiskAnalysisCard: React.FC<{ customers: Customer[], sales: Sale[], onNavig
 
 const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
     const { state, dispatch } = useAppContext();
-    const { sales, products, customers, pin, app_metadata, profile } = state;
+    const { sales, products, customers, purchases, pin, app_metadata, profile } = state;
 
     const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
     const [selectedMonth, setSelectedMonth] = useState<string>('all');
@@ -695,8 +692,34 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
         { value: '9', label: 'October' }, { value: '10', label: 'November' }, { value: '11', label: 'December' },
     ];
 
-    // --- Data Aggregation ---
+    // --- Data Filtering & Aggregation ---
 
+    // 1. All Time
+    const allTimeSales = useMemo(() => sales.reduce((sum, s) => sum + Number(s.totalAmount), 0), [sales]);
+    const allTimePurchases = useMemo(() => purchases.reduce((sum, p) => sum + Number(p.totalAmount), 0), [purchases]);
+
+    // 2. Yearly
+    const filteredYearSales = useMemo(() => sales.filter(s => new Date(s.date).getFullYear().toString() === selectedYear), [sales, selectedYear]);
+    const filteredYearPurchases = useMemo(() => purchases.filter(p => new Date(p.date).getFullYear().toString() === selectedYear), [purchases, selectedYear]);
+    const yearSalesTotal = useMemo(() => filteredYearSales.reduce((sum, s) => sum + Number(s.totalAmount), 0), [filteredYearSales]);
+    const yearPurchasesTotal = useMemo(() => filteredYearPurchases.reduce((sum, p) => sum + Number(p.totalAmount), 0), [filteredYearPurchases]);
+
+    // 3. Monthly
+    const filteredMonthSales = useMemo(() => {
+        if (selectedMonth === 'all') return []; // Only applicable if a month is selected
+        return filteredYearSales.filter(s => new Date(s.date).getMonth().toString() === selectedMonth);
+    }, [filteredYearSales, selectedMonth]);
+    
+    const filteredMonthPurchases = useMemo(() => {
+        if (selectedMonth === 'all') return [];
+        return filteredYearPurchases.filter(p => new Date(p.date).getMonth().toString() === selectedMonth);
+    }, [filteredYearPurchases, selectedMonth]);
+
+    const monthSalesTotal = useMemo(() => filteredMonthSales.reduce((sum, s) => sum + Number(s.totalAmount), 0), [filteredMonthSales]);
+    const monthPurchasesTotal = useMemo(() => filteredMonthPurchases.reduce((sum, p) => sum + Number(p.totalAmount), 0), [filteredMonthPurchases]);
+
+
+    // Determine main filtered dataset for charts based on dropdowns
     const filteredSales = useMemo(() => {
         return sales.filter(s => {
             const d = new Date(s.date);
@@ -706,22 +729,7 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
         });
     }, [sales, selectedYear, selectedMonth]);
 
-    const previousPeriodSales = useMemo(() => {
-        if (selectedMonth === 'all') {
-            const prevYear = (parseInt(selectedYear) - 1).toString();
-            return sales.filter(s => new Date(s.date).getFullYear().toString() === prevYear);
-        } else {
-            let prevMonth = parseInt(selectedMonth) - 1;
-            let prevYear = parseInt(selectedYear);
-            if (prevMonth < 0) { prevMonth = 11; prevYear -= 1; }
-            
-            return sales.filter(s => {
-                const d = new Date(s.date);
-                return d.getFullYear() === prevYear && d.getMonth() === prevMonth;
-            });
-        }
-    }, [sales, selectedYear, selectedMonth]);
-
+    // Calculate Metrics for the KPI cards
     const calculateMetrics = (data: typeof sales) => {
         const revenue = data.reduce((sum, s) => sum + Number(s.totalAmount), 0);
         let cost = 0;
@@ -739,17 +747,12 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
         return { revenue, profit, orders, aov };
     };
 
-    const currentMetrics = useMemo(() => calculateMetrics(filteredSales), [filteredSales]);
-    const previousMetrics = useMemo(() => calculateMetrics(previousPeriodSales), [previousPeriodSales]);
+    const currentMetrics = useMemo(() => calculateMetrics(filteredSales), [filteredSales, products]);
 
-    const getTrend = (current: number, previous: number) => {
-        if (previous === 0) return current > 0 ? 100 : 0;
-        return ((current - previous) / previous) * 100;
-    };
-
-    // --- Chart Data ---
+    // --- Chart Data Logic (Fixed) ---
     const chartData = useMemo(() => {
         if (selectedMonth === 'all') {
+            // Year View: 12 Buckets
             const data = Array(12).fill(0).map((_, i) => ({ 
                 label: months[i + 1].label.substr(0, 3), 
                 sales: 0, 
@@ -768,7 +771,11 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
             });
             return data;
         } else {
-            const daysInMonth = new Date(parseInt(selectedYear), parseInt(selectedMonth) + 1, 0).getDate();
+            // Month View: Daily Buckets (1 to 31)
+            const year = parseInt(selectedYear);
+            const month = parseInt(selectedMonth);
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
             const data = Array(daysInMonth).fill(0).map((_, i) => ({ 
                 label: (i + 1).toString(), 
                 sales: 0, 
@@ -857,12 +864,12 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
         
         autoTable(doc, {
             startY: 40,
-            head: [['Metric', 'Value', 'Trend']],
+            head: [['Metric', 'Value']],
             body: [
-                ['Total Revenue', `Rs. ${currentMetrics.revenue.toLocaleString()}`, `${getTrend(currentMetrics.revenue, previousMetrics.revenue).toFixed(1)}%`],
-                ['Gross Profit', `Rs. ${currentMetrics.profit.toLocaleString()}`, `${getTrend(currentMetrics.profit, previousMetrics.profit).toFixed(1)}%`],
-                ['Total Orders', currentMetrics.orders.toString(), ''],
-                ['Avg Order Value', `Rs. ${currentMetrics.aov.toLocaleString()}`, '']
+                ['Total Revenue', `Rs. ${currentMetrics.revenue.toLocaleString()}`],
+                ['Gross Profit', `Rs. ${currentMetrics.profit.toLocaleString()}`],
+                ['Total Orders', currentMetrics.orders.toString()],
+                ['Avg Order Value', `Rs. ${currentMetrics.aov.toLocaleString()}`]
             ],
             theme: 'grid',
             headStyles: { fillColor: [13, 148, 136] }
@@ -911,13 +918,7 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                     }}
                     onCancel={() => setCurrentPage('DASHBOARD')}
                 />
-                <div className="absolute inset-0 flex flex-col gap-4 p-4 opacity-30 blur-sm pointer-events-none z-0">
-                    <div className="h-10 bg-gray-300 dark:bg-slate-700 w-1/3 rounded"></div>
-                    <div className="grid grid-cols-2 gap-4">
-                         <div className="h-32 bg-gray-200 dark:bg-slate-800 rounded-xl"></div>
-                         <div className="h-32 bg-gray-200 dark:bg-slate-800 rounded-xl"></div>
-                    </div>
-                </div>
+                {/* Background UI elements */}
             </div>
         );
     }
@@ -936,45 +937,43 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                         }
                     }}
                 />
-                <div className="absolute inset-0 flex flex-col gap-4 p-4 opacity-30 blur-sm pointer-events-none z-0">
-                    <div className="h-10 bg-gray-300 dark:bg-slate-700 w-1/3 rounded"></div>
-                    <div className="grid grid-cols-2 gap-4">
-                         <div className="h-32 bg-gray-200 dark:bg-slate-800 rounded-xl"></div>
-                         <div className="h-32 bg-gray-200 dark:bg-slate-800 rounded-xl"></div>
-                    </div>
-                </div>
+                 {/* Background UI elements */}
             </div>
         );
     }
 
-    const KPICard = ({ title, value, prevValue, icon: Icon, prefix = '' }: any) => {
-        const trend = getTrend(value, prevValue);
-        const isPositive = trend >= 0;
-        
-        return (
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-md border border-gray-100 dark:border-slate-700">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{title}</p>
-                        <h3 className="text-2xl font-bold text-gray-800 dark:text-white">{prefix}{value.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</h3>
-                    </div>
-                    <div className={`p-2 rounded-full ${isPositive ? 'bg-green-100 text-green-600 dark:bg-green-900/30' : 'bg-red-100 text-red-600 dark:bg-red-900/30'}`}>
-                        <Icon size={20} />
-                    </div>
+    const FinancialColumn = ({ title, sales, purchases, highlight = false }: any) => (
+        <div className={`p-4 rounded-lg border ${highlight ? 'bg-teal-50 border-teal-200 dark:bg-teal-900/20 dark:border-teal-800 ring-2 ring-teal-500 ring-opacity-20' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700'} flex flex-col gap-3`}>
+            <h3 className={`text-xs font-bold uppercase tracking-wider ${highlight ? 'text-teal-700 dark:text-teal-300' : 'text-gray-500 dark:text-gray-400'}`}>{title}</h3>
+            <div className="space-y-2">
+                <div>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5">Sales</p>
+                    <p className={`text-lg font-bold ${highlight ? 'text-teal-700 dark:text-teal-300' : 'text-gray-800 dark:text-white'}`}>₹{sales.toLocaleString('en-IN')}</p>
                 </div>
-                <div className="mt-4 flex items-center text-sm">
-                    <span className={`flex items-center font-medium ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                        {isPositive ? <ArrowUp size={14} className="mr-1"/> : <ArrowDown size={14} className="mr-1"/>}
-                        {Math.abs(trend).toFixed(1)}%
-                    </span>
-                    <span className="text-gray-400 ml-2">vs previous period</span>
+                <div>
+                     <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5">Purchases</p>
+                     <p className={`text-sm font-semibold ${highlight ? 'text-teal-600/80 dark:text-teal-400/80' : 'text-gray-600 dark:text-gray-400'}`}>₹{purchases.toLocaleString('en-IN')}</p>
                 </div>
             </div>
-        );
-    };
+        </div>
+    );
+
+    const KPICard = ({ title, value, icon: Icon, prefix = '' }: any) => (
+        <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-md border border-gray-100 dark:border-slate-700">
+            <div className="flex justify-between items-start">
+                <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{title}</p>
+                    <h3 className="text-2xl font-bold text-gray-800 dark:text-white">{prefix}{value.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</h3>
+                </div>
+                <div className={`p-2 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400`}>
+                    <Icon size={20} />
+                </div>
+            </div>
+        </div>
+    );
 
     return (
-        <div className="space-y-6 pb-10">
+        <div className="space-y-6 pb-10 animate-fade-in-fast">
              {/* Edit Goal Modal */}
              {isGoalModalOpen && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
@@ -1006,42 +1005,71 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                 userName={profile?.name || 'Owner'}
             />
             
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="flex items-center gap-2">
-                    <h1 className="text-2xl font-bold text-primary">Business Insights</h1>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                        <ShieldCheck size={12} className="mr-1" /> Secured
-                    </span>
+            {/* New Financial Performance Matrix */}
+            <div className="mb-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-2xl font-bold text-primary">Business Insights</h1>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                            <ShieldCheck size={12} className="mr-1" /> Secured
+                        </span>
+                    </div>
+                    <div className="flex gap-2 w-full md:w-auto">
+                        <select 
+                            value={selectedMonth}
+                            onChange={(e) => setSelectedMonth(e.target.value)}
+                            className="p-2 border rounded-md bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white shadow-sm focus:ring-primary focus:border-primary flex-grow"
+                        >
+                            {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                        </select>
+                        <select 
+                            value={selectedYear}
+                            onChange={(e) => setSelectedYear(e.target.value)}
+                            className="p-2 border rounded-md bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white shadow-sm focus:ring-primary focus:border-primary flex-grow"
+                        >
+                            {getYears.map(y => <option key={y} value={y}>{y}</option>)}
+                        </select>
+                        <Button onClick={handleDownloadReport} variant="secondary">
+                            <Download size={18} />
+                        </Button>
+                    </div>
                 </div>
-                <div className="flex gap-2 w-full md:w-auto">
-                    <select 
-                        value={selectedMonth}
-                        onChange={(e) => setSelectedMonth(e.target.value)}
-                        className="p-2 border rounded-md bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white shadow-sm focus:ring-primary focus:border-primary flex-grow"
-                    >
-                        {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                    </select>
-                    <select 
-                        value={selectedYear}
-                        onChange={(e) => setSelectedYear(e.target.value)}
-                        className="p-2 border rounded-md bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white shadow-sm focus:ring-primary focus:border-primary flex-grow"
-                    >
-                        {getYears.map(y => <option key={y} value={y}>{y}</option>)}
-                    </select>
-                    <Button onClick={handleDownloadReport} variant="secondary">
-                        <Download size={18} />
-                    </Button>
+
+                <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                    <FinancialColumn 
+                        title="All Time" 
+                        sales={allTimeSales} 
+                        purchases={allTimePurchases} 
+                    />
+                    <FinancialColumn 
+                        title={`Year (${selectedYear})`} 
+                        sales={yearSalesTotal} 
+                        purchases={yearPurchasesTotal} 
+                    />
+                    {selectedMonth !== 'all' ? (
+                        <FinancialColumn 
+                            title={`${months[parseInt(selectedMonth)+1].label.substring(0,3)} ${selectedYear}`} 
+                            sales={monthSalesTotal} 
+                            purchases={monthPurchasesTotal}
+                            highlight={true}
+                        />
+                    ) : (
+                        <div className="p-4 rounded-lg border bg-gray-50 dark:bg-slate-800 border-dashed border-gray-300 dark:border-slate-600 flex flex-col justify-center items-center text-gray-400 dark:text-gray-500 text-center">
+                             <Calendar size={20} className="mb-2 opacity-50"/>
+                             <p className="text-xs">Select a month<br/>to see details</p>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* Smart Insights Section - UPGRADED */}
+            {/* Smart Insights Section */}
             <SmartInsightsSection sales={sales} products={products} customers={customers} />
 
             {/* Growth Tracking Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <RevenueTargetCard 
                     currentRevenue={currentMetrics.revenue} 
-                    previousRevenue={previousMetrics.revenue}
+                    previousRevenue={0} // Simplified for this view
                     customGoal={revenueGoal}
                     onEditGoal={() => {
                         setTempGoal(revenueGoal ? revenueGoal.toString() : '');
@@ -1052,11 +1080,12 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                 <InventoryVelocityCard sales={sales} products={products} />
             </div>
 
+            {/* Filtered KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <KPICard title="Total Revenue" value={currentMetrics.revenue} prevValue={previousMetrics.revenue} icon={DollarSign} prefix="₹" />
-                <KPICard title="Gross Profit (Est.)" value={currentMetrics.profit} prevValue={previousMetrics.profit} icon={TrendingUp} prefix="₹" />
-                <KPICard title="Total Orders" value={currentMetrics.orders} prevValue={previousMetrics.orders} icon={ShoppingCart} />
-                <KPICard title="Avg Order Value" value={currentMetrics.aov} prevValue={previousMetrics.aov} icon={Activity} prefix="₹" />
+                <KPICard title="Filtered Revenue" value={currentMetrics.revenue} icon={DollarSign} prefix="₹" />
+                <KPICard title="Est. Gross Profit" value={currentMetrics.profit} icon={TrendingUp} prefix="₹" />
+                <KPICard title="Orders Count" value={currentMetrics.orders} icon={ShoppingCart} />
+                <KPICard title="Avg Order Value" value={currentMetrics.aov} icon={Activity} prefix="₹" />
             </div>
             
             {/* Risk Section */}
@@ -1068,15 +1097,17 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                         {chartData.map((d, i) => {
                             const height = maxChartValue > 0 ? (d.sales / maxChartValue) * 100 : 0;
                             return (
-                                <div key={i} className="flex-1 min-w-[20px] flex flex-col items-center group relative">
-                                    <div className="absolute bottom-full mb-2 hidden group-hover:block z-10 bg-black text-white text-xs p-2 rounded whitespace-nowrap pointer-events-none">
-                                        <p>{d.label}</p>
-                                        <p>Sales: ₹{d.sales.toLocaleString()}</p>
-                                        <p>Profit: ₹{d.profit.toLocaleString()}</p>
-                                    </div>
+                                <div key={i} className="flex-1 min-w-[20px] flex flex-col items-center group relative h-full justify-end">
+                                     {d.sales > 0 && (
+                                        <div className="absolute bottom-[calc(100%+5px)] hidden group-hover:block z-20 bg-black text-white text-xs p-2 rounded whitespace-nowrap shadow-lg">
+                                            <p className="font-bold">{d.label}</p>
+                                            <p>Sales: ₹{d.sales.toLocaleString()}</p>
+                                            <p>Profit: ₹{d.profit.toLocaleString()}</p>
+                                        </div>
+                                    )}
                                     <div 
                                         className="w-full bg-teal-500 hover:bg-teal-600 dark:bg-teal-600 dark:hover:bg-teal-500 rounded-t transition-all relative" 
-                                        style={{ height: `${Math.max(height, 1)}%` }}
+                                        style={{ height: `${Math.max(height, 2)}%` }}
                                     ></div>
                                     <span className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 truncate w-full text-center">{d.label}</span>
                                 </div>
@@ -1116,10 +1147,10 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card title="Weekly Trading Pattern">
                     <div className="flex justify-between items-center mb-2">
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Average sales performance by day</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Average sales performance by day (Selected Period)</p>
                         <BarChart2 size={16} className="text-gray-400" />
                     </div>
-                    <DayOfWeekChart sales={filteredSales} />
+                    <DayOfWeekChart filteredSales={filteredSales} />
                 </Card>
 
                 <Card title="Customer Loyalty">
