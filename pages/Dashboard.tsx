@@ -1,13 +1,12 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { IndianRupee, User, AlertTriangle, Download, Upload, ShoppingCart, Package, XCircle, CheckCircle, Info, Calendar, ShieldCheck, ShieldAlert, ShieldX, Archive, PackageCheck, TestTube2, TrendingUp, Users } from 'lucide-react';
+import { IndianRupee, User, AlertTriangle, Download, Upload, ShoppingCart, Package, XCircle, CheckCircle, Info, ShieldCheck, ShieldX, Archive, PackageCheck, TestTube2, Sparkles, TrendingUp, ArrowRight, Zap, BrainCircuit } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import * as db from '../utils/db';
 import Card from '../components/Card';
 import Button from '../components/Button';
-// FIX: Module '"file:///components/DataImportModal"' has no default export. Changed to a named import.
 import { DataImportModal } from '../components/DataImportModal';
-import { Page, Customer, Sale, Purchase, Supplier } from '../types';
+import { Page, Customer, Sale, Purchase, Supplier, Product } from '../types';
 import { testData, testProfile } from '../utils/testData';
 
 interface DashboardProps {
@@ -22,8 +21,9 @@ const MetricCard: React.FC<{
     iconBgColor: string;
     textColor: string;
     unit?: string;
+    subValue?: string;
     onClick?: () => void;
-}> = ({ icon: Icon, title, value, color, iconBgColor, textColor, unit = '₹', onClick }) => (
+}> = ({ icon: Icon, title, value, color, iconBgColor, textColor, unit = '₹', subValue, onClick }) => (
     <div
         onClick={onClick}
         className={`rounded-lg shadow-md p-4 flex items-center transition-all duration-300 hover:shadow-xl hover:scale-[1.01] ${color} ${onClick ? 'cursor-pointer' : ''}`}
@@ -37,9 +37,153 @@ const MetricCard: React.FC<{
         <div className="ml-4 flex-grow">
             <p className={`font-semibold text-lg ${textColor}`}>{title}</p>
             <p className={`text-2xl font-bold ${textColor} break-all`}>{unit}{typeof value === 'number' ? value.toLocaleString('en-IN') : value}</p>
+            {subValue && <p className={`text-xs font-medium mt-1 opacity-80 ${textColor}`}>{subValue}</p>}
         </div>
     </div>
 );
+
+const SmartAnalystCard: React.FC<{ sales: Sale[], products: Product[], customers: Customer[] }> = ({ sales, products, customers }) => {
+    const insights = useMemo(() => {
+        const list: { icon: React.ElementType, text: string, color: string, type: string }[] = [];
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+        const currentDay = now.getDate();
+
+        // 1. Revenue Projection (Linear Regression Lite)
+        const thisMonthSales = sales.filter(s => {
+            const d = new Date(s.date);
+            return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+        });
+        const currentRevenue = thisMonthSales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
+        
+        if (currentDay > 1) {
+            const dailyRunRate = currentRevenue / currentDay;
+            const projectedRevenue = dailyRunRate * daysInMonth;
+            if (projectedRevenue > 0) {
+                list.push({
+                    icon: TrendingUp,
+                    type: 'Prediction',
+                    text: `Based on current trends, you are on track to hit ₹${Math.round(projectedRevenue).toLocaleString('en-IN')} revenue this month.`,
+                    color: 'text-emerald-600 dark:text-emerald-400'
+                });
+            }
+        }
+
+        // 2. Dead Stock Detection
+        const sixtyDaysAgo = new Date();
+        sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+        
+        const activeProductIds = new Set();
+        sales.forEach(s => {
+            if (new Date(s.date) > sixtyDaysAgo) {
+                s.items.forEach(i => activeProductIds.add(i.productId));
+            }
+        });
+
+        const deadStock = products
+            .filter(p => !activeProductIds.has(p.id) && p.quantity > 5)
+            .sort((a, b) => (b.quantity * b.purchasePrice) - (a.quantity * a.purchasePrice))
+            .slice(0, 1);
+
+        if (deadStock.length > 0) {
+            list.push({
+                icon: Archive,
+                type: 'Inventory Alert',
+                text: `"${deadStock[0].name}" hasn't sold in 60 days. Consider running a discount to clear ${deadStock[0].quantity} units.`,
+                color: 'text-amber-600 dark:text-amber-400'
+            });
+        }
+
+        // 3. High Velocity Item
+        const productVelocity: Record<string, number> = {};
+        thisMonthSales.forEach(s => {
+            s.items.forEach(i => {
+                productVelocity[i.productId] = (productVelocity[i.productId] || 0) + Number(i.quantity);
+            });
+        });
+        
+        const topVelocityId = Object.keys(productVelocity).sort((a, b) => productVelocity[b] - productVelocity[a])[0];
+        if (topVelocityId) {
+            const prod = products.find(p => p.id === topVelocityId);
+            if (prod && prod.quantity < productVelocity[topVelocityId] * 2) { // If stock is less than 2x monthly sales
+                 list.push({
+                    icon: Zap,
+                    type: 'Hot Item',
+                    text: `"${prod.name}" is selling fast! You might run out of stock soon at this rate.`,
+                    color: 'text-purple-600 dark:text-purple-400'
+                });
+            }
+        }
+
+        // 4. Customer Retention
+        if (customers.length > 0) {
+             // Simple logic: Find a customer who bought a lot previously but not in last 45 days
+            const fortyFiveDaysAgo = new Date();
+            fortyFiveDaysAgo.setDate(fortyFiveDaysAgo.getDate() - 45);
+            
+            const recentBuyers = new Set(sales.filter(s => new Date(s.date) > fortyFiveDaysAgo).map(s => s.customerId));
+            
+            // Find top spender who is NOT in recent buyers
+            const customerSpend: Record<string, number> = {};
+            sales.forEach(s => {
+                customerSpend[s.customerId] = (customerSpend[s.customerId] || 0) + Number(s.totalAmount);
+            });
+
+            const atRiskWhaleId = Object.keys(customerSpend)
+                .filter(id => !recentBuyers.has(id))
+                .sort((a, b) => customerSpend[b] - customerSpend[a])[0];
+            
+            if (atRiskWhaleId) {
+                const whale = customers.find(c => c.id === atRiskWhaleId);
+                if (whale) {
+                     list.push({
+                        icon: User,
+                        type: 'Retention',
+                        text: `${whale.name} (Top Customer) hasn't visited in 45 days. Give them a call?`,
+                        color: 'text-blue-600 dark:text-blue-400'
+                    });
+                }
+            }
+        }
+
+        return list;
+    }, [sales, products, customers]);
+
+    if (insights.length === 0) return null;
+
+    return (
+        <div className="relative overflow-hidden rounded-xl bg-white dark:bg-slate-800 shadow-lg border border-indigo-100 dark:border-indigo-900 mb-6">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-indigo-500"></div>
+            <div className="p-5">
+                <div className="flex items-center gap-2 mb-4">
+                    <div className="p-2 bg-indigo-100 dark:bg-indigo-900/50 rounded-full">
+                        <BrainCircuit className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                    <h3 className="font-bold text-lg text-gray-800 dark:text-white">Smart Analyst</h3>
+                    <span className="text-[10px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 px-2 py-0.5 rounded-full">AI Powered</span>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {insights.map((insight, idx) => (
+                        <div key={idx} className="flex gap-3 p-3 rounded-lg bg-gray-50 dark:bg-slate-700/30 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors border border-transparent hover:border-indigo-100 dark:hover:border-indigo-800">
+                            <div className="mt-1">
+                                <insight.icon className={`w-5 h-5 ${insight.color}`} />
+                            </div>
+                            <div>
+                                <p className={`text-xs font-bold uppercase mb-0.5 ${insight.color}`}>{insight.type}</p>
+                                <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                                    {insight.text}
+                                </p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const BackupStatusCard: React.FC<{ lastBackupDate: string | null }> = ({ lastBackupDate }) => {
     if (!lastBackupDate) {
@@ -356,22 +500,26 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
     const totalSales = state.sales.reduce((sum, sale) => sum + Number(sale.totalAmount), 0);
     const totalPurchases = state.purchases.reduce((sum, purchase) => sum + Number(purchase.totalAmount), 0);
     
-    const availableYears = useMemo(() => {
-        const years = new Set(state.sales.map(s => new Date(s.date).getFullYear()));
-        if (!years.has(new Date().getFullYear())) {
-            years.add(new Date().getFullYear());
-        }
-        return Array.from(years).sort((a: number, b: number) => b - a);
+    // Projected Revenue Logic (Simplified)
+    const currentMonthRevenue = useMemo(() => {
+        const now = new Date();
+        const month = now.getMonth();
+        const year = now.getFullYear();
+        return state.sales
+            .filter(s => {
+                const d = new Date(s.date);
+                return d.getMonth() === month && d.getFullYear() === year;
+            })
+            .reduce((sum, s) => sum + Number(s.totalAmount), 0);
     }, [state.sales]);
 
-    const monthlySalesTotal = useMemo(() => {
-        return state.sales
-            .filter(sale => {
-                const saleDate = new Date(sale.date);
-                return saleDate.getFullYear() === selectedYear && saleDate.getMonth() === selectedMonth;
-            })
-            .reduce((sum, sale) => sum + Number(sale.totalAmount), 0);
-    }, [state.sales, selectedMonth, selectedYear]);
+    const projectedRevenue = useMemo(() => {
+        const now = new Date();
+        const day = now.getDate();
+        if (day <= 1) return 0;
+        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        return (currentMonthRevenue / day) * daysInMonth;
+    }, [currentMonthRevenue]);
     
     const handleBackup = async () => {
         try {
@@ -486,12 +634,17 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
         }
     };
 
-    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-
     return (
         <div className="space-y-6">
             <DataImportModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} />
-            <h1 className="text-2xl font-bold text-primary">Dashboard</h1>
+            
+            <div className="flex justify-between items-end">
+                <h1 className="text-2xl font-bold text-primary">Dashboard</h1>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            </div>
+
+            {/* New AI Smart Analyst Section */}
+            <SmartAnalystCard sales={state.sales} products={state.products} customers={state.customers} />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <MetricCard 
@@ -503,6 +656,20 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     textColor="text-teal-900 dark:text-teal-100"
                     onClick={() => setCurrentPage('CUSTOMERS')}
                 />
+                
+                {/* New Projected Revenue Card */}
+                 <MetricCard 
+                    icon={TrendingUp} 
+                    title="Projected Revenue (This Month)" 
+                    value={projectedRevenue > 0 ? projectedRevenue : '---'}
+                    unit="₹"
+                    subValue={projectedRevenue > 0 ? `Based on daily avg of ₹${(currentMonthRevenue / new Date().getDate()).toLocaleString('en-IN', {maximumFractionDigits: 0})}` : 'Not enough data'}
+                    color="bg-indigo-100 dark:bg-indigo-900/40"
+                    iconBgColor="bg-indigo-200 dark:bg-indigo-800"
+                    textColor="text-indigo-900 dark:text-indigo-100"
+                    onClick={() => setCurrentPage('INSIGHTS')}
+                />
+
                  <MetricCard 
                     icon={Package} 
                     title="Total Purchases (All Time)" 

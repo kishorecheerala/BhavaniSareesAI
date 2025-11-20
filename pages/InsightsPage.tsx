@@ -709,19 +709,21 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
         });
 
         // Top Products
-        doc.text('Top Selling Products', 14, (doc as any).lastAutoTable.finalY + 15);
+        let finalY = (doc as any).lastAutoTable.finalY as number;
+        doc.text('Top Selling Products', 14, finalY + 15);
         autoTable(doc, {
-            startY: (doc as any).lastAutoTable.finalY + 20,
+            startY: finalY + 20,
             head: [['Product Name', 'Quantity Sold']],
             body: topProducts.map(p => [p.product?.name || 'Unknown', p.quantity]),
             theme: 'striped'
         });
         
         // Financial Summary
+        finalY = (doc as any).lastAutoTable.finalY as number;
         const chartTitle = selectedMonth === 'all' ? 'Monthly Breakdown' : 'Daily Breakdown';
-        doc.text(chartTitle, 14, (doc as any).lastAutoTable.finalY + 15);
+        doc.text(chartTitle, 14, finalY + 15);
         autoTable(doc, {
-            startY: (doc as any).lastAutoTable.finalY + 20,
+            startY: finalY + 20,
             head: [[selectedMonth === 'all' ? 'Month' : 'Day', 'Sales', 'Profit']],
             body: chartData.filter(d => d.sales > 0).map(d => [d.label, `Rs. ${d.sales.toLocaleString()}`, `Rs. ${d.profit.toLocaleString()}`]),
         });
