@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { IndianRupee, User, AlertTriangle, Download, Upload, ShoppingCart, Package, XCircle, CheckCircle, Info, ShieldCheck, ShieldX, Archive, PackageCheck, TestTube2, Sparkles, TrendingUp, ArrowRight, Zap, BrainCircuit, TrendingDown, Wallet, CalendarClock, Tag, Undo2, Crown } from 'lucide-react';
+import { IndianRupee, User, AlertTriangle, Download, Upload, ShoppingCart, Package, XCircle, CheckCircle, Info, ShieldCheck, ShieldX, Archive, PackageCheck, TestTube2, Sparkles, TrendingUp, ArrowRight, Zap, BrainCircuit, TrendingDown, Wallet, CalendarClock, Tag, Undo2, Crown, Calendar } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import * as db from '../utils/db';
 import Card from '../components/Card';
@@ -40,6 +40,22 @@ const MetricCard: React.FC<{
             <p className={`font-semibold text-lg ${textColor}`}>{title}</p>
             <p className={`text-2xl font-bold ${textColor} break-all`}>{unit}{typeof value === 'number' ? value.toLocaleString('en-IN') : value}</p>
             {subValue && <p className={`text-xs font-medium mt-1 opacity-80 ${textColor}`}>{subValue}</p>}
+        </div>
+    </div>
+);
+
+const FinancialColumn = ({ title, sales, purchases, highlight = false }: any) => (
+    <div className={`p-4 rounded-lg border ${highlight ? 'bg-teal-50 border-teal-200 dark:bg-teal-900/20 dark:border-teal-800 ring-2 ring-teal-500 ring-opacity-20' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700'} flex flex-col gap-3 shadow-sm`}>
+        <h3 className={`text-xs font-bold uppercase tracking-wider ${highlight ? 'text-teal-700 dark:text-teal-300' : 'text-gray-500 dark:text-gray-400'}`}>{title}</h3>
+        <div className="space-y-2">
+            <div>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5">Sales</p>
+                <p className={`text-lg font-bold ${highlight ? 'text-teal-700 dark:text-teal-300' : 'text-gray-800 dark:text-white'}`}>₹{sales.toLocaleString('en-IN')}</p>
+            </div>
+            <div>
+                 <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5">Purchases</p>
+                 <p className={`text-sm font-semibold ${highlight ? 'text-teal-600/80 dark:text-teal-400/80' : 'text-gray-600 dark:text-gray-400'}`}>₹{purchases.toLocaleString('en-IN')}</p>
+            </div>
         </div>
     </div>
 );
@@ -584,6 +600,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
     const { customers, sales, purchases, products, app_metadata, suppliers, returns } = state;
     const { showConfirm, showAlert } = useDialog();
     
+    const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth().toString());
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     
@@ -597,22 +614,33 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
     // FIX: Cast result to AppMetadataBackup to access .date
     const lastBackupDate = (app_metadata.find(m => m.id === 'lastBackup') as AppMetadataBackup | undefined)?.date || null;
     
+    const getYears = useMemo(() => {
+        const years = new Set<string>();
+        sales.forEach(s => years.add(new Date(s.date).getFullYear().toString()));
+        years.add(new Date().getFullYear().toString());
+        return Array.from(years).sort().reverse();
+    }, [sales]);
+
     const stats = useMemo(() => {
         const monthIndex = parseInt(selectedMonth);
-        const currentYear = new Date().getFullYear();
+        const yearInt = parseInt(selectedYear);
         
-        const filteredSales = sales.filter(s => {
-            const d = new Date(s.date);
-            return d.getMonth() === monthIndex && d.getFullYear() === currentYear;
-        });
+        // 1. All Time
+        const allTimeSales = sales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
+        const allTimePurchases = purchases.reduce((sum, p) => sum + Number(p.totalAmount), 0);
 
-        const filteredPurchases = purchases.filter(p => {
-            const d = new Date(p.date);
-            return d.getMonth() === monthIndex && d.getFullYear() === currentYear;
-        });
+        // 2. Yearly
+        const filteredYearSales = sales.filter(s => new Date(s.date).getFullYear() === yearInt);
+        const filteredYearPurchases = purchases.filter(p => new Date(p.date).getFullYear() === yearInt);
+        const yearSalesTotal = filteredYearSales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
+        const yearPurchasesTotal = filteredYearPurchases.reduce((sum, p) => sum + Number(p.totalAmount), 0);
 
-        const totalSales = filteredSales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
-        const totalPurchases = filteredPurchases.reduce((sum, p) => sum + Number(p.totalAmount), 0);
+        // 3. Monthly
+        const filteredMonthSales = filteredYearSales.filter(s => new Date(s.date).getMonth() === monthIndex);
+        const filteredMonthPurchases = filteredYearPurchases.filter(p => new Date(p.date).getMonth() === monthIndex);
+        
+        const monthSalesTotal = filteredMonthSales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
+        const monthPurchasesTotal = filteredMonthPurchases.reduce((sum, p) => sum + Number(p.totalAmount), 0);
         
         // Customer Dues (All time, not just this month)
         const totalCustomerDues = sales.reduce((sum, s) => {
@@ -626,8 +654,18 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
             return sum + (Number(p.totalAmount) - paid);
         }, 0);
 
-        return { totalSales, totalPurchases, totalCustomerDues, totalSupplierDues, salesCount: filteredSales.length };
-    }, [sales, purchases, selectedMonth]);
+        return { 
+            allTimeSales, 
+            allTimePurchases,
+            yearSalesTotal,
+            yearPurchasesTotal,
+            monthSalesTotal,
+            monthPurchasesTotal,
+            totalCustomerDues, 
+            totalSupplierDues, 
+            salesCount: filteredMonthSales.length 
+        };
+    }, [sales, purchases, selectedMonth, selectedYear]);
 
     const runSecureAction = (action: () => void) => {
         if (state.pin) {
@@ -754,7 +792,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h1 className="text-2xl font-bold text-primary">Dashboard</h1>
                 <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <select 
+                     <select 
                         value={selectedMonth} 
                         onChange={(e) => setSelectedMonth(e.target.value)} 
                         className="p-2 border rounded-md bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white shadow-sm focus:ring-primary focus:border-primary custom-select flex-grow sm:flex-grow-0"
@@ -762,9 +800,37 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                     >
                         {monthOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                     </select>
+                    <select 
+                        value={selectedYear} 
+                        onChange={(e) => setSelectedYear(e.target.value)} 
+                        className="p-2 border rounded-md bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white shadow-sm focus:ring-primary focus:border-primary custom-select flex-grow sm:flex-grow-0"
+                        aria-label="Select Year for Stats"
+                    >
+                        {getYears.map(y => <option key={y} value={y}>{y}</option>)}
+                    </select>
                 </div>
             </div>
             
+            {/* New Financial Performance Matrix */}
+            <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                <FinancialColumn 
+                    title="All Time" 
+                    sales={stats.allTimeSales} 
+                    purchases={stats.allTimePurchases} 
+                />
+                <FinancialColumn 
+                    title={`Year (${selectedYear})`} 
+                    sales={stats.yearSalesTotal} 
+                    purchases={stats.yearPurchasesTotal} 
+                />
+                <FinancialColumn 
+                    title={`${monthOptions[parseInt(selectedMonth)].label.substring(0,3)} ${selectedYear}`} 
+                    sales={stats.monthSalesTotal} 
+                    purchases={stats.monthPurchasesTotal}
+                    highlight={true}
+                />
+            </div>
+
             {/* New Smart Analyst AI Card */}
             <SmartAnalystCard sales={sales} products={products} customers={customers} purchases={purchases} returns={returns} />
 
@@ -772,7 +838,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                 <MetricCard 
                     icon={IndianRupee} 
                     title="Sales" 
-                    value={stats.totalSales} 
+                    value={stats.monthSalesTotal} 
                     subValue={`${stats.salesCount} orders this month`}
                     color="bg-teal-50 dark:bg-teal-900/20" 
                     iconBgColor="bg-teal-100 dark:bg-teal-800" 
@@ -782,7 +848,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                  <MetricCard 
                     icon={Package} 
                     title="Purchases" 
-                    value={stats.totalPurchases} 
+                    value={stats.monthPurchasesTotal} 
                     subValue="This month"
                     color="bg-blue-50 dark:bg-blue-900/20" 
                     iconBgColor="bg-blue-100 dark:bg-blue-800" 
