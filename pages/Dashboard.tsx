@@ -6,7 +6,7 @@ import * as db from '../utils/db';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { DataImportModal } from '../components/DataImportModal';
-import { Page, Customer, Sale, Purchase, Supplier, Product, Return } from '../types';
+import { Page, Customer, Sale, Purchase, Supplier, Product, Return, AppMetadataBackup } from '../types';
 import { testData, testProfile } from '../utils/testData';
 
 interface DashboardProps {
@@ -241,7 +241,6 @@ const SmartAnalystCard: React.FC<{ sales: Sale[], products: Product[], customers
             }
         }
 
-
         // Default if list is empty
         if (list.length === 0) {
             list.push({
@@ -336,32 +335,6 @@ const BackupStatusAlert: React.FC<{ lastBackupDate: string | null }> = ({ lastBa
                 <h4 className="font-bold text-sm uppercase tracking-wide mb-1">{current.title}</h4>
                 <p className="text-sm opacity-90">{current.message}</p>
             </div>
-        </div>
-    );
-};
-
-const StatusNotification: React.FC<{ status: { type: 'info' | 'success' | 'error', message: string } | null; onClose: () => void; }> = ({ status, onClose }) => {
-    if (!status) return null;
-
-    const baseClasses = "p-3 rounded-md mb-4 text-sm flex items-start justify-between";
-    const variants = {
-        info: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200',
-        success: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200',
-        error: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200',
-    };
-    const icons = {
-        info: <Info className="w-5 h-5 mr-3 flex-shrink-0" />,
-        success: <CheckCircle className="w-5 h-5 mr-3 flex-shrink-0" />,
-        error: <XCircle className="w-5 h-5 mr-3 flex-shrink-0" />,
-    };
-
-    return (
-        <div className={`${baseClasses} ${variants[status.type]}`}>
-            <div className="flex items-start">
-                {icons[status.type]}
-                <span>{status.message}</span>
-            </div>
-            <button onClick={onClose} className="font-bold text-lg leading-none ml-4">&times;</button>
         </div>
     );
 };
@@ -615,7 +588,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
     const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
     // FIX: Cast result to AppMetadataBackup to access .date
-    const lastBackupDate = (app_metadata.find(m => m.id === 'lastBackup') as any)?.date || null;
+    const lastBackupDate = (app_metadata.find(m => m.id === 'lastBackup') as AppMetadataBackup | undefined)?.date || null;
     
     const stats = useMemo(() => {
         const monthIndex = parseInt(selectedMonth);
@@ -762,8 +735,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                  <LowStockCard products={products} onNavigate={(id) => handleNavigate('PRODUCTS', id)} />
                  <div className="space-y-6">
                     <Card title="Data Management">
-                        <div className="space-y-4">
-                            <BackupStatusAlert lastBackupDate={lastBackupDate} />
+                        <BackupStatusAlert lastBackupDate={lastBackupDate} />
+                        <div className="space-y-4 mt-4">
                             <p className="text-sm text-gray-600 dark:text-gray-400">
                                 Your data is stored locally on this device. Please create regular backups to prevent data loss.
                             </p>
