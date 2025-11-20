@@ -52,7 +52,7 @@ const Tooltip = ({ x, y, children }: PropsWithChildren<{ x: number, y: number }>
     </div>
 );
 
-const SalesProfitChart = ({ data }: { data: { label: string, sales: number, profit: number }[] }) => {
+const SalesProfitChart = ({ data, mode }: { data: { label: string, sales: number, profit: number }[], mode: 'monthly' | 'daily' }) => {
     const [hoverIndex, setHoverIndex] = useState<number | null>(null);
     const svgRef = useRef<SVGSVGElement>(null);
     const [width, setWidth] = useState(0);
@@ -75,7 +75,7 @@ const SalesProfitChart = ({ data }: { data: { label: string, sales: number, prof
     const maxVal = Math.max(...data.map(d => Math.max(d.sales, d.profit))) * 1.1 || 1000;
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
-    const barWidth = Math.min(40, (chartWidth / data.length) * 0.6);
+    const barWidth = Math.min(mode === 'monthly' ? 40 : 15, (chartWidth / data.length) * 0.6);
 
     const getY = (val: number) => chartHeight - (val / maxVal) * chartHeight + padding.top;
     const getX = (index: number) => padding.left + (index * (chartWidth / data.length)) + (chartWidth / data.length) / 2;
@@ -123,11 +123,11 @@ const SalesProfitChart = ({ data }: { data: { label: string, sales: number, prof
                                 y={y} 
                                 width={barWidth} 
                                 height={h} 
-                                rx={4}
+                                rx={2}
                                 className={`transition-all duration-200 ${isHovered ? 'fill-teal-400 dark:fill-teal-300' : 'fill-teal-500/80 dark:fill-teal-500'}`}
                             />
                             {/* Label */}
-                             {width > 400 && (
+                             {width > 400 && (mode === 'monthly' || i % 2 === 0) && (
                                 <text x={getX(i)} y={height - 15} textAnchor="middle" className={`text-[10px] font-medium transition-colors ${isHovered ? 'fill-teal-600 dark:fill-teal-300' : 'fill-gray-500 dark:fill-gray-400'}`}>
                                     {d.label}
                                 </text>
@@ -157,7 +157,7 @@ const SalesProfitChart = ({ data }: { data: { label: string, sales: number, prof
                         <circle 
                             cx={getX(i)} 
                             cy={getY(d.profit)} 
-                            r={hoverIndex === i ? 6 : 4}
+                            r={hoverIndex === i ? 5 : 3}
                             className="fill-white stroke-amber-500 stroke-2 transition-all duration-200 pointer-events-none"
                         />
                     </g>
@@ -167,7 +167,9 @@ const SalesProfitChart = ({ data }: { data: { label: string, sales: number, prof
             {/* Tooltip */}
             {hoverIndex !== null && width > 0 && (
                 <Tooltip x={getX(hoverIndex)} y={Math.min(getY(data[hoverIndex].sales), getY(data[hoverIndex].profit))}>
-                    <div className="font-bold mb-2 border-b border-white/10 pb-1">{data[hoverIndex].label}</div>
+                    <div className="font-bold mb-2 border-b border-white/10 pb-1">
+                        {mode === 'monthly' ? data[hoverIndex].label : `Day ${data[hoverIndex].label}`}
+                    </div>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                         <div className="text-teal-200 text-[10px] uppercase font-semibold">Revenue</div>
                         <div className="text-right font-mono font-bold">₹{data[hoverIndex].sales.toLocaleString()}</div>
@@ -184,7 +186,7 @@ const SalesProfitChart = ({ data }: { data: { label: string, sales: number, prof
             )}
             
              <div className="absolute top-0 left-0 w-full flex justify-between px-4 items-center">
-                <h3 className="font-bold text-gray-700 dark:text-gray-300 text-sm">Monthly Performance</h3>
+                <h3 className="font-bold text-gray-700 dark:text-gray-300 text-sm">{mode === 'monthly' ? 'Monthly Performance' : 'Daily Trends'}</h3>
                 <div className="flex gap-4 text-xs">
                     <div className="flex items-center gap-1.5"><span className="w-3 h-3 bg-teal-500 rounded-sm"></span> Sales</div>
                     <div className="flex items-center gap-1.5"><span className="w-3 h-3 bg-amber-500 rounded-full border-2 border-white dark:border-slate-800"></span> Profit</div>
@@ -433,7 +435,7 @@ const KPICard = ({ title, value, subtext, trend, icon: Icon, colorClass }: any) 
                     <ArrowDownRight size={14} className="mr-1" /> {Math.abs(trend).toFixed(1)}%
                 </span>
             )}
-            <span className="ml-2 opacity-70 text-xs">vs last month</span>
+            <span className="ml-2 opacity-70 text-xs">{subtext}</span>
         </div>
     </Card>
 );
@@ -449,10 +451,10 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
     const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
     const [chartYear, setChartYear] = useState<string>(() => {
-        const now = new Date();
-        // Default to current financial year (April to March)
-        return String(now.getMonth() < 3 ? now.getFullYear() - 1 : now.getFullYear());
+        return String(new Date().getFullYear());
     });
+    
+    const [selectedMonth, setSelectedMonth] = useState<string>('all');
 
     useEffect(() => {
         if (!isDbLoaded) return;
@@ -485,63 +487,102 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
 
     const availableYearsForChart = useMemo(() => {
         if (!isDbLoaded) return [];
-        const years = new Set(state.sales.map(s => {
-            const d = new Date(s.date);
-            return d.getMonth() < 3 ? d.getFullYear() - 1 : d.getFullYear();
-        }));
-        const currentFY = new Date().getMonth() < 3 ? new Date().getFullYear() - 1 : new Date().getFullYear();
-        if (!years.has(currentFY)) years.add(currentFY);
+        const years = new Set(state.sales.map(s => new Date(s.date).getFullYear()));
+        const currentYear = new Date().getFullYear();
+        if (!years.has(currentYear)) years.add(currentYear);
         return Array.from(years).sort((a: number, b: number) => b - a);
     }, [state.sales, isDbLoaded]);
+    
+    // Generate month options in standard calendar order (Jan-Dec)
+    const monthOptions = useMemo(() => {
+        const months = [
+            { value: '0', label: 'January' }, { value: '1', label: 'February' }, { value: '2', label: 'March' },
+            { value: '3', label: 'April' }, { value: '4', label: 'May' }, { value: '5', label: 'June' },
+            { value: '6', label: 'July' }, { value: '7', label: 'August' }, { value: '8', label: 'September' },
+            { value: '9', label: 'October' }, { value: '10', label: 'November' }, { value: '11', label: 'December' },
+        ];
+        return [{ value: 'all', label: 'Full Year' }, ...months];
+    }, []);
 
     // --- Data Aggregation ---
 
-    const yearlyData: { label: string; sales: number; profit: number }[] = useMemo(() => {
-        if (!isDbLoaded) return [];
-
+    // Filtered sales based on Calendar Year AND Month selection
+    const filteredSales = useMemo(() => {
         const year = parseInt(chartYear);
-        const financialYearStart = new Date(year, 3, 1); // April 1st
-        const financialYearEnd = new Date(year + 1, 3, 0); // March 31st
-
-        const data = Array(12).fill(null).map((_, i) => {
-            const monthIndex = (i + 3) % 12; // 0=Apr, 11=Mar
-            const displayMonth = new Date(0, monthIndex).toLocaleString('default', { month: 'short' });
-            return { label: displayMonth, sales: 0, profit: 0 };
-        });
-
-        state.sales.forEach(sale => {
-            const saleDate = new Date(sale.date);
-            if (saleDate >= financialYearStart && saleDate <= financialYearEnd) {
-                const month = saleDate.getMonth();
-                const financialMonthIndex = month >= 3 ? month - 3 : month + 9;
-                
-                const saleAmount = Number(sale.totalAmount);
-                // Cost estimation: Using current product purchase price (approximation)
-                const costOfGoods = sale.items.reduce((sum: number, item) => {
-                    const product = state.products.find(p => p.id === item.productId);
-                    return sum + (Number(product?.purchasePrice) || 0) * Number(item.quantity);
-                }, 0);
-
-                data[financialMonthIndex].sales += saleAmount;
-                data[financialMonthIndex].profit += (saleAmount - costOfGoods);
+        return state.sales.filter(s => {
+            const d = new Date(s.date);
+            if (d.getFullYear() !== year) return false;
+            
+            if (selectedMonth !== 'all') {
+                if (d.getMonth() !== parseInt(selectedMonth)) return false;
             }
+            return true;
         });
+    }, [state.sales, chartYear, selectedMonth]);
 
-        return data;
-    }, [state.sales, state.products, chartYear, isDbLoaded]);
+    const chartData: { label: string; sales: number; profit: number }[] = useMemo(() => {
+        if (!isDbLoaded) return [];
+        const year = parseInt(chartYear);
+
+        if (selectedMonth === 'all') {
+            // Monthly Breakdown for Calendar Year (Jan-Dec)
+            const data = Array(12).fill(null).map((_, i) => {
+                const displayMonth = new Date(year, i, 1).toLocaleString('default', { month: 'short' });
+                return { label: displayMonth, sales: 0, profit: 0 };
+            });
+
+            state.sales.forEach(sale => {
+                const saleDate = new Date(sale.date);
+                if (saleDate.getFullYear() === year) {
+                    const monthIndex = saleDate.getMonth();
+                    
+                    const saleAmount = Number(sale.totalAmount);
+                    const costOfGoods = sale.items.reduce((sum: number, item) => {
+                        const product = state.products.find(p => p.id === item.productId);
+                        return sum + (Number(product?.purchasePrice) || 0) * Number(item.quantity);
+                    }, 0);
+
+                    data[monthIndex].sales += saleAmount;
+                    data[monthIndex].profit += (saleAmount - costOfGoods);
+                }
+            });
+            return data;
+        } else {
+             // Daily Breakdown for the selected month
+             const m = parseInt(selectedMonth);
+             const daysInMonth = new Date(year, m + 1, 0).getDate();
+
+             const data = Array.from({ length: daysInMonth }, (_, i) => ({
+                label: (i + 1).toString(),
+                sales: 0,
+                profit: 0
+            }));
+            
+            filteredSales.forEach(sale => {
+                const day = new Date(sale.date).getDate();
+                const saleAmount = Number(sale.totalAmount);
+                const costOfGoods = sale.items.reduce((sum: number, item) => {
+                        const product = state.products.find(p => p.id === item.productId);
+                        return sum + (Number(product?.purchasePrice) || 0) * Number(item.quantity);
+                }, 0);
+                    
+                if (data[day - 1]) {
+                     data[day - 1].sales += saleAmount;
+                     data[day - 1].profit += (saleAmount - costOfGoods);
+                }
+            });
+            return data;
+        }
+    }, [state.sales, state.products, chartYear, selectedMonth, isDbLoaded, filteredSales]);
 
     // KPI Calculations
     const kpiData = useMemo(() => {
-        const now = new Date();
-        const currentMonth = now.getMonth();
-        const currentYear = now.getFullYear();
-        const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-        const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-
-        const getMetrics = (m: number, y: number) => {
-            const monthSales = state.sales.filter(s => { const d = new Date(s.date); return d.getMonth() === m && d.getFullYear() === y; });
-            const revenue = monthSales.reduce((sum: number, s) => sum + Number(s.totalAmount || 0), 0);
-            const cost = monthSales.reduce((sum: number, s) => {
+        const year = parseInt(chartYear);
+        
+        // Helper to calc metrics for a list of sales
+        const calculateMetrics = (salesList: Sale[]): { revenue: number, profit: number, orders: number, aov: number } => {
+             const revenue = salesList.reduce((sum: number, s) => sum + (Number(s.totalAmount) || 0), 0);
+             const cost = salesList.reduce((sum: number, s) => {
                 const saleCost = s.items.reduce((is: number, i) => {
                      const product = state.products.find(p => p.id === i.productId);
                      const purchasePrice = product ? Number(product.purchasePrice) : 0;
@@ -551,30 +592,51 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                 return sum + saleCost;
             }, 0);
             const profit = revenue - cost;
-            const orders = monthSales.length;
+            const orders = salesList.length;
             const aov = orders > 0 ? revenue / orders : 0;
             return { revenue, profit, orders, aov };
         };
 
-        const curr = getMetrics(currentMonth, currentYear);
-        const prev = getMetrics(lastMonth, lastMonthYear);
+        const currentMetrics = calculateMetrics(filteredSales);
+        let previousMetrics: { revenue: number, profit: number, orders: number, aov: number } = { revenue: 0, profit: 0, orders: 0, aov: 0 };
+
+        if (selectedMonth === 'all') {
+             // Compare against Previous Calendar Year
+             const prevYear = year - 1;
+             const prevSales = state.sales.filter(s => new Date(s.date).getFullYear() === prevYear);
+             previousMetrics = calculateMetrics(prevSales);
+        } else {
+             // Compare against Previous Month
+             const m = parseInt(selectedMonth);
+             let prevM = m - 1;
+             let prevY = year;
+             if (prevM < 0) { prevM = 11; prevY = year - 1; }
+             
+             const prevSales = state.sales.filter(s => {
+                 const d = new Date(s.date);
+                 return d.getMonth() === prevM && d.getFullYear() === prevY;
+             });
+             previousMetrics = calculateMetrics(prevSales);
+        }
 
         const calcTrend = (c: number, p: number) => {
-            if (p === 0) return c === 0 ? 0 : 100;
-            return ((c - p) / p) * 100;
+            const current = Number(c) || 0;
+            const previous = Number(p) || 0;
+            if (previous === 0) return current === 0 ? 0 : 100;
+            return ((current - previous) / previous) * 100;
         };
 
         return {
-            revenue: { value: curr.revenue, trend: calcTrend(Number(curr.revenue), Number(prev.revenue)) },
-            profit: { value: curr.profit, trend: calcTrend(Number(curr.profit), Number(prev.profit)) },
-            orders: { value: curr.orders, trend: calcTrend(Number(curr.orders), Number(prev.orders)) },
-            aov: { value: curr.aov, trend: calcTrend(Number(curr.aov), Number(prev.aov)) },
+            revenue: { value: currentMetrics.revenue, trend: calcTrend(currentMetrics.revenue, previousMetrics.revenue) },
+            profit: { value: currentMetrics.profit, trend: calcTrend(currentMetrics.profit, previousMetrics.profit) },
+            orders: { value: currentMetrics.orders, trend: calcTrend(currentMetrics.orders, previousMetrics.orders) },
+            aov: { value: currentMetrics.aov, trend: calcTrend(currentMetrics.aov, previousMetrics.aov) },
         };
-    }, [state.sales, state.products]);
+    }, [state.sales, state.products, filteredSales, chartYear, selectedMonth]);
 
     const categoryData = useMemo(() => {
         const categories: Record<string, number> = {};
-        state.sales.forEach(sale => {
+        filteredSales.forEach(sale => {
             sale.items.forEach(item => {
                 const cat = getCategoryName(item.productId);
                 categories[cat] = (categories[cat] || 0) + (Number(item.price) * Number(item.quantity));
@@ -583,10 +645,10 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
         return Object.entries(categories)
             .map(([name, value]) => ({ name, value }))
             .sort((a, b) => b.value - a.value);
-    }, [state.sales]);
+    }, [filteredSales]);
 
     const topProducts = useMemo(() => {
-        const productTotals = state.sales.reduce((acc, sale) => {
+        const productTotals = filteredSales.reduce((acc, sale) => {
             sale.items.forEach(item => {
                 acc[item.productId] = (acc[item.productId] || 0) + Number(item.quantity);
             });
@@ -601,10 +663,10 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                 quantity,
                 percent: (quantity / maxVal) * 100
             }));
-    }, [state.sales, state.products]);
+    }, [filteredSales, state.products]);
 
     const topCustomers = useMemo(() => {
-         const customerTotals = state.sales.reduce((acc, sale) => {
+         const customerTotals = filteredSales.reduce((acc, sale) => {
             acc[sale.customerId] = (acc[sale.customerId] || 0) + Number(sale.totalAmount);
             return acc;
         }, {} as { [key: string]: number });
@@ -617,7 +679,7 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                 total,
                 percent: (total / maxVal) * 100
             }));
-    }, [state.sales, state.customers]);
+    }, [filteredSales, state.customers]);
 
 
     const handleDownloadReport = () => {
@@ -628,11 +690,15 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
         doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 26);
+        const periodText = selectedMonth === 'all' 
+            ? `Year: ${chartYear}`
+            : `Period: ${monthOptions.find(m => m.value === selectedMonth)?.label} ${chartYear}`;
+        doc.text(periodText, 14, 32);
         
         // KPIs
         autoTable(doc, {
-            startY: 35,
-            head: [['Metric', 'Current Month', 'Trend']],
+            startY: 38,
+            head: [['Metric', 'Selected Period', 'Trend']],
             body: [
                 ['Total Revenue', `Rs. ${kpiData.revenue.value.toLocaleString()}`, `${kpiData.revenue.trend.toFixed(1)}%`],
                 ['Net Profit (Est)', `Rs. ${kpiData.profit.value.toLocaleString()}`, `${kpiData.profit.trend.toFixed(1)}%`],
@@ -652,11 +718,12 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
         });
         
         // Financial Summary
-        doc.text('Yearly Financial Performance', 14, (doc as any).lastAutoTable.finalY + 15);
+        const chartTitle = selectedMonth === 'all' ? 'Monthly Breakdown' : 'Daily Breakdown';
+        doc.text(chartTitle, 14, (doc as any).lastAutoTable.finalY + 15);
         autoTable(doc, {
             startY: (doc as any).lastAutoTable.finalY + 20,
-            head: [['Month', 'Sales', 'Profit']],
-            body: yearlyData.filter(d => d.sales > 0).map(d => [d.label, `Rs. ${d.sales.toLocaleString()}`, `Rs. ${d.profit.toLocaleString()}`]),
+            head: [[selectedMonth === 'all' ? 'Month' : 'Day', 'Sales', 'Profit']],
+            body: chartData.filter(d => d.sales > 0).map(d => [d.label, `Rs. ${d.sales.toLocaleString()}`, `Rs. ${d.profit.toLocaleString()}`]),
         });
 
         doc.save('business-health-report.pdf');
@@ -705,25 +772,34 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
             </div>
         );
     }
+    
+    const subtext = selectedMonth === 'all' ? 'vs prev year' : 'vs prev month';
 
     return (
         <div className="space-y-6 animate-fade-in-fast pb-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                  <div>
                     <h1 className="text-2xl font-bold text-primary">Business Overview</h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Performance metrics for {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Performance metrics</p>
                  </div>
-                 <div className="flex items-center gap-2 w-full sm:w-auto">
-                     <div className="w-48">
+                 <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+                     <div className="w-36">
                         <Dropdown
-                            options={availableYearsForChart.map(year => ({ value: String(year), label: `FY ${year}-${String(year + 1).slice(2)}`}))}
+                            options={availableYearsForChart.map(year => ({ value: String(year), label: String(year)}))}
                             value={chartYear}
                             onChange={setChartYear}
                         />
                      </div>
+                     <div className="w-44">
+                        <Dropdown
+                            options={monthOptions}
+                            value={selectedMonth}
+                            onChange={setSelectedMonth}
+                        />
+                     </div>
                      <button 
                         onClick={handleDownloadReport} 
-                        className="p-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-md text-primary hover:bg-gray-50 dark:hover:bg-slate-600"
+                        className="p-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-md text-primary hover:bg-gray-50 dark:hover:bg-slate-600 flex-shrink-0"
                         aria-label="Download Report"
                      >
                          <Download size={20} />
@@ -737,6 +813,7 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                     title="Total Revenue" 
                     value={`₹${kpiData.revenue.value.toLocaleString('en-IN')}`} 
                     trend={kpiData.revenue.trend} 
+                    subtext={subtext}
                     icon={IndianRupee}
                     colorClass="bg-teal-50 dark:bg-teal-900/20 text-teal-900 dark:text-teal-100 border-teal-500"
                 />
@@ -744,6 +821,7 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                     title="Net Profit (Est.)" 
                     value={`₹${kpiData.profit.value.toLocaleString('en-IN')}`} 
                     trend={kpiData.profit.trend} 
+                    subtext={subtext}
                     icon={DollarSign}
                     colorClass="bg-amber-50 dark:bg-amber-900/20 text-amber-900 dark:text-amber-100 border-amber-500"
                 />
@@ -751,6 +829,7 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                     title="Total Orders" 
                     value={kpiData.orders.value} 
                     trend={kpiData.orders.trend} 
+                    subtext={subtext}
                     icon={ShoppingBag}
                     colorClass="bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-100 border-blue-500"
                 />
@@ -758,19 +837,20 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                     title="Avg Order Value" 
                     value={`₹${kpiData.aov.value.toLocaleString('en-IN', {maximumFractionDigits: 0})}`} 
                     trend={kpiData.aov.trend} 
+                    subtext={subtext}
                     icon={Activity}
                     colorClass="bg-purple-50 dark:bg-purple-900/20 text-purple-900 dark:text-purple-100 border-purple-500"
                 />
             </div>
 
             {/* Smart Insights Banner */}
-            <SmartInsights sales={state.sales} products={state.products} />
+            <SmartInsights sales={filteredSales} products={state.products} />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Main Chart Area */}
                 <div className="lg:col-span-2">
-                    <Card title={`Financial Performance (FY ${chartYear})`} className="h-full">
-                        <SalesProfitChart data={yearlyData} />
+                    <Card title={selectedMonth === 'all' ? `Financial Performance (${chartYear})` : `Daily Trends (${monthOptions.find(m => m.value === selectedMonth)?.label})`} className="h-full">
+                        <SalesProfitChart data={chartData} mode={selectedMonth === 'all' ? 'monthly' : 'daily'} />
                     </Card>
                 </div>
                 
@@ -783,8 +863,8 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <PaymentDistributionCard sales={state.sales} />
-                <DayPerformanceCard sales={state.sales} />
+                <PaymentDistributionCard sales={filteredSales} />
+                <DayPerformanceCard sales={filteredSales} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
