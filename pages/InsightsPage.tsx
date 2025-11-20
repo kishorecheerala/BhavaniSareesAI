@@ -1,13 +1,15 @@
 
-
 import React, { useState, useMemo, useEffect, useRef, PropsWithChildren } from 'react';
-import { IndianRupee, TrendingUp, TrendingDown, Award, Lock, BarChart, Calendar, ArrowUpRight, ArrowDownRight, ShoppingBag, PieChart, Activity, DollarSign } from 'lucide-react';
+import { IndianRupee, TrendingUp, TrendingDown, Award, Lock, BarChart, Calendar, ArrowUpRight, ArrowDownRight, ShoppingBag, PieChart, Activity, DollarSign, Download, CreditCard, Wallet, CheckCircle2, AlertCircle, Lightbulb } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import Card from '../components/Card';
 import PinModal from '../components/PinModal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { Page, Sale, Product } from '../types';
 import Dropdown from '../components/Dropdown';
+import Button from '../components/Button';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface InsightsPageProps {
     setCurrentPage: (page: Page) => void;
@@ -208,18 +210,15 @@ const CategoryDonutChart = ({ data }: { data: { name: string, value: number }[] 
         // SVG Arc Math
         const x = Math.cos(2 * Math.PI * startPercent);
         const y = Math.sin(2 * Math.PI * startPercent);
-        // Not implementing full SVG arc path drawing here for brevity as it's complex to get right without a library.
-        // Instead, utilizing the stroke-dasharray trick on circles.
         return { ...item, percent, color: COLORS[index % COLORS.length] };
     });
 
     // Simple CSS Conic Gradient for the donut
-    const conicGradient = segments.map(s => `${s.color} 0 ${s.percent * 100}%`).join(', ');
     let currentAngle = 0;
 
     return (
         <div className="flex flex-col sm:flex-row items-center justify-center gap-8 h-[300px]">
-            <div className="relative w-48 h-48">
+            <div className="relative w-48 h-48 flex-shrink-0">
                  <svg viewBox="0 0 100 100" className="transform -rotate-90 w-full h-full overflow-visible">
                     {segments.map((segment, i) => {
                         const circumference = 2 * Math.PI * 40; // r=40
@@ -264,10 +263,10 @@ const CategoryDonutChart = ({ data }: { data: { name: string, value: number }[] 
                             onMouseLeave={() => setHoveredIndex(null)}
                         >
                             <div className="flex items-center gap-2">
-                                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: segment.color }}></span>
+                                <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: segment.color }}></span>
                                 <span className="text-sm font-medium dark:text-gray-200 truncate max-w-[100px] sm:max-w-[140px]">{segment.name}</span>
                             </div>
-                            <div className="text-right">
+                            <div className="text-right flex-shrink-0">
                                 <div className="text-sm font-bold dark:text-white">{(segment.percent * 100).toFixed(1)}%</div>
                                 <div className="text-[10px] text-gray-500">₹{segment.value.toLocaleString()}</div>
                             </div>
@@ -278,6 +277,140 @@ const CategoryDonutChart = ({ data }: { data: { name: string, value: number }[] 
         </div>
     );
 };
+
+const PaymentDistributionCard = ({ sales }: { sales: Sale[] }) => {
+    const stats = useMemo(() => {
+        let cash = 0, upi = 0, cheque = 0, totalBilled = 0, totalPaid = 0;
+        
+        sales.forEach(s => {
+            totalBilled += Number(s.totalAmount);
+            s.payments.forEach(p => {
+                const amount = Number(p.amount);
+                totalPaid += amount;
+                if (p.method === 'CASH') cash += amount;
+                else if (p.method === 'UPI') upi += amount;
+                else if (p.method === 'CHEQUE') cheque += amount;
+            });
+        });
+        const due = Math.max(0, totalBilled - totalPaid);
+        const max = Math.max(cash, upi, cheque, due, 1); // Avoid division by zero
+
+        return { cash, upi, cheque, due, max };
+    }, [sales]);
+
+    const ProgressBar = ({ label, amount, max, color, icon: Icon }: any) => (
+        <div className="mb-3">
+            <div className="flex justify-between text-sm mb-1">
+                <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                    <Icon size={14} /> <span>{label}</span>
+                </div>
+                <span className="font-bold dark:text-white">₹{amount.toLocaleString('en-IN')}</span>
+            </div>
+            <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                <div className={`h-2.5 rounded-full ${color} transition-all duration-1000`} style={{ width: `${(amount / (stats.max * 1.2)) * 100}%` }}></div>
+            </div>
+        </div>
+    );
+
+    return (
+        <Card title="Payment Analysis">
+            <div className="space-y-2">
+                <ProgressBar label="UPI" amount={stats.upi} max={stats.max} color="bg-purple-500" icon={CreditCard} />
+                <ProgressBar label="Cash" amount={stats.cash} max={stats.max} color="bg-green-500" icon={Wallet} />
+                <ProgressBar label="Cheque" amount={stats.cheque} max={stats.max} color="bg-blue-500" icon={File} />
+                <div className="pt-2 border-t dark:border-slate-700">
+                    <ProgressBar label="Pending (Due)" amount={stats.due} max={stats.max} color="bg-red-500" icon={AlertCircle} />
+                </div>
+            </div>
+        </Card>
+    );
+};
+
+const DayPerformanceCard = ({ sales }: { sales: Sale[] }) => {
+    const data = useMemo(() => {
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const counts = new Array(7).fill(0);
+        sales.forEach(s => counts[new Date(s.date).getDay()]++);
+        const max = Math.max(...counts, 1);
+        return days.map((day, i) => ({ day, count: counts[i], percent: (counts[i] / max) * 100 }));
+    }, [sales]);
+
+    return (
+        <Card title="Weekly Activity Trends">
+             <div className="flex items-end justify-between gap-2 h-40 pt-4">
+                {data.map((d, i) => (
+                    <div key={i} className="flex flex-col items-center w-full group">
+                         <div className="text-[10px] font-bold mb-1 opacity-0 group-hover:opacity-100 transition-opacity text-primary">{d.count}</div>
+                         <div 
+                            className="w-full max-w-[20px] bg-teal-200 dark:bg-teal-800 rounded-t-md transition-all duration-500 hover:bg-teal-400 dark:hover:bg-teal-600 relative group" 
+                            style={{ height: `${Math.max(d.percent, 5)}%` }}
+                         >
+                         </div>
+                         <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">{d.day}</div>
+                    </div>
+                ))}
+             </div>
+             <p className="text-center text-xs text-gray-400 mt-2">Sales volume by day of the week</p>
+        </Card>
+    );
+};
+
+const SmartInsights = ({ sales, products }: { sales: Sale[], products: Product[] }) => {
+    const insights = useMemo(() => {
+        if (sales.length === 0) return ["Not enough data to generate insights."];
+        const list = [];
+
+        // 1. Best Day
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayCounts = new Array(7).fill(0);
+        sales.forEach(s => dayCounts[new Date(s.date).getDay()]++);
+        const maxDayIndex = dayCounts.indexOf(Math.max(...dayCounts));
+        if (Math.max(...dayCounts) > 0) {
+            list.push(`📅 ${days[maxDayIndex]}s are your busiest days for sales.`);
+        }
+
+        // 2. Payment Preference
+        let upiTotal = 0, totalCollected = 0;
+        sales.forEach(s => s.payments.forEach(p => {
+            if (p.method === 'UPI') upiTotal += Number(p.amount);
+            totalCollected += Number(p.amount);
+        }));
+        if (totalCollected > 0 && (upiTotal / totalCollected) > 0.5) {
+             list.push(`💳 Customers strongly prefer UPI (${Math.round((upiTotal / totalCollected) * 100)}% of revenue).`);
+        }
+
+        // 3. Low Stock
+        const lowStockCount = products.filter(p => p.quantity < 5).length;
+        if (lowStockCount > 0) {
+            list.push(`⚠️ You have ${lowStockCount} products running low on stock (< 5 items).`);
+        }
+        
+        // 4. High Value
+        const highValueSales = sales.filter(s => Number(s.totalAmount) > 10000).length;
+        if (highValueSales > 0) {
+             list.push(`🚀 You had ${highValueSales} high-value orders (> ₹10k) in this period.`);
+        }
+
+        return list.slice(0, 4); // Limit to top 4
+    }, [sales, products]);
+
+    return (
+        <Card className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-slate-800 dark:to-slate-900 border-l-4 border-indigo-500">
+            <div className="flex items-center gap-2 mb-3">
+                <Lightbulb className="text-indigo-600 dark:text-indigo-400" size={20} />
+                <h3 className="font-bold text-indigo-900 dark:text-indigo-100">Smart Business Insights</h3>
+            </div>
+            <ul className="space-y-2">
+                {insights.map((text, i) => (
+                   <li key={i} className="flex gap-2 text-sm text-slate-700 dark:text-slate-300 items-start">
+                      <CheckCircle2 size={16} className="text-indigo-500 mt-0.5 flex-shrink-0" /> 
+                      <span>{text}</span>
+                   </li>
+                ))}
+            </ul>
+        </Card>
+    )
+}
 
 const KPICard = ({ title, value, subtext, trend, icon: Icon, colorClass }: any) => (
     <Card className={`relative overflow-hidden ${colorClass} border-l-4`}>
@@ -384,7 +517,7 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                 
                 const saleAmount = Number(sale.totalAmount);
                 // Cost estimation: Using current product purchase price (approximation)
-                const costOfGoods = sale.items.reduce((sum, item) => {
+                const costOfGoods = sale.items.reduce((sum: number, item) => {
                     const product = state.products.find(p => p.id === item.productId);
                     return sum + (Number(product?.purchasePrice) || 0) * Number(item.quantity);
                 }, 0);
@@ -407,8 +540,8 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
 
         const getMetrics = (m: number, y: number) => {
             const monthSales = state.sales.filter(s => { const d = new Date(s.date); return d.getMonth() === m && d.getFullYear() === y; });
-            const revenue = monthSales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
-            const cost = monthSales.reduce((sum, s) => sum + s.items.reduce((is, i) => is + (Number(state.products.find(p => p.id === i.productId)?.purchasePrice) || 0) * Number(i.quantity), 0), 0);
+            const revenue = monthSales.reduce((sum: number, s) => sum + Number(s.totalAmount), 0);
+            const cost = monthSales.reduce((sum: number, s) => sum + s.items.reduce((is: number, i) => is + (Number(state.products.find(p => p.id === i.productId)?.purchasePrice) || 0) * Number(i.quantity), 0), 0);
             const profit = revenue - cost;
             const orders = monthSales.length;
             const aov = orders > 0 ? revenue / orders : 0;
@@ -479,6 +612,49 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
     }, [state.sales, state.customers]);
 
 
+    const handleDownloadReport = () => {
+        const doc = new jsPDF();
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(20);
+        doc.text('Business Health Report', 14, 20);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 26);
+        
+        // KPIs
+        autoTable(doc, {
+            startY: 35,
+            head: [['Metric', 'Current Month', 'Trend']],
+            body: [
+                ['Total Revenue', `Rs. ${kpiData.revenue.value.toLocaleString()}`, `${kpiData.revenue.trend.toFixed(1)}%`],
+                ['Net Profit (Est)', `Rs. ${kpiData.profit.value.toLocaleString()}`, `${kpiData.profit.trend.toFixed(1)}%`],
+                ['Total Orders', kpiData.orders.value, `${kpiData.orders.trend.toFixed(1)}%`],
+                ['Avg Order Value', `Rs. ${kpiData.aov.value.toLocaleString()}`, `${kpiData.aov.trend.toFixed(1)}%`]
+            ],
+            theme: 'grid', headStyles: { fillColor: [13, 148, 136] }
+        });
+
+        // Top Products
+        doc.text('Top Selling Products', 14, (doc as any).lastAutoTable.finalY + 15);
+        autoTable(doc, {
+            startY: (doc as any).lastAutoTable.finalY + 20,
+            head: [['Product Name', 'Quantity Sold']],
+            body: topProducts.map(p => [p.product?.name || 'Unknown', p.quantity]),
+            theme: 'striped'
+        });
+        
+        // Financial Summary
+        doc.text('Yearly Financial Performance', 14, (doc as any).lastAutoTable.finalY + 15);
+        autoTable(doc, {
+            startY: (doc as any).lastAutoTable.finalY + 20,
+            head: [['Month', 'Sales', 'Profit']],
+            body: yearlyData.filter(d => d.sales > 0).map(d => [d.label, `Rs. ${d.sales.toLocaleString()}`, `Rs. ${d.profit.toLocaleString()}`]),
+        });
+
+        doc.save('business-health-report.pdf');
+    };
+
+
     if (pinState !== 'unlocked') {
         return (
             <div>
@@ -529,12 +705,21 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                     <h1 className="text-2xl font-bold text-primary">Business Overview</h1>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Performance metrics for {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}</p>
                  </div>
-                 <div className="w-48">
-                    <Dropdown
-                        options={availableYearsForChart.map(year => ({ value: String(year), label: `FY ${year}-${String(year + 1).slice(2)}`}))}
-                        value={chartYear}
-                        onChange={setChartYear}
-                    />
+                 <div className="flex items-center gap-2 w-full sm:w-auto">
+                     <div className="w-48">
+                        <Dropdown
+                            options={availableYearsForChart.map(year => ({ value: String(year), label: `FY ${year}-${String(year + 1).slice(2)}`}))}
+                            value={chartYear}
+                            onChange={setChartYear}
+                        />
+                     </div>
+                     <button 
+                        onClick={handleDownloadReport} 
+                        className="p-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-md text-primary hover:bg-gray-50 dark:hover:bg-slate-600"
+                        aria-label="Download Report"
+                     >
+                         <Download size={20} />
+                     </button>
                  </div>
             </div>
 
@@ -570,6 +755,9 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                 />
             </div>
 
+            {/* Smart Insights Banner */}
+            <SmartInsights sales={state.sales} products={state.products} />
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Main Chart Area */}
                 <div className="lg:col-span-2">
@@ -580,10 +768,15 @@ const InsightsPage: React.FC<InsightsPageProps> = ({ setCurrentPage }) => {
                 
                 {/* Category Chart */}
                 <div>
-                    <Card title="Sales by Category" className="h-full">
+                     <Card title="Sales by Category" className="h-full">
                         <CategoryDonutChart data={categoryData} />
                     </Card>
                 </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <PaymentDistributionCard sales={state.sales} />
+                <DayPerformanceCard sales={state.sales} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
