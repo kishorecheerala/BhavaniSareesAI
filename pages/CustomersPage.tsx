@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Plus, User, Phone, MapPin, Search, Edit, Save, X, Trash2, IndianRupee, ShoppingCart, Download, Share2, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Plus, User, Phone, MapPin, Search, Edit, Save, X, Trash2, IndianRupee, ShoppingCart, Download, Share2, ChevronDown, AlertTriangle, ShieldCheck, Shield } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Customer, Payment, Sale, Page } from '../types';
 import Card from '../components/Card';
@@ -27,6 +27,37 @@ const fetchImageAsBase64 = (url: string): Promise<string> =>
         reader.onerror = reject;
         reader.readAsDataURL(blob);
     }));
+
+// --- Risk Calculation Logic ---
+const getCustomerRisk = (sales: Sale[], customerId: string): 'High' | 'Medium' | 'Low' | 'Safe' => {
+    const customerSales = sales.filter(s => s.customerId === customerId);
+    if (customerSales.length === 0) return 'Safe';
+
+    const totalRevenue = customerSales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
+    const totalPaid = customerSales.reduce((sum, s) => sum + s.payments.reduce((p, pay) => p + Number(pay.amount), 0), 0);
+    const due = totalRevenue - totalPaid;
+
+    if (due <= 100) return 'Safe'; // Negligible
+
+    const dueRatio = totalRevenue > 0 ? due / totalRevenue : 0;
+
+    if (dueRatio > 0.5 && due > 5000) return 'High';
+    if (dueRatio > 0.3) return 'Medium';
+    return 'Low';
+};
+
+const RiskBadge: React.FC<{ risk: 'High' | 'Medium' | 'Low' | 'Safe' }> = ({ risk }) => {
+    switch (risk) {
+        case 'High':
+            return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200"><AlertTriangle size={10} className="mr-1" /> High Risk</span>;
+        case 'Medium':
+            return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200"><AlertTriangle size={10} className="mr-1" /> Medium Risk</span>;
+        case 'Low':
+            return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200"><ShieldCheck size={10} className="mr-1" /> Good Standing</span>;
+        default:
+             return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"><Shield size={10} className="mr-1" /> No Dues</span>;
+    }
+};
 
 // Standalone PaymentModal component to prevent re-renders on parent state change
 const PaymentModal: React.FC<{
@@ -645,7 +676,8 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
     if (selectedCustomer && editedCustomer) {
         const customerSales = state.sales.filter(s => s.customerId === selectedCustomer.id);
         const customerReturns = state.returns.filter(r => r.type === 'CUSTOMER' && r.partyId === selectedCustomer.id);
-        
+        const currentRisk = getCustomerRisk(state.sales, selectedCustomer.id);
+
         const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             setEditedCustomer({ ...editedCustomer, [e.target.name]: e.target.value });
         };
@@ -670,9 +702,12 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                 />
                 <Button onClick={() => setSelectedCustomer(null)}>&larr; Back to List</Button>
                 <Card>
-                    <div className="flex justify-between items-start mb-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start mb-4 gap-3">
                         <div>
-                            <h2 className="text-lg font-bold text-primary">Customer Details: {selectedCustomer.name}</h2>
+                            <div className="flex items-center gap-3 mb-1">
+                                <h2 className="text-lg font-bold text-primary">Customer Details: {selectedCustomer.name}</h2>
+                                <RiskBadge risk={currentRisk} />
+                            </div>
                         </div>
                         <div className="flex gap-2 items-center flex-shrink-0">
                             {isEditing ? (
@@ -904,6 +939,7 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                     const totalPurchase = customerSales.reduce((sum, s) => sum + Number(s.totalAmount), 0);
                     const totalPaid = customerSales.reduce((sum, s) => sum + s.payments.reduce((pSum, p) => pSum + Number(p.amount), 0), 0);
                     const totalDue = totalPurchase - totalPaid;
+                    const risk = getCustomerRisk(state.sales, customer.id);
 
                     return (
                         <Card 
@@ -914,7 +950,10 @@ const CustomersPage: React.FC<CustomersPageProps> = ({ setIsDirty, setCurrentPag
                         >
                             <div className="flex justify-between items-start">
                                 <div>
-                                    <p className="font-bold text-lg text-primary flex items-center gap-2"><User size={16}/> {customer.name}</p>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <p className="font-bold text-lg text-primary flex items-center gap-2"><User size={16}/> {customer.name}</p>
+                                        <RiskBadge risk={risk} />
+                                    </div>
                                     <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2"><Phone size={14}/> {customer.phone}</p>
                                     <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2"><MapPin size={14}/> {customer.area}</p>
                                 </div>

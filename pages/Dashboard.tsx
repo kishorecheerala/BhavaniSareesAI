@@ -287,58 +287,56 @@ const SmartAnalystCard: React.FC<{ sales: Sale[], products: Product[], customers
     );
 };
 
-const BackupStatusCard: React.FC<{ lastBackupDate: string | null }> = ({ lastBackupDate }) => {
-    if (!lastBackupDate) {
-        return (
-            <Card className="bg-red-600 text-white dark:bg-red-800">
-                <div className="flex items-center">
-                    <ShieldX className="w-8 h-8 mr-4" />
-                    <div>
-                        <p className="font-bold">No Backup Found</p>
-                        <p className="text-sm opacity-90">Please create a backup immediately to protect your data.</p>
-                    </div>
-                </div>
-            </Card>
-        );
+const BackupStatusAlert: React.FC<{ lastBackupDate: string | null }> = ({ lastBackupDate }) => {
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+    
+    let status: 'no-backup' | 'overdue' | 'safe' = 'no-backup';
+    let diffDays = 0;
+    let backupDate: Date | null = null;
+
+    if (lastBackupDate) {
+        backupDate = new Date(lastBackupDate);
+        const backupDateStr = backupDate.toISOString().slice(0, 10);
+        diffDays = Math.floor((now.getTime() - backupDate.getTime()) / (1000 * 60 * 60 * 24));
+        status = backupDateStr === todayStr ? 'safe' : 'overdue';
     }
 
-    const now = new Date();
-    const backupDate = new Date(lastBackupDate);
-    
-    const todayStr = now.toISOString().slice(0, 10);
-    const backupDateStr = backupDate.toISOString().slice(0, 10);
-
-    const status = backupDateStr === todayStr ? 'safe' : 'overdue';
-    const diffDays = Math.floor((now.getTime() - backupDate.getTime()) / (1000 * 60 * 60 * 24));
-    
-    const statusInfo = {
-        safe: {
-            icon: ShieldCheck,
-            cardClass: 'bg-green-600 text-white dark:bg-green-700',
-            title: 'Data Backup is Up-to-Date',
-            text: `Last backup was today at ${backupDate.toLocaleTimeString()}.`
-        },
-        overdue: {
+    const config = {
+        'no-backup': {
             icon: ShieldX,
-            cardClass: 'bg-red-600 text-white dark:bg-red-800',
-            title: 'Backup Overdue',
-            text: diffDays > 0 ? `Your last backup was ${diffDays} day${diffDays > 1 ? 's' : ''} ago. Please back up now.` : "Your last backup was not today. Please back up now."
+            classes: 'bg-red-50 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-800',
+            iconColor: 'text-red-600 dark:text-red-400',
+            title: 'No Backup Found',
+            message: 'Please create a backup immediately to protect your data.'
         },
+        'overdue': {
+            icon: ShieldX,
+            classes: 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-800',
+            iconColor: 'text-amber-600 dark:text-amber-400',
+            title: 'Backup Overdue',
+            message: diffDays > 0 ? `Last backup was ${diffDays} day${diffDays > 1 ? 's' : ''} ago.` : "Last backup was not today."
+        },
+        'safe': {
+            icon: ShieldCheck,
+            classes: 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-800',
+            iconColor: 'text-emerald-600 dark:text-emerald-400',
+            title: 'Data is Safe',
+            message: `Backed up today at ${backupDate?.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}.`
+        }
     };
 
-    const current = statusInfo[status];
+    const current = config[status];
     const Icon = current.icon;
 
     return (
-        <Card className={current.cardClass}>
-            <div className="flex items-center">
-                <Icon className="w-8 h-8 mr-4" />
-                <div>
-                    <p className="font-bold">{current.title}</p>
-                    <p className="text-sm opacity-90">{current.text}</p>
-                </div>
+        <div className={`flex items-start p-4 rounded-lg border ${current.classes} mb-6`}>
+            <Icon className={`w-6 h-6 mr-3 flex-shrink-0 ${current.iconColor}`} />
+            <div>
+                <h4 className="font-bold text-sm uppercase tracking-wide mb-1">{current.title}</h4>
+                <p className="text-sm opacity-90">{current.message}</p>
             </div>
-        </Card>
+        </div>
     );
 };
 
@@ -763,9 +761,9 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                  <LowStockCard products={products} onNavigate={(id) => handleNavigate('PRODUCTS', id)} />
                  <div className="space-y-6">
-                    <BackupStatusCard lastBackupDate={lastBackupDate} />
                     <Card title="Data Management">
                         <div className="space-y-4">
+                            <BackupStatusAlert lastBackupDate={lastBackupDate} />
                             <p className="text-sm text-gray-600 dark:text-gray-400">
                                 Your data is stored locally on this device. Please create regular backups to prevent data loss.
                             </p>
