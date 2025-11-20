@@ -813,13 +813,16 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
                 <div>
                     <div className="flex items-center gap-3">
                          <h1 className="text-2xl font-bold text-primary">Dashboard</h1>
-                         <span className="text-xs sm:text-sm font-medium bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-300 px-2 py-1 rounded-full">
+                         <span className="text-xs sm:text-sm font-bold bg-gradient-to-r from-teal-600 to-emerald-600 text-white px-3 py-1 rounded-full shadow-md border border-teal-500/30">
                             {new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
                         </span>
                     </div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                        {profile?.ownerName ? `Welcome back, ${profile.ownerName}` : `Welcome back, Owner`}
-                    </p>
+                    <div className="mt-1 flex items-center">
+                        <span className="text-sm text-gray-500 dark:text-gray-400 mr-1">Welcome back,</span>
+                        <span className="text-sm font-bold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800 shadow-sm">
+                            {profile?.ownerName || 'Owner'}
+                        </span>
+                    </div>
                 </div>
                 <div className="flex items-center gap-2 w-full sm:w-auto">
                      <select 

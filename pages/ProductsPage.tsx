@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Search, Edit, Save, X, Package, IndianRupee, Percent, PackageCheck, Barcode, AlertTriangle, Printer, QrCode } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
@@ -99,229 +98,218 @@ const ProductsPage: React.FC<ProductsPageProps> = ({ setIsDirty }) => {
     };
 
     const handleStockAdjustment = () => {
-        if (!selectedProduct || newQuantity === '' || isNaN(parseInt(newQuantity))) {
-            showToast('Please enter a valid quantity.', 'info');
-            return;
-        }
-        const newQty = parseInt(newQuantity);
-        const change = newQty - selectedProduct.quantity;
-        
-        if (change === 0) {
-            showToast("The new quantity is the same as the current quantity. No changes made.", 'info');
-            return;
-        }
+        if (selectedProduct && newQuantity !== '') {
+            const newQty = parseInt(newQuantity, 10);
+            if (!isNaN(newQty)) {
+                const change = newQty - selectedProduct.quantity;
+                if (change === 0) return;
 
-        if(window.confirm(`This will change the stock from ${selectedProduct.quantity} to ${newQty}. This is for correcting inventory counts and will not affect financial records. Are you sure?`)) {
-            dispatch({ type: 'UPDATE_PRODUCT_STOCK', payload: { productId: selectedProduct.id, change } });
-            showToast("Stock adjusted successfully.");
+                if (window.confirm(`Confirm stock adjustment? New quantity will be ${newQty}.`)) {
+                    dispatch({ type: 'UPDATE_PRODUCT_STOCK', payload: { productId: selectedProduct.id, change } });
+                    showToast("Stock updated successfully.");
+                }
+            }
         }
     };
 
-    const filteredProducts = state.products.filter(p =>
-        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const filteredProducts = state.products.filter(p => 
+        p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
         p.id.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const selectedProductsForModal = useMemo((): PurchaseItem[] =>
-        state.products
+    const handleSelectAll = () => {
+        if (selectedProductIds.length === filteredProducts.length) {
+            setSelectedProductIds([]);
+        } else {
+            setSelectedProductIds(filteredProducts.map(p => p.id));
+        }
+    };
+
+    // Prepare items for batch barcode printing
+    const batchBarcodeItems: PurchaseItem[] = useMemo(() => {
+        return state.products
             .filter(p => selectedProductIds.includes(p.id))
             .map(p => ({
                 productId: p.id,
                 productName: p.name,
-                quantity: p.quantity,
+                quantity: p.quantity > 0 ? p.quantity : 1, // Default to 1 for printing if 0 stock, or use current stock
                 price: p.purchasePrice,
                 saleValue: p.salePrice,
-                gstPercent: p.gstPercent,
-            })),
-        [selectedProductIds, state.products]
-    );
+                gstPercent: p.gstPercent
+            }));
+    }, [selectedProductIds, state.products]);
 
     if (selectedProduct && editedProduct) {
         const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             const { name, value } = e.target;
-            const isNumeric = ['salePrice', 'gstPercent'].includes(name);
-            setEditedProduct({ ...editedProduct, [name]: isNumeric ? parseFloat(value) || 0 : value });
+            setEditedProduct({ ...editedProduct, [name]: name === 'name' ? value : parseFloat(value) || 0 });
         };
 
         return (
             <div className="space-y-4">
-                {isDownloadModalOpen && (
-                    <BarcodeModal
-                        isOpen={isDownloadModalOpen}
-                        onClose={() => setIsDownloadModalOpen(false)}
-                        product={selectedProduct}
-                        businessName={state.profile?.name || 'Your Business'}
-                    />
-                )}
-                <Button onClick={() => setSelectedProduct(null)}>&larr; Back to Products List</Button>
-                
-                <Card className="animate-slide-up-fade">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-lg font-bold text-primary">Product Details</h2>
-                        {isEditing ? (
-                            <div className="flex gap-2 items-center">
-                                <Button onClick={handleUpdateProduct} className="h-9 px-3"><Save size={16} /> Save</Button>
-                                <button onClick={() => setIsEditing(false)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
-                                    <X size={20}/>
-                                </button>
-                            </div>
-                        ) : (
-                            <Button onClick={() => setIsEditing(true)}><Edit size={16}/> Edit Details</Button>
-                        )}
+                <BarcodeModal 
+                    isOpen={isDownloadModalOpen} 
+                    onClose={() => setIsDownloadModalOpen(false)} 
+                    product={selectedProduct} 
+                    businessName={state.profile?.name || 'Business Manager'}
+                />
+                <Button onClick={() => setSelectedProduct(null)}>&larr; Back to List</Button>
+                <Card>
+                    <div className="flex justify-between items-start mb-4">
+                         <div className="flex items-center gap-2">
+                            <h2 className="text-lg font-bold text-primary">Product Details</h2>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 font-mono bg-gray-100 dark:bg-slate-700 px-2 py-1 rounded">{selectedProduct.id}</span>
+                        </div>
+                        <div className="flex gap-2 items-center">
+                             {isEditing ? (
+                                <>
+                                    <Button onClick={handleUpdateProduct} className="h-9 px-3"><Save size={16} /> Save</Button>
+                                    <button onClick={() => setIsEditing(false)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"><X size={20}/></button>
+                                </>
+                            ) : (
+                                <Button onClick={() => setIsEditing(true)}><Edit size={16}/> Edit</Button>
+                            )}
+                        </div>
                     </div>
+                    
                      {isEditing ? (
                         <div className="space-y-3">
-                            <div><label className="text-sm font-medium dark:text-gray-300">Product Name</label><input type="text" name="name" value={editedProduct.name} onChange={handleInputChange} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" /></div>
-                            <div><label className="text-sm font-medium dark:text-gray-300">Sale Price</label><input type="number" name="salePrice" value={editedProduct.salePrice} onChange={handleInputChange} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" /></div>
-                            <div><label className="text-sm font-medium dark:text-gray-300">GST %</label><input type="number" name="gstPercent" value={editedProduct.gstPercent} onChange={handleInputChange} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" /></div>
+                            <div><label className="text-sm font-medium">Name</label><input type="text" name="name" value={editedProduct.name} onChange={handleInputChange} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" /></div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div><label className="text-sm font-medium">Purchase Price</label><input type="number" name="purchasePrice" value={editedProduct.purchasePrice} onChange={handleInputChange} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" /></div>
+                                <div><label className="text-sm font-medium">Sale Price</label><input type="number" name="salePrice" value={editedProduct.salePrice} onChange={handleInputChange} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" /></div>
+                            </div>
+                            <div><label className="text-sm font-medium">GST %</label><input type="number" name="gstPercent" value={editedProduct.gstPercent} onChange={handleInputChange} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" /></div>
                         </div>
                     ) : (
-                         <div className="space-y-2">
-                            <h3 className="text-xl font-bold dark:text-white">{selectedProduct.name}</h3>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Product Code: {selectedProduct.id}</p>
-                            <div className="pt-4 space-y-3">
-                                <div className="p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg flex justify-between items-center">
-                                    <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">Sale Price</p>
-                                    <p className="text-lg font-bold text-green-600 dark:text-green-400">₹{selectedProduct.salePrice.toLocaleString('en-IN')}</p>
-                                </div>
-                                <div className="p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg flex justify-between items-center">
-                                    <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">GST</p>
-                                    <p className="text-lg font-bold dark:text-slate-200">{selectedProduct.gstPercent}%</p>
-                                </div>
-                                <div className="p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg flex justify-between items-center">
-                                    <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">Stock on Hand</p>
-                                    <p className="text-lg font-bold dark:text-slate-200">{selectedProduct.quantity}</p>
-                                </div>
-                            </div>
+                        <div className="space-y-2 text-gray-700 dark:text-gray-300">
+                             <p className="text-lg font-semibold">{selectedProduct.name}</p>
+                             <div className="grid grid-cols-2 gap-4 mt-2">
+                                <div className="flex items-center gap-2"><Package size={16} className="text-gray-400"/> <span>Stock: {selectedProduct.quantity}</span></div>
+                                <div className="flex items-center gap-2"><Percent size={16} className="text-gray-400"/> <span>GST: {selectedProduct.gstPercent}%</span></div>
+                                <div className="flex items-center gap-2"><IndianRupee size={16} className="text-gray-400"/> <span>Buy: ₹{selectedProduct.purchasePrice}</span></div>
+                                <div className="flex items-center gap-2"><IndianRupee size={16} className="text-green-600"/> <span className="font-bold text-green-600 dark:text-green-400">Sell: ₹{selectedProduct.salePrice}</span></div>
+                             </div>
                         </div>
                     )}
-                </Card>
-
-                <Card title="Stock Adjustment" className="animate-slide-up-fade" style={{ animationDelay: '100ms' }}>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Use this to correct the stock count after a physical inventory check.</p>
-                    <div className="flex flex-col sm:flex-row gap-2 items-end">
-                        <div className="w-full">
-                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">New Quantity</label>
-                             <input type="number" value={newQuantity} onChange={e => setNewQuantity(e.target.value)} className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" />
+                    
+                    <div className="mt-6 pt-4 border-t dark:border-slate-700">
+                        <h4 className="font-semibold text-sm mb-2">Stock Adjustment</h4>
+                        <div className="flex gap-2 items-center">
+                            <input 
+                                type="number" 
+                                value={newQuantity} 
+                                onChange={(e) => setNewQuantity(e.target.value)} 
+                                className="p-2 border rounded w-32 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200" 
+                                placeholder="New Qty"
+                            />
+                            <Button onClick={handleStockAdjustment} variant="secondary">Update Stock</Button>
                         </div>
-                        <Button 
-                            type="button"
-                            onClick={handleStockAdjustment} 
-                            variant="secondary"
-                            className="w-full sm:w-auto flex-shrink-0 !text-gray-700 !bg-white hover:!bg-gray-100 dark:!bg-slate-700 dark:!text-slate-200 dark:hover:!bg-slate-600 border border-gray-300 dark:border-slate-600 shadow-sm"
-                        >
-                            Save Adjustment
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Use this for manual corrections only. For purchases, use the Purchases page.</p>
+                    </div>
+                    
+                    <div className="mt-4 pt-4 border-t dark:border-slate-700">
+                        <Button onClick={() => setIsDownloadModalOpen(true)} className="w-full">
+                            <Barcode className="w-4 h-4 mr-2"/> Print / Download Barcode
                         </Button>
                     </div>
                 </Card>
-
-                <Button
-                    onClick={() => setIsDownloadModalOpen(true)}
-                    type="button"
-                    className="w-full animate-slide-up-fade"
-                    style={{ animationDelay: '200ms' }}
-                >
-                    <Barcode className="w-5 h-5 mr-2" />
-                    Print / Download Labels
-                </Button>
             </div>
         );
     }
 
     return (
-        <div>
-             {isBatchBarcodeModalOpen && (
+        <div className="space-y-4">
+            {isBatchBarcodeModalOpen && (
                 <BatchBarcodeModal
                     isOpen={isBatchBarcodeModalOpen}
                     onClose={() => setIsBatchBarcodeModalOpen(false)}
-                    purchaseItems={selectedProductsForModal}
-                    businessName={state.profile?.name || 'Your Business'}
-                    title="Print Barcode Labels"
+                    purchaseItems={batchBarcodeItems}
+                    businessName={state.profile?.name || 'Business Manager'}
+                    title="Batch Barcode Print"
                 />
-             )}
-            <div className="sticky top-[-1rem] z-10 bg-background dark:bg-slate-900 py-4 -mx-4 px-4 border-b dark:border-slate-700 mb-4 shadow-sm">
-                <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-2xl font-bold text-primary">Products & Inventory</h1>
-                        <span className="hidden sm:inline-block text-xs font-medium bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-300 px-2 py-1 rounded-full">
-                            {new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
-                        </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        {isSelectMode ? (
-                            <>
-                                <Button 
-                                    onClick={() => setIsBatchBarcodeModalOpen(true)} 
-                                    disabled={selectedProductIds.length === 0}
-                                    className="text-xs sm:text-sm px-2 sm:px-4"
-                                >
-                                    <Printer size={16} className="sm:mr-2" />
-                                    <span className="hidden sm:inline">Print Labels ({selectedProductIds.length})</span>
-                                </Button>
-                                <Button onClick={toggleSelectMode} variant="secondary" className="text-xs sm:text-sm px-2 sm:px-4">
-                                    <X size={16} className="sm:mr-2"/>
-                                    <span className="hidden sm:inline">Cancel</span>
-                                </Button>
-                            </>
-                        ) : (
-                            <Button onClick={toggleSelectMode} className="text-xs sm:text-sm px-2 sm:px-4">
-                                <QrCode size={16} className="sm:mr-2"/>
-                                <span className="hidden sm:inline">Bulk QR Print</span>
-                            </Button>
-                        )}
-                    </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="flex items-center gap-3">
+                    <h1 className="text-2xl font-bold text-primary">Products Inventory</h1>
+                    <span className="text-xs sm:text-sm font-bold bg-gradient-to-r from-teal-600 to-emerald-600 text-white px-3 py-1 rounded-full shadow-md border border-teal-500/30">
+                        {new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
                 </div>
-                
-                <div className="relative mt-4">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                    <input
-                        type="text"
-                        placeholder="Search products by name or code..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full p-2 pl-10 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
-                        disabled={isSelectMode}
-                    />
+                <div className="flex gap-2">
+                    {isSelectMode && (
+                         <Button 
+                            onClick={() => setIsBatchBarcodeModalOpen(true)} 
+                            disabled={selectedProductIds.length === 0}
+                            variant="secondary"
+                        >
+                            <Printer className="w-4 h-4 mr-2" /> Print Selected ({selectedProductIds.length})
+                        </Button>
+                    )}
+                    <Button onClick={toggleSelectMode} variant={isSelectMode ? "secondary" : "primary"}>
+                        {isSelectMode ? 'Cancel Selection' : 'Select Multiple'}
+                    </Button>
                 </div>
             </div>
+            
+            <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                <input
+                    type="text"
+                    placeholder="Search products by name or ID..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full p-2 pl-10 border rounded-lg dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
+                />
+            </div>
+            
+            {isSelectMode && (
+                 <div className="flex items-center gap-2 mb-2">
+                    <input 
+                        type="checkbox" 
+                        checked={selectedProductIds.length === filteredProducts.length && filteredProducts.length > 0}
+                        onChange={handleSelectAll}
+                        className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                        id="select-all"
+                    />
+                    <label htmlFor="select-all" className="text-sm text-gray-700 dark:text-gray-300">Select All ({filteredProducts.length})</label>
+                </div>
+            )}
 
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredProducts.map((product, index) => {
-                    const isSelected = selectedProductIds.includes(product.id);
-                    return (
-                        <Card 
-                            key={product.id} 
-                            className={`cursor-pointer transition-all duration-200 ${isSelected ? 'ring-2 ring-primary shadow-xl scale-[1.02]' : 'hover:shadow-lg'} animate-slide-up-fade`} 
-                            style={{ animationDelay: `${index * 50}ms` }}
-                            onClick={() => handleProductClick(product)}
-                        >
-                            <div className="flex items-start gap-4">
-                                {isSelectMode && (
-                                    <div className="flex-shrink-0 pt-1">
-                                        <input
-                                            type="checkbox"
-                                            checked={isSelected}
-                                            readOnly
-                                            className="h-5 w-5 rounded text-primary focus:ring-0 focus:ring-offset-0 border-gray-400 dark:bg-slate-600 dark:border-slate-500 pointer-events-none"
-                                        />
-                                    </div>
-                                )}
-                                <div className="flex-grow min-w-0">
-                                    <p className="font-bold text-lg text-primary truncate">{product.name}</p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Code: {product.id}</p>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="font-semibold text-gray-700 dark:text-gray-300">Stock: <span className="text-blue-600 dark:text-blue-400 font-bold text-base">{product.quantity}</span></span>
-                                        <span className="font-semibold text-gray-700 dark:text-gray-300">Price: <span className="text-green-600 dark:text-green-400 font-bold text-base">₹{product.salePrice.toLocaleString('en-IN')}</span></span>
-                                    </div>
+            <div className="grid grid-cols-1 gap-3">
+                {filteredProducts.map((product, index) => (
+                    <div 
+                        key={product.id} 
+                        className={`bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border transition-all animate-slide-up-fade flex items-center gap-3 ${isSelectMode && selectedProductIds.includes(product.id) ? 'border-primary ring-1 ring-primary bg-teal-50 dark:bg-teal-900/20' : 'border-gray-100 dark:border-slate-700 hover:shadow-md cursor-pointer'}`}
+                        style={{ animationDelay: `${index * 30}ms` }}
+                        onClick={() => handleProductClick(product)}
+                    >
+                        {isSelectMode && (
+                             <div className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 ${selectedProductIds.includes(product.id) ? 'bg-primary border-primary' : 'border-gray-400 bg-white dark:bg-slate-700'}`}>
+                                {selectedProductIds.includes(product.id) && <PackageCheck size={14} className="text-white" />}
+                            </div>
+                        )}
+                        <div className="flex-grow min-w-0">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <p className="font-semibold text-gray-800 dark:text-gray-200 truncate">{product.name}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">{product.id}</p>
+                                </div>
+                                <div className="text-right flex-shrink-0">
+                                    <p className="font-bold text-primary">₹{product.salePrice.toLocaleString('en-IN')}</p>
+                                    <p className={`text-xs font-medium ${product.quantity < 5 ? 'text-red-500' : 'text-green-600'}`}>
+                                        Stock: {product.quantity}
+                                    </p>
                                 </div>
                             </div>
-                        </Card>
-                    )
-                })}
-                {filteredProducts.length === 0 && <p className="text-gray-500 dark:text-gray-400 md:col-span-2 text-center">No products found.</p>}
+                        </div>
+                    </div>
+                ))}
+                {filteredProducts.length === 0 && (
+                    <p className="text-center text-gray-500 dark:text-gray-400 py-8">No products found.</p>
+                )}
             </div>
-
         </div>
     );
 };
